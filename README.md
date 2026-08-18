@@ -56,7 +56,7 @@ node scripts/vsix-package.mjs win32-x64
 
 ```
 apps/vscode/          # 插件源码(extension host + React webview UI + 打包脚本)
-packages/             # 构建闭包内的 11 个私有内部包(编译必需,不发布)
+packages/             # 构建闭包内的 11 个私有内部包(编译需要)
 build/                # 构建工具(raw-text loader 等)
 scripts/              # postinstall(node-pty 修复)
 ```

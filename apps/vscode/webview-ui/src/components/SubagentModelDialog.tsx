@@ -33,6 +33,10 @@ const PROVIDER_TYPES = ["openai", "anthropic", "kimi"] as const;
 
 interface SubagentModelDialogProps {
   disabled?: boolean;
+  /** Controlled open state — when provided, no trigger button is rendered and
+   *  the caller owns opening (used by the overflow menu). */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 function RadioRow({
@@ -84,10 +88,16 @@ function errorMessage(error: unknown): string {
  * api_key_env_var reference to config.toml; removing one strips both config
  * sections and deletes the key.
  */
-export function SubagentModelDialog({ disabled }: SubagentModelDialogProps) {
+export function SubagentModelDialog({ disabled, open: controlledOpen, onOpenChange: controlledOnOpenChange }: SubagentModelDialogProps) {
   const { models, secondaryModel, updateSecondaryModel, syncModelsConfig } = useSettingsStore();
   const t = useT();
-  const [open, setOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = (next: boolean) => {
+    if (!isControlled) setInternalOpen(next);
+    controlledOnOpenChange?.(next);
+  };
   const [formOpen, setFormOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ModelConfig | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -132,28 +142,30 @@ export function SubagentModelDialog({ disabled }: SubagentModelDialogProps) {
 
   return (
     <>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            type="button"
-            onClick={() => setOpen(true)}
-            disabled={disabled || !hasModels}
-            className={cn(
-              "relative flex items-center justify-center size-6 rounded-md transition-all",
-              "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground",
-              !disabled && hasModels ? "cursor-pointer" : "cursor-default",
-            )}
-          >
-            <IconRobot className="size-4" />
-            {secondaryModel !== null && (
-              <span className="absolute top-0.5 right-0.5 size-1.5 rounded-full bg-blue-500" />
-            )}
-          </button>
-        </TooltipTrigger>
-        <TooltipContent>
-          {t("subagent.tooltip", { label: label ?? t("subagent.followsMain") })}
-        </TooltipContent>
-      </Tooltip>
+      {!isControlled && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={() => setOpen(true)}
+              disabled={disabled || !hasModels}
+              className={cn(
+                "relative flex items-center justify-center size-6 rounded-md transition-all",
+                "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground",
+                !disabled && hasModels ? "cursor-pointer" : "cursor-default",
+              )}
+            >
+              <IconRobot className="size-4" />
+              {secondaryModel !== null && (
+                <span className="absolute top-0.5 right-0.5 size-1.5 rounded-full bg-blue-500" />
+              )}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>
+            {t("subagent.tooltip", { label: label ?? t("subagent.followsMain") })}
+          </TooltipContent>
+        </Tooltip>
+      )}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">

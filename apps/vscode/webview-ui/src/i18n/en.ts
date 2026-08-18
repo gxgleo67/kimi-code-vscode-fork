@@ -23,6 +23,7 @@ export const en = {
   "input.placeholder": "Ask Kimi Code... (/ commands · @ files · Alt+K code)",
   "input.placeholderStreaming": "Add a follow-up...",
   "input.addFilesOrMedia": "Add files or media",
+  "input.more": "More",
   "input.noModels": "No models available",
   "input.switchCacheNote":
     "Note: Switching models or thinking effort invalidates the existing prompt cache. Start a new conversation to avoid extra token costs.",

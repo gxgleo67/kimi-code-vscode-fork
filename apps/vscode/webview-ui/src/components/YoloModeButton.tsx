@@ -9,6 +9,9 @@ import type { PermissionMode } from "shared/types";
 interface YoloModeButtonProps {
   mode: PermissionMode;
   disabled?: boolean;
+  /** Icon-only: hide the label and show the mode-specific icon instead of the
+   *  generic shield so the current mode stays readable at a glance. */
+  compact?: boolean;
   onSelect: (mode: PermissionMode) => void;
 }
 
@@ -49,8 +52,9 @@ const MODE_TEXT_COLOR: Record<PermissionMode, string> = {
 /** Per-session permission-mode picker: the button shows a shield plus the
  *  session's current mode; each dropdown row carries the mode's name and a
  *  one-line description of its behavior. */
-export function YoloModeButton({ mode, disabled, onSelect }: YoloModeButtonProps) {
+export function YoloModeButton({ mode, disabled, compact = false, onSelect }: YoloModeButtonProps) {
   const t = useT();
+  const ModeIcon = MODE_ICONS[mode];
   return (
     <DropdownMenu>
       <Tooltip>
@@ -67,8 +71,14 @@ export function YoloModeButton({ mode, disabled, onSelect }: YoloModeButtonProps
                 disabled ? "cursor-default" : "cursor-pointer",
               )}
             >
-              <IconShield className="size-3.5" />
-              <span className="leading-none">{t(MODE_LABEL_KEYS[mode])}</span>
+              {compact ? (
+                <ModeIcon className="size-3.5" />
+              ) : (
+                <>
+                  <IconShield className="size-3.5" />
+                  <span className="leading-none">{t(MODE_LABEL_KEYS[mode])}</span>
+                </>
+              )}
             </button>
           </DropdownMenuTrigger>
         </TooltipTrigger>

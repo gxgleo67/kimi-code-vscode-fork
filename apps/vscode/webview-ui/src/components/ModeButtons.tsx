@@ -38,8 +38,11 @@ function modeButtonClass(active: boolean): string {
 /** Mode toggles as three sibling buttons — plan / goal / swarm — each with
  *  its description on hover. Plan and swarm flip immediately; the goal
  *  button arms the composer when no goal runs, and opens the goal controls
- *  (pause / resume / cancel) while one is active. */
-export function ModeButtons() {
+ *  (pause / resume / cancel) while one is active.
+ *
+ *  `compact` hides the text labels, leaving icon-only buttons that no longer
+ *  deform when the sidebar narrows. */
+export function ModeButtons({ compact = false }: { compact?: boolean }) {
   const t = useT();
   const isStreaming = useChatStore((s) => s.isStreaming);
   const sessionId = useChatStore((s) => s.sessionId);
@@ -98,7 +101,7 @@ export function ModeButtons() {
         <TooltipTrigger asChild>
           <button type="button" onClick={handleTogglePlanMode} className={modeButtonClass(planMode)}>
             <IconClipboardList className="size-3.5" />
-            <span className="leading-none">{t("modes.plan")}</span>
+            {!compact && <span className="leading-none">{t("modes.plan")}</span>}
           </button>
         </TooltipTrigger>
         <TooltipContent>{t("modes.planDesc")}</TooltipContent>
@@ -111,7 +114,7 @@ export function ModeButtons() {
               <DropdownMenuTrigger asChild>
                 <button type="button" className={modeButtonClass(true)}>
                   <IconTarget className="size-3.5" />
-                  <span className="leading-none">{t("modes.goal")}</span>
+                  {!compact && <span className="leading-none">{t("modes.goal")}</span>}
                 </button>
               </DropdownMenuTrigger>
             </TooltipTrigger>
@@ -152,7 +155,7 @@ export function ModeButtons() {
           <TooltipTrigger asChild>
             <button type="button" onClick={handleToggleGoalArm} className={modeButtonClass(goalArmed)}>
               <IconTarget className="size-3.5" />
-              <span className="leading-none">{t("modes.goal")}</span>
+              {!compact && <span className="leading-none">{t("modes.goal")}</span>}
             </button>
           </TooltipTrigger>
           <TooltipContent>{t("modes.goalDesc")}</TooltipContent>
@@ -163,7 +166,7 @@ export function ModeButtons() {
         <TooltipTrigger asChild>
           <button type="button" onClick={handleToggleSwarm} className={modeButtonClass(swarmMode)}>
             <IconSparkles className="size-3.5" />
-            <span className="leading-none">{t("modes.swarm")}</span>
+            {!compact && <span className="leading-none">{t("modes.swarm")}</span>}
           </button>
         </TooltipTrigger>
         <TooltipContent>{t("modes.swarmDesc")}</TooltipContent>

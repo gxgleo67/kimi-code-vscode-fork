@@ -23,6 +23,7 @@ export const zh: Record<TranslationKey, string> = {
   "input.placeholder": "向 Kimi Code 提问...(/ 命令 · @ 文件 · Alt+K 代码)",
   "input.placeholderStreaming": "追加提问...",
   "input.addFilesOrMedia": "添加文件或媒体",
+  "input.more": "更多",
   "input.noModels": "无可用模型",
   "input.switchCacheNote": "注意:切换模型或思考强度会使已有的提示缓存失效。建议开启新对话,以避免额外的 token 开销。",
   "input.exitPlanMode.title": "退出计划模式",

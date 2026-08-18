@@ -206,6 +206,15 @@ const AUTO_COMPACT_THRESHOLD_TOKENS = 256 * 1024;
 let lastAutoCompactTokens = 0;
 
 /**
+ * True while a live goal occupies the session (running or paused): a direct
+ * prompt then is rejected by the engine with "already being generated", so it
+ * must be queued the same as a streaming/stopping/compacting turn.
+ */
+function isGoalBusy(goal: GoalStateInfo | null): boolean {
+  return goal !== null && (goal.status === "active" || goal.status === "paused");
+}
+
+/**
  * Opt-in (kimifork.autoCompactContext): when a turn ends with the context
  * above 256K tokens, send /compact as a normal follow-up turn. Skipped while a
  * goal is live (compaction would swallow the goal's next continuation turn)
@@ -353,7 +362,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   historyLoading: false,
 
   sendMessage: (text) => {
-    const { draftMedia, isStreaming, stopping, isCompacting, goalArmed } = get();
+    const { draftMedia, isStreaming, stopping, isCompacting, goalArmed, goal } = get();
     const { currentModel } = useSettingsStore.getState();
     const readyMedia = draftMedia.filter((m) => m.dataUri).map((m) => m.dataUri!);
     const content = readyMedia.length > 0 ? Content.build(text, readyMedia) : text;
@@ -370,9 +379,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
 
     // Enqueue instead of sending whenever the engine is busy or still
-    // settling a turn (stop/compaction in progress): a direct prompt then is
-    // rejected with "already being generated" and the message would be lost.
-    if (isStreaming || stopping || isCompacting) {
+    // settling a turn (streaming, stop/compaction, or a live goal): a direct
+    // prompt then is rejected with "already being generated" and the message
+    // would be lost.
+    if (isStreaming || stopping || isCompacting || isGoalBusy(goal)) {
       get().enqueue(content, currentModel, goalObjective);
       set({ draftMedia: [] });
       return;
@@ -724,8 +734,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   sendNextQueued: () => {
-    const { queue, isStreaming } = get();
-    if (isStreaming || queue.length === 0) {
+    const { queue, isStreaming, goal } = get();
+    if (isStreaming || isGoalBusy(goal) || queue.length === 0) {
       return;
     }
 
@@ -747,3 +757,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
     doSend(get(), next.content, next.model, next.goalObjective);
   },
 }));
+
+// A live goal can settle (active/paused → complete/null) via a StatusUpdate
+// without a stream_complete, so a message queued during its run would otherwise
+// sit until the next turn. Drain it as soon as the goal releases the session.
+useChatStore.subscribe((state, prevState) => {
+  if (isGoalBusy(prevState.goal) && !isGoalBusy(state.goal) && !state.isStreaming && state.queue.length > 0) {
+    setTimeout(() => useChatStore.getState().sendNextQueued(), 0);
+  }
+});

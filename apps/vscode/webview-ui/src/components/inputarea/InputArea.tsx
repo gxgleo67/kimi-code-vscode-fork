@@ -14,7 +14,9 @@ import { SubagentModelDialog } from "../SubagentModelDialog";
 import { ModeButtons } from "../ModeButtons";
 import { ModelPicker } from "../ModelPicker";
 import { YoloModeButton } from "../YoloModeButton";
+import { ComposerOverflowMenu } from "../ComposerOverflowMenu";
 import { UsageStatusBar } from "../UsageStatusBar";
+import { useElementWidth } from "@/hooks/useElementWidth";
 import {
   getModelById,
   getMediaFallbackModel,
@@ -36,6 +38,13 @@ import { computeMentionInsert } from "./utils";
 interface InputAreaProps {
   onAuthAction?: () => void;
 }
+
+/** Responsive collapse thresholds for the composer's button row (px). Below
+ *  the first the text labels hide (icon-only); below the second the whole
+ *  left cluster folds into a single "⋯" overflow menu. Tuned for the longest
+ *  (Chinese) labels; adjust together if a label set grows. */
+const COLLAPSE_ICONS_BELOW = 560;
+const COLLAPSE_OVERFLOW_BELOW = 340;
 
 export function InputArea({ onAuthAction }: InputAreaProps) {
   const t = useT();
@@ -313,6 +322,17 @@ export function InputArea({ onAuthAction }: InputAreaProps) {
   const hasModels = availableModels.length > 0;
   const canSend = (text.trim() || draftMedia.length > 0) && !isProcessing;
 
+  // Measure the button row and degrade gracefully as the sidebar narrows:
+  // full labels → icon-only → "⋯" overflow menu.
+  const { ref: toolbarRef, width: toolbarWidth } = useElementWidth<HTMLDivElement>();
+  const collapse =
+    toolbarWidth < COLLAPSE_OVERFLOW_BELOW
+      ? "overflow"
+      : toolbarWidth < COLLAPSE_ICONS_BELOW
+        ? "icons"
+        : "full";
+  const compact = collapse !== "full";
+
   return (
     <div className="p-2 pt-0! flex flex-col min-h-0">
       <BottomToolbar />
@@ -412,23 +432,30 @@ export function InputArea({ onAuthAction }: InputAreaProps) {
             )}
           />
 
-          <div className="flex items-center justify-between px-1.5 pb-1.5">
+          <div ref={toolbarRef} className="flex items-center justify-between px-1.5 pb-1.5">
             <div className="flex items-center gap-1.5 min-w-0 flex-1">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon-xs" onClick={handleAddButtonClick} className="text-muted-foreground">
-                    <IconPaperclip className="size-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>{t("input.addFilesOrMedia")}</TooltipContent>
-              </Tooltip>
-              <YoloModeButton
-                mode={permissionMode}
-                disabled={isStreaming}
-                onSelect={selectPermissionMode}
-              />
-              <ModeButtons />
-              <SubagentModelDialog disabled={isStreaming} />
+              {collapse === "overflow" ? (
+                <ComposerOverflowMenu disabled={isStreaming} onAddFiles={handleAddButtonClick} />
+              ) : (
+                <>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon-xs" onClick={handleAddButtonClick} className="text-muted-foreground">
+                        <IconPaperclip className="size-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{t("input.addFilesOrMedia")}</TooltipContent>
+                  </Tooltip>
+                  <YoloModeButton
+                    mode={permissionMode}
+                    disabled={isStreaming}
+                    compact={compact}
+                    onSelect={selectPermissionMode}
+                  />
+                  <ModeButtons compact={compact} />
+                  <SubagentModelDialog disabled={isStreaming} />
+                </>
+              )}
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
@@ -437,6 +464,7 @@ export function InputArea({ onAuthAction }: InputAreaProps) {
                 availableModels={availableModels}
                 hasConversationHistory={hasConversationHistory}
                 disabled={isStreaming || !hasModels}
+                compact={compact}
               />
               <ActionMenu onAuthAction={onAuthAction} />
 

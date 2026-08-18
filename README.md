@@ -21,8 +21,6 @@
 - **额度状态栏**:5 小时 / 7 天额度同心环实时显示,颜色随用量变化(70% 起黄 → 100% 红),含重置倒计时与 Tooltip
 - **Plan 审批(Claude 式 UX)**:Plan 模式弹窗支持 执行 / Revise+反馈 / 选项,不再在 YOLO 下静默直接执行
 - **子代理自定义供应商**:可在 VS Code 内为子代理配置自定义供应商(密钥存 SecretStorage,安全)
-- **权限模式三档**:manual / yolo / auto 下拉切换,按会话记忆,"先选后发";边框按模式着色(plan 蓝 > yolo 红 > auto 琥珀)
-- **思考强度默认 high**:新增设置 `kimifork.defaultThinkingEffort`,默认 high,可配置 off/low/medium/high
 - **界面 i18n**:中英文切换(设置 `kimifork.language`)
 - **Logo 与视觉**:复刻 Kimi Code CLI 蓝色标识、对话框头像、状态栏布局调整
 - **性能与稳定性**:历史记录长对话加载优化、上下文压缩后查看器、对话框防草稿回流、终止响应更可靠

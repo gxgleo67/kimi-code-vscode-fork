@@ -142,6 +142,8 @@ export const en = {
   "usage.resetsInHours": "resets in {hours}h {minutes}m",
   "usage.resetsInMinutes": "resets in {minutes}m",
   "usage.resetRefreshing": "reset, refreshing…",
+  "usage.clickToCompact": "Click to compact context",
+  "usage.compactWhileArmed": "A goal is being set — finish or cancel it before compacting.",
 
   // ── QueuedMessagesPanel / BottomToolbar ─────────────────────────────────
   "queue.media": "(media)",

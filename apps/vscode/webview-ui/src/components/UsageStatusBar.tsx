@@ -11,6 +11,7 @@ import {
   type ManagedUsageWindowView,
 } from "shared/managed-usage";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
+import { toast } from "./ui/sonner";
 
 const USAGE_POLL_INTERVAL_MS = 60_000;
 const COUNTDOWN_TICK_MS = 60_000;
@@ -74,20 +75,39 @@ function ContextRing({ ratio, label, detail }: ContextRingProps) {
   const size = 14;
   const strokeWidth = 2;
 
+  // The ring doubles as the "compact context" control: click it to send
+  // /compact. Skipped while a goal is being armed — sendMessage would consume
+  // the arm and turn "/compact" into the goal objective.
+  const handleCompact = () => {
+    const { goalArmed, sendMessage } = useChatStore.getState();
+    if (goalArmed) {
+      toast.info(t("usage.compactWhileArmed"));
+      return;
+    }
+    sendMessage("/compact");
+  };
+
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span className="flex items-center" style={{ color: CONTEXT_RING_COLOR }}>
+        <button
+          type="button"
+          onClick={handleCompact}
+          className="flex items-center rounded-full cursor-pointer outline-none transition-opacity hover:opacity-75 focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          style={{ color: CONTEXT_RING_COLOR }}
+          aria-label={t("usage.clickToCompact")}
+        >
           <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="block -rotate-90" aria-hidden="true">
             <RingCircles center={size / 2} radius={(size - strokeWidth) / 2} strokeWidth={strokeWidth} ratio={ratio} />
           </svg>
-        </span>
+        </button>
       </TooltipTrigger>
       <TooltipContent>
         <div className="flex flex-col gap-0.5">
           <span>{label}</span>
           {detail !== undefined && <span>{detail}</span>}
           <span>{t("usage.percentUsed", { percent: formatUsagePercent(ratio) })}</span>
+          <span className="text-muted-foreground">{t("usage.clickToCompact")}</span>
         </div>
       </TooltipContent>
     </Tooltip>

@@ -135,6 +135,8 @@ export const zh: Record<TranslationKey, string> = {
   "usage.resetsInHours": "{hours}小时{minutes}分钟后重置",
   "usage.resetsInMinutes": "{minutes}分钟后重置",
   "usage.resetRefreshing": "已重置,正在刷新…",
+  "usage.clickToCompact": "点击压缩上下文",
+  "usage.compactWhileArmed": "正在设置目标,请先完成或取消目标再压缩。",
 
   // ── 排队消息面板 / 底部工具栏 ───────────────────────────────────────────
   "queue.media": "(媒体)",

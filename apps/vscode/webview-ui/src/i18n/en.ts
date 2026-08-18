@@ -247,7 +247,7 @@ export const en = {
   "permMode.descYolo": "Auto-approve tool actions, but the agent may still ask questions",
   "permMode.descAuto": "Fully autonomous — the agent decides everything without asking",
 
-  // ── ModeMenu (plan / swarm / goal) ──────────────────────────────────────
+  // ── ModeButtons (plan / goal / swarm) ──────────────────────────────────
   "modes.label": "Mode",
   "modes.plan": "Plan",
   "modes.planDesc": "Have the agent make a plan before changing files",

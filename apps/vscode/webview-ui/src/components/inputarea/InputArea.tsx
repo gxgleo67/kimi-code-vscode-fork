@@ -11,7 +11,7 @@ import { MediaPreviewModal } from "../MediaPreviewModal";
 import { BottomToolbar } from "../BottomToolbar";
 import { StatusPills } from "../StatusPills";
 import { SubagentModelDialog } from "../SubagentModelDialog";
-import { ModeMenu } from "../ModeMenu";
+import { ModeButtons } from "../ModeButtons";
 import { ModelPicker } from "../ModelPicker";
 import { YoloModeButton } from "../YoloModeButton";
 import { UsageStatusBar } from "../UsageStatusBar";
@@ -44,6 +44,9 @@ export function InputArea({ onAuthAction }: InputAreaProps) {
   const [text, setText] = useState("");
   const [cursorPos, setCursorPos] = useState(0);
   const [previewMedia, setPreviewMedia] = useState<string | null>(null);
+  // Paperclip-pinned file picker: opened without inserting a "@", so
+  // cancelling the picker never leaves a stray character in the composer.
+  const [filePickerPinned, setFilePickerPinned] = useState(false);
 
   const isStreaming = useChatStore((s) => s.isStreaming);
   const stopping = useChatStore((s) => s.stopping);
@@ -171,6 +174,7 @@ export function InputArea({ onAuthAction }: InputAreaProps) {
   });
 
   const applyMention = useMemoizedFn((filePath: string) => {
+    setFilePickerPinned(false);
     const { newText, newCursorPos } = computeMentionInsert({
       text,
       cursorPos,
@@ -212,14 +216,20 @@ export function InputArea({ onAuthAction }: InputAreaProps) {
     resetFilePicker,
   } = useFilePicker(
     activeToken,
+    filePickerPinned,
     applyMention,
     () => {
+      setFilePickerPinned(false);
       void handlePickMedia();
     },
-    removeActiveToken,
+    () => {
+      setFilePickerPinned(false);
+      removeActiveToken();
+    },
   );
 
   const closeMenus = useCallback(() => {
+    setFilePickerPinned(false);
     if (showSlashMenu || showFileMenu) {
       removeActiveToken();
     }
@@ -292,13 +302,11 @@ export function InputArea({ onAuthAction }: InputAreaProps) {
   };
 
   const handleAddButtonClick = useMemoizedFn(() => {
-    const newText = text + "@";
-    setText(newText);
-    setCursorPos(newText.length);
+    // Pin the file picker open without typing "@": cancelling it then leaves
+    // the composer text untouched.
+    setFilePickerPinned(true);
     setTimeout(() => {
       textareaRef.current?.focus();
-      textareaRef.current?.setSelectionRange(newText.length, newText.length);
-      adjustHeight();
     }, 0);
   });
 
@@ -419,7 +427,7 @@ export function InputArea({ onAuthAction }: InputAreaProps) {
                 disabled={isStreaming}
                 onSelect={selectPermissionMode}
               />
-              <ModeMenu />
+              <ModeButtons />
               <SubagentModelDialog disabled={isStreaming} />
             </div>
 

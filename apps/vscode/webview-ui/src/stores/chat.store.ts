@@ -353,7 +353,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   historyLoading: false,
 
   sendMessage: (text) => {
-    const { draftMedia, isStreaming, goalArmed } = get();
+    const { draftMedia, isStreaming, stopping, isCompacting, goalArmed } = get();
     const { currentModel } = useSettingsStore.getState();
     const readyMedia = draftMedia.filter((m) => m.dataUri).map((m) => m.dataUri!);
     const content = readyMedia.length > 0 ? Content.build(text, readyMedia) : text;
@@ -369,8 +369,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
       set({ goalArmed: false });
     }
 
-    // If streaming, enqueue instead of sending
-    if (isStreaming) {
+    // Enqueue instead of sending whenever the engine is busy or still
+    // settling a turn (stop/compaction in progress): a direct prompt then is
+    // rejected with "already being generated" and the message would be lost.
+    if (isStreaming || stopping || isCompacting) {
       get().enqueue(content, currentModel, goalObjective);
       set({ draftMedia: [] });
       return;
@@ -618,9 +620,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
       .then(({ aborted }) => {
         if (!aborted) {
           // No runtime is bound on the extension side, so no terminal event
-          // will ever arrive — force the local terminal state.
+          // will ever arrive — force the local terminal state and flush
+          // anything the user queued during the stop window.
           set({ stopping: false, isStreaming: false });
           toast.info(t("toast.noRunningTask"));
+          if (get().queue.length > 0) {
+            setTimeout(() => get().sendNextQueued(), 50);
+          }
         }
       })
       .catch(() => {

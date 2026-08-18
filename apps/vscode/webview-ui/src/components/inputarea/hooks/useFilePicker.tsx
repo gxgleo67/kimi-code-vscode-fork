@@ -34,7 +34,7 @@ interface UseFilePickerResult {
   resetFilePicker: () => void;
 }
 
-export function useFilePicker(activeToken: ActiveToken | null, onInsertFile: (path: string) => void, onPickMedia: () => void, onCancel: () => void): UseFilePickerResult {
+export function useFilePicker(activeToken: ActiveToken | null, pinnedOpen: boolean, onInsertFile: (path: string) => void, onPickMedia: () => void, onCancel: () => void): UseFilePickerResult {
   const isStreaming = useChatStore((s) => s.isStreaming);
   const draftMedia = useChatStore((s) => s.draftMedia);
   const canAddMedia = !isStreaming && draftMedia.length < MEDIA_CONFIG.maxCount;
@@ -43,7 +43,8 @@ export function useFilePicker(activeToken: ActiveToken | null, onInsertFile: (pa
   const [filePickerMode, setFilePickerMode] = useState<FilePickerMode>("search");
   const [folderPath, setFolderPath] = useState("");
 
-  const showFileMenu = activeToken?.trigger === "@";
+  // The paperclip pins the menu open without an "@" token in the composer.
+  const showFileMenu = activeToken?.trigger === "@" || pinnedOpen;
   const query = activeToken?.query || "";
 
   // 搜索文件 - query 变化时重新搜索

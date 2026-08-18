@@ -3,7 +3,7 @@ import { IconClipboardList, IconPlayerPause, IconPlayerPlay, IconSparkles, IconT
 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "@/components/ui/sonner";
 import { StreamingConfirmDialog } from "./StreamingConfirmDialog";
 import { bridge } from "@/services";
@@ -26,10 +26,20 @@ function isGoalActive(goal: GoalStateInfo | null): goal is GoalStateInfo {
   return goal !== null && goal.status !== "complete";
 }
 
-/** Modes menu (plan / swarm / goal) — one pill whose tags show the active
- *  modes, opening a dropdown of switch rows. Plan/swarm are client toggles;
- *  goal state arrives via StatusUpdate after each control call. */
-export function ModeMenu() {
+function modeButtonClass(active: boolean): string {
+  return cn(
+    "flex items-center gap-1 h-6 px-1.5 rounded-md transition-all text-xs cursor-pointer",
+    active
+      ? "bg-blue-500/15 text-blue-600 dark:text-blue-400 hover:bg-blue-500/25"
+      : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground",
+  );
+}
+
+/** Mode toggles as three sibling buttons — plan / goal / swarm — each with
+ *  its description on hover. Plan and swarm flip immediately; the goal
+ *  button arms the composer when no goal runs, and opens the goal controls
+ *  (pause / resume / cancel) while one is active. */
+export function ModeButtons() {
   const t = useT();
   const isStreaming = useChatStore((s) => s.isStreaming);
   const sessionId = useChatStore((s) => s.sessionId);
@@ -38,20 +48,14 @@ export function ModeMenu() {
   const goal = useChatStore((s) => s.goal);
   const goalArmed = useChatStore((s) => s.goalArmed);
 
-  const [open, setOpen] = useState(false);
+  const [goalMenuOpen, setGoalMenuOpen] = useState(false);
   const [showPlanModeConfirm, setShowPlanModeConfirm] = useState(false);
 
   const goalActive = isGoalActive(goal);
-  const anyModeActive = planMode || swarmMode || goalActive || goalArmed;
-
-  const handleOpenChange = (next: boolean) => {
-    setOpen(next);
-  };
 
   const handleTogglePlanMode = () => {
     // Turning OFF during streaming needs confirmation — user may want next turn, not current
     if (planMode && isStreaming) {
-      setOpen(false);
       setShowPlanModeConfirm(true);
       return;
     }
@@ -86,62 +90,41 @@ export function ModeMenu() {
   const handleToggleGoalArm = () => {
     const next = !goalArmed;
     useChatStore.setState({ goalArmed: next });
-    if (next) setOpen(false);
   };
-
-  const rowClass = "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-accent/50 cursor-pointer";
-  const rowIconClass = "size-4 shrink-0 text-muted-foreground";
-  // The switch is display-only: the whole row is the click target, so the
-  // switch never handles its own pointer events (avoids double-toggling).
-  const rowSwitchClass = "pointer-events-none";
 
   return (
     <>
-      <DropdownMenu open={open} onOpenChange={handleOpenChange}>
-        <DropdownMenuTrigger asChild>
-          <button
-            type="button"
-            className={cn(
-              "flex items-center gap-1 h-6 px-1.5 rounded-md transition-all text-xs cursor-pointer",
-              anyModeActive
-                ? "bg-blue-500/15 text-blue-600 dark:text-blue-400 hover:bg-blue-500/25"
-                : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground",
-            )}
-          >
-            <span className="leading-none">{t("modes.label")}</span>
-            {planMode && <span className="rounded bg-blue-500/15 px-1 py-px text-[9px] font-medium leading-tight">{t("modes.plan")}</span>}
-            {swarmMode && <span className="rounded bg-blue-500/15 px-1 py-px text-[9px] font-medium leading-tight">{t("modes.swarm")}</span>}
-            {(goalActive || goalArmed) && <span className="rounded bg-blue-500/15 px-1 py-px text-[9px] font-medium leading-tight">{t("modes.goal")}</span>}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button type="button" onClick={handleTogglePlanMode} className={modeButtonClass(planMode)}>
+            <IconClipboardList className="size-3.5" />
+            <span className="leading-none">{t("modes.plan")}</span>
           </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-64">
-          <div role="button" tabIndex={-1} className={rowClass} onClick={handleTogglePlanMode}>
-            <IconClipboardList className={rowIconClass} />
-            <span className="flex-1 min-w-0">
-              <span className="block text-xs leading-tight">{t("modes.plan")}</span>
-              <span className="block text-[10px] leading-snug text-muted-foreground">{t("modes.planDesc")}</span>
-            </span>
-            <Switch size="sm" checked={planMode} tabIndex={-1} className={rowSwitchClass} />
-          </div>
+        </TooltipTrigger>
+        <TooltipContent>{t("modes.planDesc")}</TooltipContent>
+      </Tooltip>
 
-          <div role="button" tabIndex={-1} className={rowClass} onClick={handleToggleSwarm}>
-            <IconSparkles className={rowIconClass} />
-            <span className="flex-1 min-w-0">
-              <span className="block text-xs leading-tight">{t("modes.swarm")}</span>
-              <span className="block text-[10px] leading-snug text-muted-foreground">{t("modes.swarmDesc")}</span>
-            </span>
-            <Switch size="sm" checked={swarmMode} tabIndex={-1} className={rowSwitchClass} />
-          </div>
-
-          {goalActive ? (
+      {goalActive ? (
+        <DropdownMenu open={goalMenuOpen} onOpenChange={setGoalMenuOpen}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <DropdownMenuTrigger asChild>
+                <button type="button" className={modeButtonClass(true)}>
+                  <IconTarget className="size-3.5" />
+                  <span className="leading-none">{t("modes.goal")}</span>
+                </button>
+              </DropdownMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent>{`${goal.objective} · ${t(GOAL_STATUS_KEYS[goal.status])}`}</TooltipContent>
+          </Tooltip>
+          <DropdownMenuContent align="start" className="w-64">
             <div className="rounded-md px-2 py-1.5">
               <div className="flex items-center gap-2">
-                <IconTarget className={rowIconClass} />
+                <IconTarget className="size-4 shrink-0 text-muted-foreground" />
                 <span className="flex-1 min-w-0">
                   <span className="block truncate text-xs leading-tight">{goal.objective}</span>
                   <span className="block text-[10px] leading-snug text-muted-foreground">{t(GOAL_STATUS_KEYS[goal.status])}</span>
                 </span>
-                <Switch size="sm" checked tabIndex={-1} className={rowSwitchClass} />
               </div>
               <div className="mt-1 flex gap-1 pl-6">
                 {goal.status === "active" && (
@@ -162,18 +145,29 @@ export function ModeMenu() {
                 </Button>
               </div>
             </div>
-          ) : (
-            <div role="button" tabIndex={-1} className={rowClass} onClick={handleToggleGoalArm}>
-              <IconTarget className={rowIconClass} />
-              <span className="flex-1 min-w-0">
-                <span className="block text-xs leading-tight">{t("modes.goal")}</span>
-                <span className="block text-[10px] leading-snug text-muted-foreground">{t("modes.goalDesc")}</span>
-              </span>
-              <Switch size="sm" checked={goalArmed} tabIndex={-1} className={rowSwitchClass} />
-            </div>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ) : (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button type="button" onClick={handleToggleGoalArm} className={modeButtonClass(goalArmed)}>
+              <IconTarget className="size-3.5" />
+              <span className="leading-none">{t("modes.goal")}</span>
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>{t("modes.goalDesc")}</TooltipContent>
+        </Tooltip>
+      )}
+
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button type="button" onClick={handleToggleSwarm} className={modeButtonClass(swarmMode)}>
+            <IconSparkles className="size-3.5" />
+            <span className="leading-none">{t("modes.swarm")}</span>
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>{t("modes.swarmDesc")}</TooltipContent>
+      </Tooltip>
 
       <StreamingConfirmDialog
         open={showPlanModeConfirm}

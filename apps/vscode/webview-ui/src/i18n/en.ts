@@ -202,6 +202,7 @@ export const en = {
   // ── ChatMessage ─────────────────────────────────────────────────────────
   "chat.processing": "Processing...",
   "chat.showEarlier": "Show earlier messages ({count})",
+  "chat.loadingHistory": "Loading conversation…",
   "context.label": "Context",
   "context.tooltip": "Inspect the exact context sent to the model (post-compaction state)",
   "context.title": "Current Context",

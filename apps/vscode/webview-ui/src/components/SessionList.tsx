@@ -134,7 +134,7 @@ function SessionItem({ session, isSelected, onSelect, onDelete, onRename, dirLab
 }
 
 export function SessionList({ onClose }: SessionListProps) {
-  const { loadSession, sessionId, startNewConversation, isStreaming } = useChatStore();
+  const { loadSession, sessionId, startNewConversation, isStreaming, setHistoryLoading } = useChatStore();
   const { workspaceRoot, currentWorkDir, setCurrentWorkDir } = useSettingsStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<SessionInfo | null>(null);
@@ -215,6 +215,10 @@ export function SessionList({ onClose }: SessionListProps) {
   };
 
   const doLoadSession = async (session: SessionInfo) => {
+    // Show the loading veil right away: resuming a session means the engine
+    // hydrates every agent's wire log, which can take a moment — without it
+    // the UI looks frozen on the previous conversation.
+    setHistoryLoading(true);
     try {
       // Switch workDir if session is from a different directory
       const activeWorkDir = currentWorkDir || workspaceRoot;
@@ -231,6 +235,8 @@ export function SessionList({ onClose }: SessionListProps) {
     } catch (error) {
       console.error("[SessionList] Failed to load session:", error);
       toast.error(t("session.unableToOpen", { error: error instanceof Error ? error.message : String(error) }));
+    } finally {
+      setHistoryLoading(false);
     }
   };
 

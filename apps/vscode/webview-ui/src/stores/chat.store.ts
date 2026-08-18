@@ -109,8 +109,11 @@ export interface ChatState {
   goal: GoalStateInfo | null;
   /** One-shot arm: the next send creates a goal from the message text. */
   goalArmed: boolean;
+  /** True while a history session is being fetched and replayed. */
+  historyLoading: boolean;
 
   sendMessage: (text: string) => void;
+  setHistoryLoading: (loading: boolean) => void;
   retryLastMessage: () => void;
   processEvent: (event: UIStreamEvent) => void;
   loadSession: (sessionId: string, events: UIStreamEvent[]) => Promise<void>;
@@ -347,11 +350,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
   swarmMode: false,
   goal: null,
   goalArmed: false,
+  historyLoading: false,
 
   sendMessage: (text) => {
     const { draftMedia, isStreaming, goalArmed } = get();
     const { currentModel } = useSettingsStore.getState();
-
     const readyMedia = draftMedia.filter((m) => m.dataUri).map((m) => m.dataUri!);
     const content = readyMedia.length > 0 ? Content.build(text, readyMedia) : text;
 
@@ -388,6 +391,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     doSend(get(), content, currentModel, goalObjective);
   },
+
+  setHistoryLoading: (historyLoading) => set({ historyLoading }),
 
   retryLastMessage: () => {
     const { messages, isStreaming } = get();

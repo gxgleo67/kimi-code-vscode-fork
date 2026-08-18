@@ -193,6 +193,7 @@ export const zh: Record<TranslationKey, string> = {
   // ── 聊天消息 ────────────────────────────────────────────────────────────
   "chat.processing": "处理中...",
   "chat.showEarlier": "显示更早的消息({count})",
+  "chat.loadingHistory": "正在加载对话…",
   "context.label": "上下文",
   "context.tooltip": "查看当前发送给模型的完整上下文(压缩后的状态)",
   "context.title": "当前上下文",

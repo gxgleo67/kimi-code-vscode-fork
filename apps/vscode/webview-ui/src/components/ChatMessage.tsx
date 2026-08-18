@@ -153,6 +153,7 @@ function ForkButton({ turnIndex, className }: ForkButtonProps) {
   const sessionId = useChatStore((s) => s.sessionId);
   const isStreaming = useChatStore((s) => s.isStreaming);
   const loadSession = useChatStore((s) => s.loadSession);
+  const setHistoryLoading = useChatStore((s) => s.setHistoryLoading);
 
   const handleFork = () => {
     if (!sessionId || turnIndex < 0) return;
@@ -163,6 +164,7 @@ function ForkButton({ turnIndex, className }: ForkButtonProps) {
     if (!sessionId) return;
 
     setIsForking(true);
+    setHistoryLoading(true);
     try {
       const result = await bridge.forkSession(sessionId, turnIndex);
       if (result) {
@@ -173,6 +175,7 @@ function ForkButton({ turnIndex, className }: ForkButtonProps) {
     } catch (error) {
       toast.error(t("chat.forkFailed", { error: error instanceof Error ? error.message : String(error) }));
     } finally {
+      setHistoryLoading(false);
       setIsForking(false);
       setShowConfirm(false);
     }

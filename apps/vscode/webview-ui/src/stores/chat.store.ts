@@ -8,7 +8,7 @@ import { t } from "@/i18n";
 
 import { useSettingsStore } from "./settings.store";
 import { processEvent } from "./event-handlers";
-import type { StatusUpdate, ContentPart, GoalStateInfo, QuestionRequest, ToolResult } from "shared/legacy-sdk";
+import type { SessionContextSnapshot, StatusUpdate, ContentPart, GoalStateInfo, QuestionRequest, ToolResult } from "shared/legacy-sdk";
 import type { UIStreamEvent } from "shared/types";
 
 const HANDSHAKE_TIMEOUT_MS = 30_000;
@@ -34,7 +34,7 @@ export interface InlineError {
 export type UIStepItem =
   | { type: "thinking"; content: string; finished?: boolean }
   | { type: "text"; content: string; finished?: boolean }
-  | { type: "compaction" }
+  | { type: "compaction"; summary?: string; tokenCount?: number }
   | { type: "steer"; content: string | ContentPart[] }
   | {
       type: "tool_use";
@@ -223,6 +223,80 @@ function maybeAutoCompact(get: () => ChatState): void {
   state.sendMessage("/compact");
 }
 
+/**
+ * Set on CompactionEnd, consumed at the turn's stream_complete: the engine's
+ * context is already replaced by then, so the UI can safely pull the
+ * post-compaction snapshot and rebuild the message list around it.
+ */
+let compactionDirty = false;
+
+/**
+ * Rebuild the message list after a compaction: the incremental list still
+ * holds every pre-compaction message, so without this the UI looks like
+ * nothing was compacted. The rebuilt list is one expandable compaction card
+ * (carrying the summary) plus the retained recent messages. Tool/system
+ * entries are skipped in the chat view — the Context Viewer shows the full
+ * post-compaction context for inspection.
+ */
+async function rebuildMessagesAfterCompaction(
+  get: () => ChatState,
+  set: (state: Partial<ChatState>) => void,
+): Promise<void> {
+  const sessionId = get().sessionId;
+  let snapshot: SessionContextSnapshot | null = null;
+  try {
+    const result = await bridge.getSessionContext();
+    if (result.ok) snapshot = result.snapshot;
+  } catch {
+    snapshot = null;
+  }
+  if (snapshot === null) return;
+  const state = get();
+  // A session switch or a new turn started while fetching — replacing the
+  // list now would clobber live state, so leave the list as-is.
+  if (state.sessionId !== sessionId || state.isStreaming) return;
+  set({ messages: buildPostCompactionMessages(snapshot) });
+}
+
+function buildPostCompactionMessages(snapshot: SessionContextSnapshot): ChatMessage[] {
+  const now = Date.now();
+  let summary: string | undefined;
+  const retained: SessionContextSnapshot["messages"] = [];
+  for (const message of snapshot.messages) {
+    if (message.kind === "compaction_summary") {
+      summary = message.text;
+    } else {
+      retained.push(message);
+    }
+  }
+
+  const messages: ChatMessage[] = [{
+    id: crypto.randomUUID(),
+    role: "assistant",
+    content: "",
+    timestamp: now,
+    forkable: false,
+    steps: [{
+      n: 0,
+      items: [{
+        type: "compaction",
+        ...(summary === undefined ? {} : { summary }),
+        tokenCount: snapshot.tokenCount,
+      }],
+    }],
+  }];
+
+  for (const message of retained) {
+    if (!message.text.trim()) continue;
+    if (message.role === "user") {
+      messages.push({ id: crypto.randomUUID(), role: "user", content: message.text, timestamp: now, forkable: false });
+    } else if (message.role === "assistant") {
+      messages.push({ id: crypto.randomUUID(), role: "assistant", content: message.text, timestamp: now, forkable: false });
+    }
+  }
+  return messages;
+}
+
 function doSend(state: ChatState, content: string | ContentPart[], model: string, goalObjective?: string) {
   const { sessionId, planMode } = state;
   const { thinkingEffort, permissionMode } = useSettingsStore.getState();
@@ -394,9 +468,19 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }),
     );
 
+    if (event.type === "CompactionEnd") {
+      compactionDirty = true;
+    }
+
     // Auto-send next queued item when streaming ends (complete or error)
     if (event.type === "stream_complete" || event.type === "error") {
       if (event.type === "stream_complete") {
+        // Rebuild before anything else schedules a follow-up turn: the rebuild
+        // guard refuses to run once a new turn is streaming.
+        if (compactionDirty) {
+          compactionDirty = false;
+          void rebuildMessagesAfterCompaction(get, set);
+        }
         maybeAutoCompact(get);
       }
       const { queue, isStreaming: stillStreaming } = get();
@@ -408,6 +492,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   loadSession: async (sessionId, events) => {
     clearHandshakeTimer();
+    compactionDirty = false;
     // Switching sessions: apply anything still buffered before the reset.
     flushTextDeltas();
 
@@ -469,6 +554,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   startNewConversation: async () => {
     clearHandshakeTimer();
+    compactionDirty = false;
     flushTextDeltas();
 
     // Abort any ongoing stream before starting new conversation

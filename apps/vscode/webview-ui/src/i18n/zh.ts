@@ -212,6 +212,8 @@ export const zh: Record<TranslationKey, string> = {
   // ── 上下文压缩卡片 ──────────────────────────────────────────────────────
   "compaction.compacting": "正在压缩上下文...",
   "compaction.compacted": "上下文已压缩",
+  "compaction.summary": "压缩摘要",
+  "compaction.contextAfter": "压缩后上下文:{tokens} tokens",
 
   // ── 复制按钮 ────────────────────────────────────────────────────────────
   "copy.message": "复制消息",

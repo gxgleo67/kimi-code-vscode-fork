@@ -223,6 +223,8 @@ export const en = {
   // ── CompactionCard ──────────────────────────────────────────────────────
   "compaction.compacting": "Compacting context...",
   "compaction.compacted": "Context compacted",
+  "compaction.summary": "Compaction summary",
+  "compaction.contextAfter": "Context after compaction: {tokens} tokens",
 
   // ── CopyButton ──────────────────────────────────────────────────────────
   "copy.message": "Copy message",

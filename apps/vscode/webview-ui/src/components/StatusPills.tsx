@@ -99,10 +99,12 @@ function TaskRow({ task }: { task: BackgroundTaskItem }) {
   );
 }
 
-/** Pills row above the input box, right-aligned: queued messages / file
- *  changes / background bash / sub-agent / todo counts, each expanding into
- *  a small panel (one open at a time). The whole row hides when there is
- *  nothing to show. */
+/** Pills row above the input box. Left side keeps the classic fork modules
+ *  (queued messages / file changes); the newer modules (background bash /
+ *  sub-agent / todos / context viewer) sit on the right and stay hidden until
+ *  the current conversation has actually used them — the context viewer pill
+ *  appears once a compaction ran in this session. The whole row hides when
+ *  there is nothing to show. */
 export function StatusPills() {
   const t = useT();
   const sessionId = useChatStore((s) => s.sessionId);
@@ -110,6 +112,10 @@ export function StatusPills() {
   // The selector returns the todo block's own array, so immer's structural
   // sharing keeps the reference stable across unrelated message updates.
   const todoItems = useChatStore((s) => findLastTodoItems(s.messages));
+  // "Compaction was used in this conversation" — drives the context pill.
+  const hasCompaction = useChatStore(
+    (s) => s.isCompacting || s.messages.some((m) => m.steps?.some((step) => step.items.some((item) => item.type === "compaction"))),
+  );
   const [openPanel, setOpenPanel] = useState<PanelId | null>(null);
   const [fileChanges, setFileChanges] = useState<FileChange[]>([]);
   const [contextOpen, setContextOpen] = useState(false);
@@ -155,8 +161,7 @@ export function StatusPills() {
   const hasBash = bashTasks.length > 0;
   const hasAgents = agentTasks.length > 0;
   const hasTodos = todoItems !== null && todoTotal > 0;
-  const hasSession = sessionId !== null;
-  if (!hasSession && !hasQueue && !hasChanges && !hasBash && !hasAgents && !hasTodos) {
+  if (!hasQueue && !hasChanges && !hasBash && !hasAgents && !hasTodos && !hasCompaction) {
     return null;
   }
 
@@ -206,47 +211,51 @@ export function StatusPills() {
         </div>
       )}
 
-      <div className="flex items-center justify-end gap-1 py-0.5 min-h-7">
-        {hasQueue && (
-          <button type="button" onClick={() => togglePanel("queue")} className={pillClass(openPanel === "queue")}>
-            <IconStack2 className="size-3.5" />
-            <span>{t("queue.queuedCount", { count: queue.length })}</span>
-          </button>
-        )}
-        {hasChanges && (
-          <button type="button" onClick={() => togglePanel("changes")} className={pillClass(openPanel === "changes")}>
-            <IconFileCode className="size-3.5" />
-            <span>{t("changes.changedCount", { count: fileChanges.length })}</span>
-            <span className="text-[10px] tabular-nums">
-              <span className="text-green-600 dark:text-green-400">+{fileStats.additions}</span>{" "}
-              <span className="text-red-600 dark:text-red-400">-{fileStats.deletions}</span>
-            </span>
-          </button>
-        )}
-        {hasBash && (
-          <button type="button" onClick={() => togglePanel("bash")} className={pillClass(openPanel === "bash")}>
-            <IconTerminal2 className="size-3.5" />
-            <span>{t("pills.bash", { count: bashTasks.length })}</span>
-          </button>
-        )}
-        {hasAgents && (
-          <button type="button" onClick={() => togglePanel("agents")} className={pillClass(openPanel === "agents")}>
-            <IconSubtask className="size-3.5" />
-            <span>{t("pills.agents", { count: agentTasks.length })}</span>
-          </button>
-        )}
-        {hasTodos && (
-          <button type="button" onClick={() => togglePanel("todos")} className={pillClass(openPanel === "todos")}>
-            <IconListCheck className="size-3.5" />
-            <span>{t("pills.todos", { done: todoDone, total: todoTotal })}</span>
-          </button>
-        )}
-        {hasSession && (
-          <button type="button" onClick={() => setContextOpen(true)} className={pillClass(false)} title={t("context.tooltip")}>
-            <IconBrain className="size-3.5" />
-            <span>{t("context.label")}</span>
-          </button>
-        )}
+      <div className="flex items-center justify-between gap-1 py-0.5 min-h-7">
+        <div className="flex items-center gap-1 min-w-0">
+          {hasQueue && (
+            <button type="button" onClick={() => togglePanel("queue")} className={pillClass(openPanel === "queue")}>
+              <IconStack2 className="size-3.5" />
+              <span>{t("queue.queuedCount", { count: queue.length })}</span>
+            </button>
+          )}
+          {hasChanges && (
+            <button type="button" onClick={() => togglePanel("changes")} className={pillClass(openPanel === "changes")}>
+              <IconFileCode className="size-3.5" />
+              <span>{t("changes.changedCount", { count: fileChanges.length })}</span>
+              <span className="text-[10px] tabular-nums">
+                <span className="text-green-600 dark:text-green-400">+{fileStats.additions}</span>{" "}
+                <span className="text-red-600 dark:text-red-400">-{fileStats.deletions}</span>
+              </span>
+            </button>
+          )}
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          {hasBash && (
+            <button type="button" onClick={() => togglePanel("bash")} className={pillClass(openPanel === "bash")}>
+              <IconTerminal2 className="size-3.5" />
+              <span>{t("pills.bash", { count: bashTasks.length })}</span>
+            </button>
+          )}
+          {hasAgents && (
+            <button type="button" onClick={() => togglePanel("agents")} className={pillClass(openPanel === "agents")}>
+              <IconSubtask className="size-3.5" />
+              <span>{t("pills.agents", { count: agentTasks.length })}</span>
+            </button>
+          )}
+          {hasTodos && (
+            <button type="button" onClick={() => togglePanel("todos")} className={pillClass(openPanel === "todos")}>
+              <IconListCheck className="size-3.5" />
+              <span>{t("pills.todos", { done: todoDone, total: todoTotal })}</span>
+            </button>
+          )}
+          {hasCompaction && (
+            <button type="button" onClick={() => setContextOpen(true)} className={pillClass(false)} title={t("context.tooltip")}>
+              <IconBrain className="size-3.5" />
+              <span>{t("context.label")}</span>
+            </button>
+          )}
+        </div>
       </div>
 
       <ContextViewerDialog open={contextOpen} onOpenChange={setContextOpen} />

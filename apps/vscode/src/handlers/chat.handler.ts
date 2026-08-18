@@ -269,7 +269,12 @@ function toContextMessageView(message: AgentContextData["history"][number]): Ses
     const args = call.arguments ?? "";
     parts.push(`[tool_call: ${call.name}] ${args.length > 500 ? args.slice(0, 500) + "…" : args}`);
   }
-  return { role: message.role, text: parts.join("\n\n"), isError: message.isError === true ? true : undefined };
+  return {
+    role: message.role,
+    text: parts.join("\n\n"),
+    isError: message.isError === true ? true : undefined,
+    kind: message.origin?.kind === "compaction_summary" ? "compaction_summary" : undefined,
+  };
 }
 
 function toGoalStateInfo(goal: {

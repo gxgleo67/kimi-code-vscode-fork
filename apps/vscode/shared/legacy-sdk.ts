@@ -131,6 +131,8 @@ export interface SessionContextMessageView {
   role: string;
   text: string;
   isError?: boolean;
+  /** "compaction_summary" marks the message the compactor wrote; absent otherwise. */
+  kind?: "compaction_summary";
 }
 
 /** The agent's live (post-compaction) context, for the inspection viewer. */

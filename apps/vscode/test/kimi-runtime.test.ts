@@ -9,6 +9,7 @@ import type {
   ApprovalHandler,
   CreateSessionOptions,
   Event,
+  GenerateSessionTitleInput,
   JsonObject,
   KimiHarness,
   PermissionMode,
@@ -167,6 +168,7 @@ interface FakeHarnessBoundary {
   readonly resumeInputs: ResumeSessionInput[];
   readonly closeSessionIds: string[];
   readonly deleteSessionIds: string[];
+  readonly titleRequests: GenerateSessionTitleInput[];
   readonly closeCount: () => number;
   readonly sessions: Map<string, FakeSessionBoundary>;
   addSession(
@@ -185,6 +187,7 @@ function createFakeHarness(
   const resumeInputs: ResumeSessionInput[] = [];
   const closeSessionIds: string[] = [];
   const deleteSessionIds: string[] = [];
+  const titleRequests: GenerateSessionTitleInput[] = [];
   let creates = 0;
   let closes = 0;
 
@@ -226,12 +229,16 @@ function createFakeHarness(
     async deleteSession(id: string) {
       deleteSessionIds.push(id);
     },
-    // The runtime enables the secondary-model experiment on first use.
+    // The runtime enables the fork experiments on first use.
     async getConfig() {
       return {};
     },
     async setConfig() {
       return {};
+    },
+    async generateSessionTitle(input: GenerateSessionTitleInput) {
+      titleRequests.push(input);
+      return undefined;
     },
     async close() {
       closes += 1;
@@ -244,6 +251,7 @@ function createFakeHarness(
     resumeInputs,
     closeSessionIds,
     deleteSessionIds,
+    titleRequests,
     closeCount: () => closes,
     sessions,
     addSession,
@@ -750,6 +758,25 @@ describe("Kimi runtime (owns shared SDK sessions for Webviews)", () => {
     releaseTurn();
     await expect(first).resolves.toEqual({ status: "finished" });
     expect(opened.isBusy).toBe(false);
+  });
+
+  it("requests an AI session title after a completed turn only", async () => {
+    const { runtime, sdk } = createRecordingRuntime();
+    const opened = await runtime.openSession(openOptions());
+    const boundary = sdk.sessions.get(opened.id)!;
+
+    boundary.setPromptImpl(() => Promise.resolve());
+    const turn = opened.prompt("first message");
+    boundary.emit({ type: "turn.started", agentId: "main", sessionId: opened.id, turnId: "t1" } as unknown as Event);
+    boundary.emit({ type: "turn.ended", agentId: "main", sessionId: opened.id, turnId: "t1", reason: "completed" } as unknown as Event);
+    await expect(turn).resolves.toEqual({ status: "finished" });
+    expect(sdk.titleRequests).toEqual([{ id: opened.id }]);
+
+    const cancelled = opened.prompt("second message");
+    boundary.emit({ type: "turn.started", agentId: "main", sessionId: opened.id, turnId: "t2" } as unknown as Event);
+    boundary.emit({ type: "turn.ended", agentId: "main", sessionId: opened.id, turnId: "t2", reason: "cancelled" } as unknown as Event);
+    await expect(cancelled).resolves.toEqual({ status: "cancelled" });
+    expect(sdk.titleRequests).toHaveLength(1);
   });
 
   it("keeps preflight failures terminal", async () => {

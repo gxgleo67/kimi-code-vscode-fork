@@ -37,6 +37,14 @@ export interface KimiRuntimeOptions {
   readonly useAgentCoreV1?: boolean;
 }
 
+/**
+ * Experiments the fork turns on for every session: secondary-model lets
+ * subagents bind a separately configured model; auto_session_title lets the
+ * managed title service summarize an AI session title after a turn completes.
+ * Values must match the engine's flag ids (config.toml [experimental] keys).
+ */
+const FORK_EXPERIMENT_FLAGS = ["secondary-model", "auto_session_title"] as const;
+
 export interface OpenSessionOptions {
   readonly webviewId: string;
   readonly workDir: string;
@@ -56,6 +64,7 @@ export class KimiRuntime {
   private readonly log: KimiRuntimeOptions["log"];
   private readonly sessions = new Map<string, SessionRuntime>();
   private readonly sessionByView = new Map<string, string>();
+  private readonly agentCoreV1: boolean;
   private experimentGate: Promise<void> | undefined;
   private closed = false;
 
@@ -63,6 +72,7 @@ export class KimiRuntime {
     this.broadcast = options.broadcast;
     this.captureBaseline = options.captureBaseline;
     this.log = options.log;
+    this.agentCoreV1 = options.useAgentCoreV1 === true;
     const createHarness = options.useAgentCoreV1 ? createKimiHarness : createKimiHarnessV2;
     this.harness =
       options.harness ??
@@ -88,7 +98,7 @@ export class KimiRuntime {
 
   async openSession(options: OpenSessionOptions): Promise<SessionRuntime> {
     this.ensureOpen();
-    await this.enableSecondaryModelExperiment();
+    await this.enableForkExperiments();
     const current = this.getSessionForView(options.webviewId);
     const requestedId = options.sessionId ?? current?.id;
 
@@ -154,7 +164,7 @@ export class KimiRuntime {
     session: Session,
     defaultYoloMode = false,
   ): Promise<SessionRuntime> {
-    await this.enableSecondaryModelExperiment();
+    await this.enableForkExperiments();
     const existing = this.sessions.get(session.id);
     if (existing !== undefined && this.sessionByView.get(webviewId) === session.id) {
       existing.subscribe(webviewId);
@@ -252,6 +262,11 @@ export class KimiRuntime {
       broadcast: this.broadcast,
       captureBaseline: this.captureBaseline,
       log: this.log,
+      // AI session titles are a v2-only service; on the v1 engine the RPC
+      // does not exist, so the hook is left out entirely.
+      generateSessionTitle: this.agentCoreV1
+        ? undefined
+        : (id) => this.harness.generateSessionTitle({ id }),
     });
     this.sessions.set(session.id, runtime);
     return runtime;
@@ -270,23 +285,32 @@ export class KimiRuntime {
   }
 
   /**
-   * Gate the secondary-model experiment on so subagents can bind a separately
-   * configured model (the TUI gates /secondary_model on the same flag). Lazy
-   * and serialized with the first session flow: a config write racing an
-   * unrelated write from another client sharing this home would interleave
-   * v1's whole-document read-merge-write and clobber it, so the flag is
-   * persisted on first use rather than fire-and-forget at construction, and
-   * skipped entirely once already set. A failed write (e.g. a broken
-   * config.toml) is logged, never fatal.
+   * Gate the fork's experiments on: secondary-model lets subagents bind a
+   * separately configured model (the TUI gates /secondary_model on the same
+   * flag), and auto_session_title lets the managed title service summarize an
+   * AI session title once a turn completes. Lazy and serialized with the
+   * first session flow: a config write racing an unrelated write from another
+   * client sharing this home would interleave v1's whole-document
+   * read-merge-write and clobber it, so the flags are persisted on first use
+   * rather than fire-and-forget at construction, and skipped entirely once
+   * already set. A failed write (e.g. a broken config.toml) is logged, never
+   * fatal.
    */
-  private enableSecondaryModelExperiment(): Promise<void> {
+  private enableForkExperiments(): Promise<void> {
     this.experimentGate ??= (async () => {
       try {
         const config = await this.harness.getConfig();
-        if (config.experimental?.["secondary-model"] === true) return;
-        await this.harness.setConfig({ experimental: { "secondary-model": true } });
+        const current: Record<string, unknown> = config.experimental ?? {};
+        const patch: Record<string, boolean> = {};
+        for (const flag of FORK_EXPERIMENT_FLAGS) {
+          if (current[flag] !== true) patch[flag] = true;
+        }
+        if (Object.keys(patch).length === 0) return;
+        // setConfig deep-merges, so writing only the missing keys keeps any
+        // other experimental flags the user configured.
+        await this.harness.setConfig({ experimental: patch });
       } catch (error) {
-        this.log("Unable to enable the secondary-model experiment", error);
+        this.log("Unable to enable the fork experiments", error);
       }
     })();
     return this.experimentGate;

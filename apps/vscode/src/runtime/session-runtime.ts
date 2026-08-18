@@ -38,6 +38,11 @@ export interface SessionRuntimeOptions {
     webviewIds: readonly string[],
   ) => void;
   readonly log: (message: string, error?: unknown) => void;
+  /**
+   * v2-engine hook that asks the managed title service for an AI session
+   * title. Left undefined on the v1 engine, where the RPC does not exist.
+   */
+  readonly generateSessionTitle?: (sessionId: string) => Promise<string | undefined>;
 }
 
 interface ActivePrompt {
@@ -90,6 +95,7 @@ export class SessionRuntime {
   private exclusiveActionActive = false;
   private readonly terminalKeys = new Set<string>();
   private suppressedError: SuppressedError | undefined;
+  private readonly generateSessionTitle: SessionRuntimeOptions["generateSessionTitle"];
   private legacyApproval: LegacyApprovalFlags;
   private activeTurnId: number | undefined;
   private cancelFallbackTimer: ReturnType<typeof setTimeout> | undefined;
@@ -101,6 +107,7 @@ export class SessionRuntime {
     this.captureBaseline = options.captureBaseline;
     this.log = options.log;
     this.legacyApproval = options.legacyApproval;
+    this.generateSessionTitle = options.generateSessionTitle;
     this.reverseRpc = new ReverseRpcController((event) => this.emitStreamEvent(event));
 
     // Forward every approval request to the user. The engine permission mode
@@ -570,6 +577,7 @@ export class SessionRuntime {
         _sessionId: terminal.sessionId,
       });
       this.settlePrompt({ status: "finished" });
+      this.requestSessionTitle();
       return;
     }
 
@@ -601,6 +609,23 @@ export class SessionRuntime {
       this.suppressedError = { code: terminal.error.code, message: terminal.error.message };
     }
     this.settlePrompt({ status: "failed" });
+  }
+
+  /**
+   * Ask the engine for an AI session title after a completed turn. Fire-and-
+   * forget: the engine no-ops unless the auto_session_title experiment and a
+   * managed OAuth login are present, and it skips sessions whose title is
+   * already custom or generated, so a failure must never surface in the chat.
+   */
+  private requestSessionTitle(): void {
+    if (this.generateSessionTitle === undefined) return;
+    try {
+      void this.generateSessionTitle(this.session.id).catch((error: unknown) => {
+        this.log("Unable to generate an AI session title", error);
+      });
+    } catch (error) {
+      this.log("Unable to generate an AI session title", error);
+    }
   }
 
   private consumeSuppressedError(code: string, message: string): boolean {

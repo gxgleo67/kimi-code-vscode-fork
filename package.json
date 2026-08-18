@@ -1,0 +1,24 @@
+{
+  "name": "kimicode-vscode-fork-monorepo",
+  "version": "0.7.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "postinstall": "node scripts/fix-node-pty-perms.mjs",
+    "build": "pnpm --filter kimicode-vscode-fork run build",
+    "typecheck": "pnpm --filter kimicode-vscode-fork run typecheck",
+    "test": "pnpm --filter kimicode-vscode-fork test"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "tsdown": "0.22.0",
+    "tsx": "^4.21.0",
+    "typescript": "6.0.2",
+    "vitest": "4.1.4"
+  },
+  "engines": {
+    "node": ">=24.15.0"
+  },
+  "packageManager": "pnpm@10.33.0"
+}

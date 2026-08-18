@@ -1,0 +1,12 @@
+packages:
+  - apps/vscode
+  - packages/*
+
+catalog:
+  zod: 4.3.6
+
+overrides:
+  "kimicode-vscode-fork>@tailwindcss/vite": "4.1.18"
+  "ssh2@1.17.0>cpu-features": "-"
+  "ssh2@1.17.0>nan": "-"
+  "kimicode-vscode-fork>tailwindcss": "4.1.18"

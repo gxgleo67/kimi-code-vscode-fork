@@ -29,7 +29,7 @@
 ## 界面预览
 
 <p align="center">
-  <img src="docs/images/1.png" alt="插件界面效果" width="45%">
+  <img src="docs/images/UI.png" alt="插件界面效果" width="80%">
 </p>
 
 ## 构建与打包

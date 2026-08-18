@@ -7,6 +7,7 @@ import { bridge } from "@/services";
 import { useT } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { toast } from "./ui/sonner";
+import { KimiLoading } from "./KimiLoading";
 import type { SessionContextSnapshot } from "shared/legacy-sdk";
 
 interface ContextViewerDialogProps {
@@ -84,7 +85,9 @@ export function ContextViewerDialog({ open, onOpenChange }: ContextViewerDialogP
 
         <div className="max-h-[60vh] overflow-y-auto rounded-md border border-border/60 bg-muted/30 p-2">
           {snapshot === null ? (
-            <div className="py-8 text-center text-xs text-muted-foreground">{t("common.loading")}</div>
+            <div className="flex justify-center py-8">
+              <KimiLoading />
+            </div>
           ) : snapshot.messages.length === 0 ? (
             <div className="py-8 text-center text-xs text-muted-foreground">{t("context.empty")}</div>
           ) : (

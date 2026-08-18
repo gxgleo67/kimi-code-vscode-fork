@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import ScrollToBottom, { useScrollToBottom, useSticky } from "react-scroll-to-bottom";
-import { IconArrowDown, IconLoader2 } from "@tabler/icons-react";
+import { IconArrowDown } from "@tabler/icons-react";
 import { ChatMessage } from "./ChatMessage";
+import { KimiLoading } from "./KimiLoading";
 import { WelcomeScreen } from "./WelcomeScreen";
 import { useChatStore } from "@/stores";
 import { useT } from "@/i18n";
@@ -100,9 +101,8 @@ export function ChatArea() {
         </ScrollToBottom>
       )}
       {historyLoading && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center gap-2 bg-background/70">
-          <IconLoader2 className="size-4 animate-spin text-blue-500" />
-          <span className="text-xs text-muted-foreground">{t("chat.loadingHistory")}</span>
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/40 backdrop-blur-sm">
+          <KimiLoading text={t("chat.loadingHistory")} />
         </div>
       )}
     </div>

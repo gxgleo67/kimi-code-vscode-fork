@@ -4,6 +4,7 @@ import { IconSearch, IconDots, IconTrash, IconCheck, IconPencil } from "@tabler/
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { StreamingConfirmDialog } from "./StreamingConfirmDialog";
+import { KimiLoading } from "./KimiLoading";
 import { bridge, Events } from "@/services";
 import type { SessionInfo } from "shared/legacy-sdk";
 import { cn } from "@/lib/utils";
@@ -279,7 +280,9 @@ export function SessionList({ onClose }: SessionListProps) {
         <div className="overflow-y-auto flex-1 min-h-0">
           <div className="p-1.5 space-y-1">
             {loading && kimiSessions.length === 0 ? (
-              <div className="px-3 py-8 text-center text-xs text-muted-foreground">{t("common.loading")}</div>
+              <div className="flex justify-center py-8">
+                <KimiLoading />
+              </div>
             ) : filteredSessions.length === 0 ? (
               <div className="px-3 py-8 text-center text-xs text-muted-foreground">{searchQuery ? t("session.noneFound") : t("session.noneYet")}</div>
             ) : (

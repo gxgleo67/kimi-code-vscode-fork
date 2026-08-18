@@ -170,3 +170,76 @@ body {
   border-radius: 3px;
   text-align: center;
 }
+
+/* --- Kimi loading animation (web top-left eyes badge) ------------------- */
+
+/* The badge's eye slits drift side to side — the web's ambient 16s "look"
+   loop, quickened so the motion reads within a short loading wait. */
+@keyframes kimi-eye-look {
+  0%,
+  46% {
+    transform: translateX(0);
+  }
+  52%,
+  58% {
+    transform: translateX(2px);
+  }
+  64%,
+  82% {
+    transform: translateX(0);
+  }
+  88%,
+  94% {
+    transform: translateX(-2px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+/* The badge blinks — the web's 11s loop, likewise quickened. */
+@keyframes kimi-eye-blink {
+  0%,
+  90%,
+  100% {
+    transform: scaleY(1);
+  }
+  94%,
+  97% {
+    transform: scaleY(0.12);
+  }
+}
+
+/* The loading pill pops in like the web's GlobalLoading entrance. */
+@keyframes kimi-loading-pop {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.kimi-eyes-logo-eyes {
+  animation: kimi-eye-look 5s ease-in-out infinite;
+}
+
+.kimi-eyes-logo-eye {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: kimi-eye-blink 4s ease-in-out infinite;
+}
+
+.kimi-loading-pop {
+  animation: kimi-loading-pop 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kimi-eyes-logo-eyes,
+  .kimi-eyes-logo-eye,
+  .kimi-loading-pop {
+    animation: none;
+  }
+}

@@ -40,6 +40,12 @@ export interface ExtensionConfig {
   showThinkingExpanded: boolean;
   language: "en" | "zh";
   defaultThinkingEffort: string;
+  /**
+   * Auto-run /compact when a turn ends with the context above 256K tokens, so
+   * long sessions on 256K-context models (e.g. K3-256k) don't overflow and
+   * lose context. Default off — compacting costs tokens, so the user decides.
+   */
+  autoCompactContext: boolean;
   version: string;
 }
 

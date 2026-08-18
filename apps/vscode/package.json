@@ -115,6 +115,11 @@
           ],
           "description": "UI language / 界面语言"
         },
+        "kimifork.autoCompactContext": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically run /compact when a turn ends with the context above 256K tokens, preventing context overflow on 256K-context models (e.g. K3-256k). Default off. / 任务结束后上下文超过 256K 时自动执行 /compact，防止 256K 上下文模型（如 K3-256k）超限丢失上下文，默认关闭"
+        },
         "kimifork.useAgentCoreV1": {
           "type": "boolean",
           "default": false,

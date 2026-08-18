@@ -22,6 +22,7 @@ export const Methods = {
   SaveConfig: "saveConfig",
   GetExtensionConfig: "getExtensionConfig",
   SetLanguage: "setLanguage",
+  SetAutoCompactContext: "setAutoCompactContext",
   SetPermissionMode: "setPermissionMode",
   OpenSettings: "openSettings",
   OpenFolder: "openFolder",
@@ -171,6 +172,8 @@ function validateParams(method: RpcMethod, params: unknown): boolean {
       return hasString(params, "text");
     case Methods.SetLanguage:
       return isPlainObject(params) && (params["language"] === "en" || params["language"] === "zh");
+    case Methods.SetAutoCompactContext:
+      return hasBoolean(params, "enabled");
     case Methods.SetPermissionMode:
       return isPlainObject(params)
         && (params["mode"] === "manual" || params["mode"] === "yolo" || params["mode"] === "auto");

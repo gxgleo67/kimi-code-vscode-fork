@@ -157,6 +157,10 @@ class Bridge {
     return this.call<{ ok: boolean }>(Methods.SetLanguage, { language });
   }
 
+  setAutoCompactContext(enabled: boolean) {
+    return this.call<{ ok: boolean }>(Methods.SetAutoCompactContext, { enabled });
+  }
+
   setPermissionMode(mode: PermissionMode) {
     return this.call<{ ok: boolean }>(Methods.SetPermissionMode, { mode });
   }

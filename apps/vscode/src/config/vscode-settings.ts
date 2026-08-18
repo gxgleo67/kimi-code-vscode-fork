@@ -66,6 +66,10 @@ export const VSCodeSettings = {
     return getConfig().get<string>("defaultThinkingEffort", "high");
   },
 
+  get autoCompactContext(): boolean {
+    return getConfig().get<boolean>("autoCompactContext", false);
+  },
+
   /** Read once at activation; a change needs a window reload to take effect. */
   get useAgentCoreV1(): boolean {
     return resolveUseAgentCoreV1(getConfig().get<boolean>("useAgentCoreV1", false), process.env);
@@ -81,6 +85,7 @@ export const VSCodeSettings = {
       showThinkingExpanded: this.showThinkingExpanded,
       language: this.language,
       defaultThinkingEffort: this.defaultThinkingEffort,
+      autoCompactContext: this.autoCompactContext,
       version: EXTENSION_VERSION,
     };
   },
@@ -91,7 +96,7 @@ export function onSettingsChange(callback: (changedKeys: string[]) => void): vsc
     if (!e.affectsConfiguration("kimifork")) {
       return;
     }
-    const keys = ["yoloMode", "autosave", "enableNewConversationShortcut", "useCtrlEnterToSend", "showThinkingContent", "showThinkingExpanded", "editorContext", "language", "defaultThinkingEffort"];
+    const keys = ["yoloMode", "autosave", "enableNewConversationShortcut", "useCtrlEnterToSend", "showThinkingContent", "showThinkingExpanded", "editorContext", "language", "defaultThinkingEffort", "autoCompactContext"];
     const changedKeys = keys.filter((key) => e.affectsConfiguration(`kimifork.${key}`));
     if (changedKeys.length > 0) {
       callback(changedKeys);

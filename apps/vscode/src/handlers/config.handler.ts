@@ -137,6 +137,11 @@ const setLanguage: Handler<{ language: "en" | "zh" }, { ok: boolean }> = async (
   return { ok: true };
 };
 
+const setAutoCompactContext: Handler<{ enabled: boolean }, { ok: boolean }> = async (params) => {
+  await vscode.workspace.getConfiguration("kimifork").update("autoCompactContext", params.enabled, vscode.ConfigurationTarget.Global);
+  return { ok: true };
+};
+
 const openSettings: Handler<void, { ok: boolean }> = async () => {
   await vscode.commands.executeCommand("workbench.action.openSettings", "kimifork");
   return { ok: true };
@@ -182,6 +187,7 @@ export const configHandlers = {
   [Methods.SaveConfig]: saveConfig,
   [Methods.GetExtensionConfig]: getExtensionConfig,
   [Methods.SetLanguage]: setLanguage,
+  [Methods.SetAutoCompactContext]: setAutoCompactContext,
   [Methods.OpenSettings]: openSettings,
   [Methods.GetModels]: getModels,
   [Methods.GetSlashCommands]: getSlashCommands,

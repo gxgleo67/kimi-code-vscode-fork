@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { IconSettings, IconServer, IconLogout, IconLogin, IconLoader2, IconRefresh, IconFileText, IconFolder, IconCheck, IconLanguage } from "@tabler/icons-react";
+import { IconSettings, IconServer, IconLogout, IconLogin, IconLoader2, IconRefresh, IconFileText, IconFolder, IconCheck, IconLanguage, IconRecycle } from "@tabler/icons-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import { useSettingsStore } from "@/stores";
 import { bridge } from "@/services";
 import { toast } from "@/components/ui/sonner";
@@ -78,6 +79,13 @@ export function ActionMenu({ className, onAuthAction }: ActionMenuProps) {
     setOpen(false);
   };
 
+  // Optimistic flip; the ExtensionConfigChanged broadcast confirms the write.
+  // The popover stays open so the toggle feels like a setting, not a command.
+  const handleToggleAutoCompact = (enabled: boolean) => {
+    useSettingsStore.getState().setExtensionConfig({ ...extensionConfig, autoCompactContext: enabled });
+    void bridge.setAutoCompactContext(enabled).catch(() => undefined);
+  };
+
   const handleAuthAction = async () => {
     setLoading(true);
     try {
@@ -145,6 +153,24 @@ export function ActionMenu({ className, onAuthAction }: ActionMenuProps) {
             <IconCheck className={cn("size-4", extensionConfig.language === "zh" ? "text-blue-500" : "opacity-0")} />
           </MenuItem>
         </MenuSection>
+
+        <Separator className="my-px" />
+
+        <div className="py-1">
+          <div className="flex items-center gap-2 px-2.5 py-1.5 text-xs">
+            <IconRecycle className="size-4 shrink-0 text-muted-foreground" />
+            <span className="flex-1">
+              {t("menu.autoCompact")}
+              <span className="block text-[10px] text-muted-foreground leading-snug">{t("menu.autoCompactDesc")}</span>
+            </span>
+            <Switch
+              size="sm"
+              checked={extensionConfig.autoCompactContext}
+              onCheckedChange={handleToggleAutoCompact}
+              aria-label={t("menu.autoCompact")}
+            />
+          </div>
+        </div>
 
         <Separator className="my-px" />
 

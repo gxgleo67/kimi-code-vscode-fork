@@ -49,6 +49,8 @@ export const en = {
   "menu.signIn": "Sign in",
   "menu.signInFailed": "Sign-in failed. Check the logs for details.",
   "menu.language": "Language / 语言",
+  "menu.autoCompact": "Auto-compact context",
+  "menu.autoCompactDesc": "After a task ends, run /compact automatically when the context exceeds 256K — prevents context overflow on 256K models (e.g. K3-256k). Default off.",
 
   // ── WelcomeScreen / useWelcomeHint ──────────────────────────────────────
   "welcome.commands": "⚡ Commands",
@@ -403,6 +405,7 @@ export const en = {
 
   // ── Toasts (stores, media upload) ───────────────────────────────────────
   "toast.noRunningTask": "No running task to stop.",
+  "toast.autoCompactStarted": "Context exceeded 256K after the last task — running /compact automatically.",
   "toast.saveModelSettingsFailed": "Failed to save model settings: {error}",
   "toast.processMediaFailed": "Failed to process media file",
   "toast.pickMediaFailed": "Failed to pick media",

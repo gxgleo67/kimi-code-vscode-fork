@@ -46,6 +46,8 @@ export const zh: Record<TranslationKey, string> = {
   "menu.signIn": "登录",
   "menu.signInFailed": "登录失败,详情请查看日志。",
   "menu.language": "Language / 语言",
+  "menu.autoCompact": "自动压缩上下文",
+  "menu.autoCompactDesc": "任务结束后，若上下文超过 256K 自动执行 /compact，防止 K3-256k 等 256K 模型上下文超限丢失（默认关闭）",
 
   // ── 欢迎页 ──────────────────────────────────────────────────────────────
   "welcome.commands": "⚡ 命令",
@@ -388,6 +390,7 @@ export const zh: Record<TranslationKey, string> = {
 
   // ── Toast(store、媒体上传) ──────────────────────────────────────────────
   "toast.noRunningTask": "没有正在运行的任务。",
+  "toast.autoCompactStarted": "任务结束后上下文已超过 256K，正在自动执行 /compact 压缩。",
   "toast.saveModelSettingsFailed": "保存模型设置失败:{error}",
   "toast.processMediaFailed": "媒体文件处理失败",
   "toast.pickMediaFailed": "选择媒体失败",

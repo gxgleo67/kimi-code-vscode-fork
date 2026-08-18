@@ -32,6 +32,7 @@ export const DEFAULT_EXTENSION_CONFIG: ExtensionConfig = {
   showThinkingExpanded: true,
   language: "en",
   defaultThinkingEffort: "high",
+  autoCompactContext: false,
   version: "",
 };
 

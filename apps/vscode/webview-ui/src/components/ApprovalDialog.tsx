@@ -111,6 +111,14 @@ function PlanReviewDialog({ req, info }: { req: ApprovalRequest; info: PlanRevie
   const [revising, setRevising] = useState(false);
   const [feedback, setFeedback] = useState("");
 
+  // Open the plan in the editor as soon as the review is raised, so the user
+  // reads the real file in VSCode before confirming execution in the dialog.
+  // key={req.id} on this component makes the effect fire once per request.
+  useEffect(() => {
+    if (info.path === undefined) return;
+    void bridge.openFile(info.path).catch(() => undefined);
+  }, [info.path]);
+
   // Read the plan file fresh on open — the user may have edited it since the
   // request was raised. Fall back to the snapshot carried by the request.
   useEffect(() => {

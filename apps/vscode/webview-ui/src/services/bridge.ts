@@ -310,6 +310,10 @@ class Bridge {
     return this.call<string | null>(Methods.GetImageDataUri, { filePath });
   }
 
+  getBlobDataUri(ref: string) {
+    return this.call<string | null>(Methods.GetBlobDataUri, { ref });
+  }
+
   readPlanFile(filePath: string) {
     return this.call<string>(Methods.ReadPlanFile, { filePath });
   }

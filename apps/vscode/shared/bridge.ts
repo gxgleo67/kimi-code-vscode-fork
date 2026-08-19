@@ -71,6 +71,7 @@ export const Methods = {
   RevertFiles: "revertFiles",
   KeepChanges: "keepChanges",
   GetImageDataUri: "getImageDataUri",
+  GetBlobDataUri: "getBlobDataUri",
   ReadPlanFile: "readPlanFile",
   ShowLogs: "showLogs",
   ReloadWebview: "reloadWebview",
@@ -259,6 +260,8 @@ function validateParams(method: RpcMethod, params: unknown): boolean {
     case Methods.GetImageDataUri:
     case Methods.ReadPlanFile:
       return hasString(params, "filePath");
+    case Methods.GetBlobDataUri:
+      return hasString(params, "ref");
     case Methods.CheckFilesExist:
     case Methods.TrackFiles:
       return hasStringArray(params, "paths");

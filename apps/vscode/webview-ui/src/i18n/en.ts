@@ -227,6 +227,9 @@ export const en = {
   // ── CompactionCard ──────────────────────────────────────────────────────
   "compaction.compacting": "Compacting context...",
   "compaction.compacted": "Context compacted",
+  "compaction.triggerManual": "manual",
+  "compaction.triggerAuto": "auto",
+  "compaction.freed": "{tokens} tokens freed",
   "compaction.summary": "Compaction summary",
   "compaction.contextAfter": "Context after compaction: {tokens} tokens",
 

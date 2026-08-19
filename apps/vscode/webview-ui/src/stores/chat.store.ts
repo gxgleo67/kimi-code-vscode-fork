@@ -34,7 +34,16 @@ export interface InlineError {
 export type UIStepItem =
   | { type: "thinking"; content: string; finished?: boolean }
   | { type: "text"; content: string; finished?: boolean }
-  | { type: "compaction"; summary?: string; tokenCount?: number }
+  | {
+      type: "compaction";
+      /** Post-compaction summary, patched in once the turn settles. */
+      summary?: string;
+      /** Context size right after the compaction. */
+      tokenCount?: number;
+      /** Context size captured when the compaction started. */
+      preTokens?: number;
+      trigger?: "manual" | "auto";
+    }
   | { type: "steer"; content: string | ContentPart[] }
   | {
       type: "tool_use";
@@ -111,6 +120,8 @@ export interface ChatState {
   goalArmed: boolean;
   /** True while a history session is being fetched and replayed. */
   historyLoading: boolean;
+  /** How the in-flight compaction was triggered; consumed by CompactionBegin. */
+  pendingCompactTrigger: "manual" | "auto" | null;
 
   sendMessage: (text: string) => void;
   setHistoryLoading: (loading: boolean) => void;
@@ -231,28 +242,23 @@ function maybeAutoCompact(get: () => ChatState): void {
   if (tokens === undefined || tokens === null || tokens <= AUTO_COMPACT_THRESHOLD_TOKENS) return;
   if (tokens === lastAutoCompactTokens) return;
   lastAutoCompactTokens = tokens;
+  useChatStore.setState({ pendingCompactTrigger: "auto" });
   toast.info(t("toast.autoCompactStarted"));
   state.sendMessage("/compact");
 }
 
 /**
  * Set on CompactionEnd, consumed at the turn's stream_complete: the engine's
- * context is already replaced by then, so the UI can safely pull the
- * post-compaction snapshot and rebuild the message list around it.
+ * context is already replaced by then, so the summary and post-compaction
+ * token count can be patched onto the compaction item. The chat history
+ * itself is left untouched — inspecting the compacted context happens on
+ * demand via the context pill (ContextViewerDialog).
  */
-let compactionDirty = false;
+let compactionPatchPending = false;
 
-/**
- * Rebuild the message list after a compaction: the incremental list still
- * holds every pre-compaction message, so without this the UI looks like
- * nothing was compacted. The rebuilt list is one expandable compaction card
- * (carrying the summary) plus the retained recent messages. Tool/system
- * entries are skipped in the chat view — the Context Viewer shows the full
- * post-compaction context for inspection.
- */
-async function rebuildMessagesAfterCompaction(
+async function patchCompactionItem(
   get: () => ChatState,
-  set: (state: Partial<ChatState>) => void,
+  set: (state: Partial<ChatState> | ((state: ChatState) => ChatState)) => void,
 ): Promise<void> {
   const sessionId = get().sessionId;
   let snapshot: SessionContextSnapshot | null = null;
@@ -262,56 +268,41 @@ async function rebuildMessagesAfterCompaction(
   } catch {
     snapshot = null;
   }
-  if (snapshot === null) return;
-  const state = get();
-  // A session switch or a new turn started while fetching — replacing the
-  // list now would clobber live state, so leave the list as-is.
-  if (state.sessionId !== sessionId || state.isStreaming) return;
-  set({ messages: buildPostCompactionMessages(snapshot) });
-}
-
-function buildPostCompactionMessages(snapshot: SessionContextSnapshot): ChatMessage[] {
-  const now = Date.now();
-  let summary: string | undefined;
-  const retained: SessionContextSnapshot["messages"] = [];
-  for (const message of snapshot.messages) {
-    if (message.kind === "compaction_summary") {
-      summary = message.text;
-    } else {
-      retained.push(message);
-    }
-  }
-
-  const messages: ChatMessage[] = [{
-    id: crypto.randomUUID(),
-    role: "assistant",
-    content: "",
-    timestamp: now,
-    forkable: false,
-    steps: [{
-      n: 0,
-      items: [{
-        type: "compaction",
-        ...(summary === undefined ? {} : { summary }),
-        tokenCount: snapshot.tokenCount,
-      }],
-    }],
-  }];
-
-  for (const message of retained) {
-    if (!message.text.trim()) continue;
-    if (message.role === "user") {
-      messages.push({ id: crypto.randomUUID(), role: "user", content: message.text, timestamp: now, forkable: false });
-    } else if (message.role === "assistant") {
-      messages.push({ id: crypto.randomUUID(), role: "assistant", content: message.text, timestamp: now, forkable: false });
-    }
-  }
-  return messages;
+  // A session switch while fetching must not patch another session's list.
+  if (snapshot === null || get().sessionId !== sessionId) return;
+  const summary = snapshot.messages.find((message) => message.kind === "compaction_summary")?.text;
+  set(
+    produce((draft: ChatState) => {
+      for (let i = draft.messages.length - 1; i >= 0; i--) {
+        const steps = draft.messages[i].steps;
+        if (!steps) continue;
+        let patched = false;
+        for (let j = steps.length - 1; j >= 0 && !patched; j--) {
+          for (let k = steps[j].items.length - 1; k >= 0; k--) {
+            const item = steps[j].items[k];
+            if (item.type === "compaction" && item.tokenCount === undefined) {
+              if (summary !== undefined) item.summary = summary;
+              item.tokenCount = snapshot.tokenCount;
+              patched = true;
+              break;
+            }
+          }
+        }
+        if (patched) break;
+      }
+    }),
+  );
 }
 
 function doSend(state: ChatState, content: string | ContentPart[], model: string, goalObjective?: string) {
   const { sessionId, planMode } = state;
   const { thinkingEffort, permissionMode } = useSettingsStore.getState();
+
+  // A user-typed /compact is manual; maybeAutoCompact marks its own send as
+  // auto beforehand, and an engine-initiated compaction leaves the flag null.
+  if (content === "/compact" && useChatStore.getState().pendingCompactTrigger === null) {
+    useChatStore.setState({ pendingCompactTrigger: "manual" });
+  }
 
   clearHandshakeTimer();
   handshakeTimer = setTimeout(() => {
@@ -360,6 +351,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   goal: null,
   goalArmed: false,
   historyLoading: false,
+  pendingCompactTrigger: null,
 
   sendMessage: (text) => {
     const { draftMedia, isStreaming, stopping, isCompacting, goalArmed, goal } = get();
@@ -486,17 +478,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
     );
 
     if (event.type === "CompactionEnd") {
-      compactionDirty = true;
+      compactionPatchPending = true;
     }
 
     // Auto-send next queued item when streaming ends (complete or error)
     if (event.type === "stream_complete" || event.type === "error") {
       if (event.type === "stream_complete") {
-        // Rebuild before anything else schedules a follow-up turn: the rebuild
-        // guard refuses to run once a new turn is streaming.
-        if (compactionDirty) {
-          compactionDirty = false;
-          void rebuildMessagesAfterCompaction(get, set);
+        // Patch before anything else schedules a follow-up turn: the summary
+        // and post-compaction token count land on the compaction item.
+        if (compactionPatchPending) {
+          compactionPatchPending = false;
+          void patchCompactionItem(get, set);
         }
         maybeAutoCompact(get);
       }
@@ -509,7 +501,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   loadSession: async (sessionId, events) => {
     clearHandshakeTimer();
-    compactionDirty = false;
+    compactionPatchPending = false;
     // Switching sessions: apply anything still buffered before the reset.
     flushTextDeltas();
 
@@ -537,6 +529,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       swarmMode: false,
       goal: null,
       goalArmed: false,
+      pendingCompactTrigger: null,
     });
     useApprovalStore.getState().clearRequests();
 
@@ -571,7 +564,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   startNewConversation: async () => {
     clearHandshakeTimer();
-    compactionDirty = false;
+    compactionPatchPending = false;
     flushTextDeltas();
 
     // Abort any ongoing stream before starting new conversation
@@ -604,6 +597,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       swarmMode: false,
       goal: null,
       goalArmed: false,
+      pendingCompactTrigger: null,
     });
     useApprovalStore.getState().clearRequests();
   },

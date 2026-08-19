@@ -176,6 +176,55 @@ const getImageDataUri: Handler<FilePathParams, string | null> = async ({ filePat
   }
 };
 
+const BLOBREF_PATTERN = /^blobref:([\w/+.:-]+);([0-9a-f]{64})$/;
+const BLOB_DATA_URI_MAX_BYTES = 20 * 1024 * 1024;
+/** ref → data URI; the engine persists media as blob files, so replays only
+ *  carry references — resolved values are cached for the session's lifetime. */
+const blobDataUriCache = new Map<string, string | null>();
+
+/**
+ * Resolve an engine blob reference (`blobref:<mime>;<sha256>`) back to a data
+ * URI. History replays carry these references instead of the original bytes,
+ * which is why reloaded sessions showed broken images. Blobs live at
+ * `<sessionDir>/agents/<agentId>/blobs/<sha256>`.
+ */
+const getBlobDataUri: Handler<{ ref: string }, string | null> = async ({ ref }, ctx) => {
+  const match = BLOBREF_PATTERN.exec(ref);
+  if (!match) return null;
+  const cached = blobDataUriCache.get(ref);
+  if (cached !== undefined) return cached;
+
+  const [, mime, hash] = match as RegExpExecArray & [string, string, string];
+  const sessionDir = ctx.getSession()?.summary?.sessionDir;
+  let result: string | null = null;
+  if (sessionDir !== undefined) {
+    const agentsDir = path.join(sessionDir, "agents");
+    const candidates = [path.join(agentsDir, "main", "blobs", hash)];
+    try {
+      for (const entry of await vscode.workspace.fs.readDirectory(vscode.Uri.file(agentsDir))) {
+        if (entry[0] !== "main") candidates.push(path.join(agentsDir, entry[0], "blobs", hash));
+      }
+    } catch {
+      // No agents dir — only the main candidate remains.
+    }
+    for (const candidate of candidates) {
+      try {
+        const uri = vscode.Uri.file(candidate);
+        const stat = await vscode.workspace.fs.stat(uri);
+        if (stat.size > BLOB_DATA_URI_MAX_BYTES) break;
+        const bytes = await vscode.workspace.fs.readFile(uri);
+        result = `data:${mime};base64,${Buffer.from(bytes).toString("base64")}`;
+        break;
+      } catch {
+        // Not in this agent's blob store — try the next one.
+      }
+    }
+  }
+  if (blobDataUriCache.size > 200) blobDataUriCache.clear();
+  blobDataUriCache.set(ref, result);
+  return result;
+};
+
 const PLAN_FILE_MAX_BYTES = 256 * 1024;
 
 const readPlanFile: Handler<FilePathParams, string> = async ({ filePath }) => {
@@ -201,6 +250,7 @@ export const fileHandlers: Record<string, Handler<any, any>> = {
   [Methods.CheckFileExists]: checkFileExists,
   [Methods.CheckFilesExist]: checkFilesExist,
   [Methods.GetImageDataUri]: getImageDataUri,
+  [Methods.GetBlobDataUri]: getBlobDataUri,
   [Methods.ReadPlanFile]: readPlanFile,
 };
 

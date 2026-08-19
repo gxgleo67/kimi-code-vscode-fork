@@ -1,6 +1,7 @@
 import { IconX, IconPlayerPlay, IconLoader2 } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 import { getMediaTypeFromDataUri } from "@/lib/media-utils";
+import { useResolvedMediaSrc } from "@/lib/use-resolved-media-src";
 
 interface ThumbnailWrapperProps {
   onClick?: () => void;
@@ -40,8 +41,9 @@ interface MediaThumbnailProps {
 
 export function MediaThumbnail({ src, onClick, onRemove, size = "md", className }: MediaThumbnailProps) {
   const sizeClass = size === "sm" ? "size-12" : "size-16";
-  const isLoading = !src;
-  const isVideo = src && getMediaTypeFromDataUri(src) === "video";
+  const resolvedSrc = useResolvedMediaSrc(src);
+  const isLoading = !resolvedSrc;
+  const isVideo = resolvedSrc && getMediaTypeFromDataUri(resolvedSrc) === "video";
 
   return (
     <ThumbnailWrapper onClick={onClick} onRemove={onRemove} sizeClass={cn(sizeClass, className)}>
@@ -51,13 +53,13 @@ export function MediaThumbnail({ src, onClick, onRemove, size = "md", className 
         </div>
       ) : isVideo ? (
         <div className="relative w-full h-full bg-black">
-          <video src={src} className="w-full h-full object-cover" muted preload="metadata" />
+          <video src={resolvedSrc} className="w-full h-full object-cover" muted preload="metadata" />
           <div className="absolute inset-0 flex items-center justify-center bg-black/30">
             <IconPlayerPlay className="size-5 text-white" />
           </div>
         </div>
       ) : (
-        <img src={src} alt="Media" className={cn(sizeClass, "object-cover")} />
+        <img src={resolvedSrc} alt="Media" className={cn(sizeClass, "object-cover")} />
       )}
     </ThumbnailWrapper>
   );

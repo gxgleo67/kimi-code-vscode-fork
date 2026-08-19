@@ -1,6 +1,7 @@
 import { useState, useLayoutEffect, useCallback } from "react";
-import { IconX, IconPhoto } from "@tabler/icons-react";
+import { IconX, IconPhoto, IconLoader2 } from "@tabler/icons-react";
 import { getMediaTypeFromDataUri } from "@/lib/media-utils";
+import { useResolvedMediaSrc } from "@/lib/use-resolved-media-src";
 
 const IMG_HEIGHT = 128;
 const dimensionCache = new Map<string, number>();
@@ -29,28 +30,29 @@ export interface StreamImagePreviewProps {
 }
 
 export function StreamImagePreview({ src, alt, onPreview }: StreamImagePreviewProps) {
-  const [width, setWidth] = useState<number | null>(() => dimensionCache.get(src) ?? null);
+  const resolvedSrc = useResolvedMediaSrc(src);
+  const [width, setWidth] = useState<number | null>(() => (resolvedSrc ? (dimensionCache.get(resolvedSrc) ?? null) : null));
 
   useLayoutEffect(() => {
-    if (width !== null) return;
+    if (width !== null || resolvedSrc === undefined) return;
     const img = new Image();
     img.onload = () => {
       const w = Math.round(IMG_HEIGHT * (img.naturalWidth / img.naturalHeight));
-      dimensionCache.set(src, w);
+      dimensionCache.set(resolvedSrc, w);
       setWidth(w);
     };
-    img.src = src;
-  }, [src, width]);
+    img.src = resolvedSrc;
+  }, [resolvedSrc, width]);
 
-  if (width === null) return <ImagePlaceholder />;
+  if (width === null || resolvedSrc === undefined) return <ImagePlaceholder />;
 
   return (
     <img
-      src={src}
+      src={resolvedSrc}
       alt={alt || ""}
       style={{ width, height: IMG_HEIGHT }}
       className="rounded my-2 cursor-pointer hover:opacity-90 transition-opacity object-cover"
-      onClick={() => onPreview(src)}
+      onClick={() => onPreview(resolvedSrc)}
     />
   );
 }
@@ -61,6 +63,7 @@ interface MediaPreviewModalProps {
 }
 
 export function MediaPreviewModal({ src, onClose }: MediaPreviewModalProps) {
+  const resolvedSrc = useResolvedMediaSrc(src ?? undefined);
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -77,17 +80,19 @@ export function MediaPreviewModal({ src, onClose }: MediaPreviewModalProps) {
 
   if (!src) return null;
 
-  const isVideo = getMediaTypeFromDataUri(src) === "video";
+  const isVideo = resolvedSrc !== undefined && getMediaTypeFromDataUri(resolvedSrc) === "video";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80" onClick={onClose}>
       <button onClick={onClose} className="absolute top-4 right-4 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors">
         <IconX className="size-5" />
       </button>
-      {isVideo ? (
-        <video src={src} className="max-w-[90vw] max-h-[90vh] rounded-lg" controls autoPlay onClick={(e) => e.stopPropagation()} />
+      {resolvedSrc === undefined ? (
+        <IconLoader2 className="size-8 text-white animate-spin" />
+      ) : isVideo ? (
+        <video src={resolvedSrc} className="max-w-[90vw] max-h-[90vh] rounded-lg" controls autoPlay onClick={(e) => e.stopPropagation()} />
       ) : (
-        <img src={src} alt="Preview" className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg" onClick={(e) => e.stopPropagation()} />
+        <img src={resolvedSrc} alt="Preview" className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg" onClick={(e) => e.stopPropagation()} />
       )}
     </div>
   );

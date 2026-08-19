@@ -373,6 +373,9 @@ const eventHandlers: Record<string, EventHandler> = {
     draft.isCompacting = true;
 
     const last = getLastAssistant(draft);
+    const trigger = draft.pendingCompactTrigger ?? "auto";
+    const preTokens = draft.lastStatus?.context_tokens ?? undefined;
+    draft.pendingCompactTrigger = null;
 
     if (last) {
       if (!last.steps) {
@@ -384,7 +387,11 @@ const eventHandlers: Record<string, EventHandler> = {
       }
 
       finishAllTextItems(last.steps);
-      last.steps.at(-1)!.items.push({ type: "compaction" });
+      last.steps.at(-1)!.items.push({
+        type: "compaction",
+        trigger,
+        ...(preTokens === undefined ? {} : { preTokens }),
+      });
     }
   },
 

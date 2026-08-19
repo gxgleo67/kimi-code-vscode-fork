@@ -58,7 +58,7 @@ function StepItemRenderer({ item }: { item: UIStepItem }) {
     case "tool_use":
       return <ToolCallCard call={item.call} result={item.result} subagentSteps={item.subagent_steps} />;
     case "compaction":
-      return <CompactionCard summary={item.summary} tokenCount={item.tokenCount} />;
+      return <CompactionCard summary={item.summary} tokenCount={item.tokenCount} preTokens={item.preTokens} trigger={item.trigger} />;
     case "steer":
       return <SteerBubble content={item.content} />;
     default:

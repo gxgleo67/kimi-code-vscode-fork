@@ -8,8 +8,11 @@ import { cn } from "@/lib/utils";
 interface CompactionCardProps {
   /** Post-compaction summary written by the compactor; expandable when present. */
   summary?: string;
-  /** Live context size right after the compaction. */
+  /** Context size right after the compaction. */
   tokenCount?: number;
+  /** Context size captured when the compaction started. */
+  preTokens?: number;
+  trigger?: "manual" | "auto";
 }
 
 function formatTokens(tokens: number): string {
@@ -17,41 +20,55 @@ function formatTokens(tokens: number): string {
   return String(tokens);
 }
 
-export function CompactionCard({ summary, tokenCount }: CompactionCardProps) {
+/** Claude-Code-style one-liner: "已压缩上下文 · 手动 · 释放 138k tokens ⌄".
+ *  The line stays in the timeline (unlike the full rebuilt view) and the
+ *  summary only shows when the user expands it; the full post-compaction
+ *  context remains available via the context pill. */
+export function CompactionCard({ summary, tokenCount, preTokens, trigger }: CompactionCardProps) {
   const t = useT();
   const isCompacting = useChatStore((s) => s.isCompacting);
   const [expanded, setExpanded] = useState(false);
-  const expandable = !isCompacting && summary !== undefined && summary.trim().length > 0;
+
+  if (isCompacting) {
+    return (
+      <div className="flex items-center gap-2 px-1 py-0.5 text-[11px] text-muted-foreground">
+        <IconLoader2 className="size-3.5 text-blue-500 animate-spin" />
+        <span>{t("compaction.compacting")}</span>
+      </div>
+    );
+  }
+
+  const freed =
+    preTokens !== undefined && tokenCount !== undefined && preTokens > tokenCount
+      ? preTokens - tokenCount
+      : undefined;
+  const parts = [t("compaction.compacted")];
+  if (trigger !== undefined) {
+    parts.push(t(trigger === "manual" ? "compaction.triggerManual" : "compaction.triggerAuto"));
+  }
+  if (freed !== undefined) {
+    parts.push(t("compaction.freed", { tokens: formatTokens(freed) }));
+  }
+
+  const expandable = summary !== undefined && summary.trim().length > 0;
 
   return (
-    <div className="rounded-lg border border-border bg-muted/20 overflow-hidden">
+    <div className="px-1 py-0.5">
       <div
-        className={cn("flex items-center gap-3 px-3 py-2.5", expandable && "cursor-pointer select-none hover:bg-muted/40 transition-colors")}
+        className={cn(
+          "flex items-center gap-2 text-[11px] text-muted-foreground",
+          expandable && "cursor-pointer select-none hover:text-foreground/80 transition-colors",
+        )}
         onClick={expandable ? () => setExpanded((v) => !v) : undefined}
       >
-        {isCompacting ? (
-          <IconLoader2 className="size-4 text-blue-500 animate-spin" />
-        ) : (
-          <div className="size-4 flex items-center justify-center">
-            <div className="size-2 rounded-full bg-emerald-500" />
-          </div>
-        )}
-        <div className="flex-1 min-w-0">
-          <div className="text-xs font-medium text-foreground">{isCompacting ? t("compaction.compacting") : t("compaction.compacted")}</div>
-          {!isCompacting && tokenCount !== undefined && (
-            <div className="text-[10px] text-muted-foreground">{t("compaction.contextAfter", { tokens: formatTokens(tokenCount) })}</div>
-          )}
-        </div>
-        {expandable && (
-          expanded
-            ? <IconChevronDown className="size-4 shrink-0 text-muted-foreground" />
-            : <IconChevronRight className="size-4 shrink-0 text-muted-foreground" />
-        )}
+        <div className="size-1.5 rounded-full bg-emerald-500" />
+        <span>{parts.join(" · ")}</span>
+        {expandable &&
+          (expanded ? <IconChevronDown className="size-3.5" /> : <IconChevronRight className="size-3.5" />)}
       </div>
       {expandable && expanded && (
-        <div className="border-t border-border/60 px-3 py-2 max-h-72 overflow-y-auto">
-          <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1">{t("compaction.summary")}</div>
-          <Markdown content={summary} className="text-xs leading-relaxed" enableEnrichment />
+        <div className="mt-1 ml-3.5 border-l-2 border-border/60 pl-3 max-h-72 overflow-y-auto">
+          <Markdown content={summary} className="text-xs leading-relaxed text-muted-foreground" enableEnrichment />
         </div>
       )}
     </div>

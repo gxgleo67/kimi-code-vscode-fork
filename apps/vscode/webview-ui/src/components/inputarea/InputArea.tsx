@@ -21,6 +21,7 @@ import {
   getModelById,
   getMediaFallbackModel,
   getModelsForMedia,
+  isMainModel,
   useChatStore,
   useSettingsStore,
 } from "@/stores";
@@ -85,7 +86,9 @@ export function InputArea({ onAuthAction }: InputAreaProps) {
     return { image: media.hasImage, video: media.hasVideo };
   }, [getMediaInConversation, draftMedia]);
 
-  const availableModels = useMemo(() => getModelsForMedia(models, mediaReq), [models, mediaReq]);
+  // Subagent-only custom providers must never be offered as the main model.
+  const mainModels = useMemo(() => models.filter(isMainModel), [models]);
+  const availableModels = useMemo(() => getModelsForMedia(mainModels, mediaReq), [mainModels, mediaReq]);
   const currentModelConfig = getModelById(models, currentModel);
 
   // Auto-switch model if current model doesn't support required media

@@ -11,6 +11,7 @@ export {
   getModelsForMedia,
   groupModelsByProvider,
   isImageModel,
+  isMainModel,
   isVideoModel,
   providerDisplayName,
   requiresManagedProviderLogin,

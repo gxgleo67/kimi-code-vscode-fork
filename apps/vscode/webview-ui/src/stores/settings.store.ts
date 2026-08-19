@@ -143,6 +143,15 @@ export function getModelById(models: ModelConfig[], id: string): ModelConfig | u
   return models.find((m) => m.id === id);
 }
 
+/**
+ * Whether a model may be selected as the MAIN conversation model. VS Code–
+ * managed custom providers (added from the subagent dialog) exist only to
+ * bind subagents, so they must stay out of the main model picker.
+ */
+export function isMainModel(model: ModelConfig): boolean {
+  return model.custom !== true;
+}
+
 export interface MediaRequirements {
   image: boolean;
   video: boolean;

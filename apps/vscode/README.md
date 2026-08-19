@@ -1,45 +1,113 @@
-# Kimi Code (Fork) — 个人修改版
+# Kimi Code VS Code 插件 —— 个人修改版 (Fork)
 
-> **修改版声明**:本插件是基于 Moonshot AI 官方 [Kimi Code for VS Code](https://github.com/MoonshotAI/kimi-code)(Apache-2.0)的个人修改版,与官方版隔离:扩展 ID `moonshot-ai.kimicode-vscode-fork`,displayName "Kimi Code (Fork)",命令/设置前缀均为 `kimifork.*`,可与官方版共存。修改内容与构建说明见仓库根 [README](../../README.md)。
+<p align="center">
+  <img src="https://raw.githubusercontent.com/gxgleo67/kimi-code-vscode-fork/main/docs/images/hero.jpg" alt="Kimi Code (Fork)" width="100%">
+</p>
 
-AI coding assistant for VS Code, built for long-context workflows and complex coding tasks.
+> **本插件是 Moonshot AI 官方 Kimi Code VS Code 插件的第三方修改版 (fork)。**
+>
+> - **原版地址**：[MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code)（插件位于其 `apps/vscode` 子目录）
+> - **本 fork 仓库**：[gxgleo67/kimi-code-vscode-fork](https://github.com/gxgleo67/kimi-code-vscode-fork)（已从原版 monorepo 提取并精简，仅保留构建本插件所需的代码）
 
-## Features
+<div align="center">
 
-- **Works alongside you**: Kimi autonomously explores your codebase, reads and writes code, and runs terminal commands with your permission
-- **Thinking controls**: Toggle reasoning or choose a model-supported thinking effort
-- **Provider-aware models**: Distinguish and select same-named models across configured providers
-- **Native editor integration**: Review AI-proposed changes directly in VS Code's diff viewer
-- **MCP support**: Extend capabilities with Model Context Protocol servers
-- **Slash commands**: Quick actions like `/init` to analyze your project and `/compact` to manage context
+**最后更新：2026-08-19**
 
-## Install
+</div>
 
-Kimi Code requires VS Code 1.100.0 or later.
+## ⚠️ 声明
 
-1. Install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=moonshot-ai.kimi-code)
-2. Open a folder in VS Code
-3. Click the Kimi icon in the Activity Bar
-4. Sign in with a [kimi.com/code](https://www.kimi.com/code) subscription, or use a provider already configured in the shared `config.toml`
+- 本插件是 **个人定制修改版**，与官方版 **完全隔离**：扩展 ID `moonshot-ai.kimicode-vscode-fork`、displayName "Kimi Code (Fork)"，命令 / 设置前缀均为 `kimifork.*`，视图容器 `kimifork-sidebar`。可与官方版同时共存，互不冲突。
+- 本项目 **不隶属于 Moonshot AI**，不提供官方支持，使用风险自负。
+- 原版仓库删除了与 VS Code 无关的部分（Kimi Code CLI/TUI、kimi-web、kap-server、vis 等）；本仓库只包含 `apps/vscode` 插件及构建闭包内必需的 11 个私有内部包（它们不发布到 npm registry，是编译必需依赖）。
+- 习惯用 VS Code 后被迫用了 5 小时额度，于是改了 VS Code 插件；加上目前官方主要在维护 bug、没有具体功能设置上的更新，所以根据不同人的使用需求增加了一些功能，方便对齐 Web 版本。
 
-The extension runs the Kimi Code Node SDK in the VS Code Extension Host. When
-the extension and the Kimi Code terminal app resolve to the same
-`KIMI_CODE_HOME`, they share `config.toml`, MCP configuration, login state, and
-sessions. The system-level `KIMI_CODE_HOME` environment variable is supported;
-there is no separate VS Code setting for it. Do not run the same session from
-both applications at the same time, because cross-process session locking is
-not guaranteed.
+## ✨ 与原版的差异（定制功能）
 
-After upgrading from version 0.5.x, the extension prompts before migrating any
-legacy data it finds. Migration copies or merges data into the current Kimi Code
-home and does not delete the legacy source. Legacy Kimi Code OAuth and MCP OAuth
-credentials are not copied, so those connections must be authorized again.
-See [the changelog](CHANGELOG.md) for the full compatibility notes.
+### 🤖 会话与标题
 
-## Docs
+- **会话标题自动生成**：官方V2引擎 已经添加该功能，官方默认关闭，我已经默认开启
 
-Official doc for Kimi Code can be found at [www.kimi.com/code/docs](https://www.kimi.com/code/docs/en/kimi-code-for-vscode/guides/getting-started.html)
+### 📊 额度
+
+- **额度状态栏**：5 小时 / 7 天额度同心环实时显示，颜色随用量变化（70% 起黄 → 100% 红），含重置倒计时与 Tooltip
+
+### 🛡️ 权限与审批
+
+- **Plan 审批（Claude 式 UX）**：Plan 模式弹窗支持 执行 / Revise+反馈 / 选项，不再在 YOLO 下静默直接执行；计划完成时先在编辑器中打开计划文件，再弹窗确认
+
+### 🧠 上下文
+
+- **自动压缩上下文**：设置菜单开关（语言设置下方，默认关闭），任务结束后上下文超过 256K 时自动执行 `/compact`，防止 K3-256k 等 256K 模型上下文超限丢失
+- **压缩后界面同步**：`/compact` 完成后对话列表与引擎真实上下文同步——压缩记录显示为 Claude Code 风格的单行标记（手动/自动 + 释放 token 数），点击可展开压缩摘要；上下文查看器打开时自动刷新
+
+### 📜 历史记录
+
+- **历史记录加载体验**：打开 / 切换历史对话立即显示加载遮罩；加载完成后直接定位到最新消息，不再有从上往下的滚动动画
+- **Kimi 眼睛加载动画**：历史加载、会话列表、上下文查看器等加载场景，居中显示毛玻璃加载胶囊——左侧 Kimi 眼睛徽标（左右漂移 + 眨眼，复刻 Kimi Web 左上角图标动画），右侧「加载中…」文案
+
+### 🤝 子代理
+
+- **子代理自定义供应商**：可在 VS Code 内为子代理配置自定义供应商（密钥存 SecretStorage，安全）
+- **子代理独立模型（secondary model）**：子代理可绑定独立供应商模型（如 DeepSeek），主代理 Kimi + 子代理 DeepSeek 分流，高峰期更稳更快
+
+### 🌐 界面
+
+- **界面语言：中英文切换（设置 `kimifork.language`）
+- **Logo与视觉**：复刻 Kimi Code CLI 蓝色标识、对话框头像、状态栏布局调整；所有开关 开 = 蓝色 / 关 = 灰色，状态一眼可辨
+- **Web 同款输入区**：状态行左侧保留队列 / 文件修改，右侧为后台 Bash / 子 Agent / 待办 / 上下文查看器（仅在本对话调用过后显示）；模式与模型选择器（参考 kimi code web 界面）
+
+### ⚡ 性能与稳定性
+
+- **性能与稳定性**：历史记录长对话加载优化、上下文压缩后查看器、对话框防草稿回流、终止响应更可靠
+
+## 🐛 修复的官方未修复 Bug（仅 VS Code 版）
+
+以下问题仅出现在 VS Code 版插件中，官方尚未修复，本 fork 单独处理：
+
+- **运行中排队输入报错**：在「生成中 / 目标进行中」状态下向输入框输入需要排队的内容，旧版会直接把消息发给引擎，被引擎以 *"A response is already being generated"* 拒绝，弹窗报错并丢失已输入内容，需要二次输入。已修复：入队条件补齐「目标运行中（active/paused）」状态，任务结束或目标落定后自动排空队列，输入不再丢失。
+- **历史对话图片裂开**：引擎将图片存为 blobref 引用，回放历史时未还原导致图片全部裂开。已修复：按需解析为 data URI（缩略图 / 大图预览 / 流式图片），带缓存。
+
+## 🖼️ 界面预览
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/gxgleo67/kimi-code-vscode-fork/main/docs/images/UI.jpg" alt="插件界面效果" width="80%">
+</p>
+
+## 🔧 构建与打包
+
+环境要求：**Node.js >= 24.15.0**、**pnpm 10.33.0**（`engine-strict` 已启用，版本不满足会直接失败）。
+
+```bash
+pnpm install
+cd apps/vscode
+pnpm typecheck
+pnpm build
+node scripts/vsix-package.mjs win32-x64
+```
+
+产出：`apps/vscode/artifacts/vsix/kimi-code-win32-x64.vsix`
+
+### 安装到 VS Code
+
+解包 vsix 中的 `extension/` 子树到 VS Code 扩展目录（如 `~/.vscode/extensions/moonshot-ai.kimicode-vscode-fork-0.7.0`），然后执行 **`Developer: Reload Window`**。
+
+> 注意：扩展菜单里的 "Reset Kimi" 只刷新 webview，不重载扩展宿主；修改代码后必须 Reload Window 才生效。
+
+## 📁 目录结构
+
+```
+apps/vscode/          # 插件源码（extension host + React webview UI + 打包脚本）
+packages/             # 构建闭包内的 11 个私有内部包（编译需要）
+build/                # 构建工具（raw-text loader 等）
+scripts/              # postinstall（node-pty 修复）
+```
+
+## 🕓 更新记录
+
+- **2026-08-19**：新增 Kimi 眼睛加载动画（历史加载 / 会话列表 / 上下文查看器统一毛玻璃加载胶囊）；子代理支持绑定独立 secondary model（DeepSeek 分流）；修复两个官方未修复的 VS Code 版 Bug —— 运行中排队输入弹窗报错丢失输入、底部工具栏窄宽度挤压变形（完整标签 → 仅图标 →「⋯」折叠菜单）；压缩标记改为 Claude Code 风格单行可展开；修复历史对话图片 blobref 裂开
+- **2026-08-18**：模式开关拆分为三按钮、附件按钮直接打开文件选择器、任务停止 / 压缩期间发送入队、AI 会话标题、Plan 审批、自动压缩上下文、压缩后界面同步、历史加载优化等
 
 ## License
 
-[Apache-2.0](LICENSE)
+[Apache-2.0](https://github.com/gxgleo67/kimi-code-vscode-fork/blob/main/apps/vscode/LICENSE)，基于 Moonshot AI 原版修改。原版版权归 Moonshot AI 所有。

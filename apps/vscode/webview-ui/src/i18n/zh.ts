@@ -163,6 +163,9 @@ export const zh: Record<TranslationKey, string> = {
   "question.progress": "第 {current} 个问题,共 {total} 个",
   "question.enterResponse": "输入你的回答...",
   "question.customResponse": "自定义回答...",
+  "question.selectAll": "可多选",
+  "question.submit": "提交",
+  "question.next": "下一题",
 
   // ── 工作目录弹窗 ────────────────────────────────────────────────────────
   "workdir.title": "选择工作目录",

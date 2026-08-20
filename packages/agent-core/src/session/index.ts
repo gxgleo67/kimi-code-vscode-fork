@@ -570,6 +570,7 @@ export class Session {
       );
       await this.cancelActiveTurnsOnClose();
       await this.stopBackgroundTasksOnExit();
+      await this.drainBackgroundTaskWrites();
       await this.flushMetadata();
       await this.triggerSessionEnd('exit');
     } finally {
@@ -664,6 +665,12 @@ export class Session {
         );
         await agent.background.stopAll('Session closed');
       }),
+    );
+  }
+
+  private async drainBackgroundTaskWrites(): Promise<void> {
+    await Promise.all(
+      Array.from(this.readyAgents(), (agent) => agent.background.drainWrites()),
     );
   }
 

@@ -170,6 +170,9 @@ export const en = {
   "question.progress": "Question {current} of {total}",
   "question.enterResponse": "Enter your response...",
   "question.customResponse": "Custom response...",
+  "question.selectAll": "Select all that apply",
+  "question.submit": "Submit",
+  "question.next": "Next",
 
   // ── WorkDirModal ────────────────────────────────────────────────────────
   "workdir.title": "Select Working Directory",

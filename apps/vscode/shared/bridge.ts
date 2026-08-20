@@ -73,6 +73,7 @@ export const Methods = {
   GetImageDataUri: "getImageDataUri",
   GetBlobDataUri: "getBlobDataUri",
   ReadPlanFile: "readPlanFile",
+  OpenPlanFile: "openPlanFile",
   ShowLogs: "showLogs",
   ReloadWebview: "reloadWebview",
   RespondQuestion: "respondQuestion",
@@ -259,6 +260,7 @@ function validateParams(method: RpcMethod, params: unknown): boolean {
     case Methods.CheckFileExists:
     case Methods.GetImageDataUri:
     case Methods.ReadPlanFile:
+    case Methods.OpenPlanFile:
       return hasString(params, "filePath");
     case Methods.GetBlobDataUri:
       return hasString(params, "ref");

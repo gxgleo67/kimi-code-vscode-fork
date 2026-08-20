@@ -107,16 +107,34 @@ function PlanReviewDialog({ req, info }: { req: ApprovalRequest; info: PlanRevie
   const [expanded, setExpanded] = useState(true);
   const [planContent, setPlanContent] = useState<string | null>(info.path === undefined ? info.plan : null);
   const [planError, setPlanError] = useState<string | null>(null);
+  // True once the plan file was successfully opened in a VSCode editor tab —
+  // the inline preview then collapses to a note (the editor is the review
+  // surface); on failure the inline preview stays as the fallback.
+  const [openedInEditor, setOpenedInEditor] = useState(false);
   const [selectedOption, setSelectedOption] = useState(0);
   const [revising, setRevising] = useState(false);
   const [feedback, setFeedback] = useState("");
 
   // Open the plan in the editor as soon as the review is raised, so the user
   // reads the real file in VSCode before confirming execution in the dialog.
-  // key={req.id} on this component makes the effect fire once per request.
+  // Plan files live outside the workspace, so this goes through the dedicated
+  // openPlanFile bridge (openFile only allows workspace files and fails
+  // silently). key={req.id} on this component makes the effect fire once per
+  // request.
   useEffect(() => {
     if (info.path === undefined) return;
-    void bridge.openFile(info.path).catch(() => undefined);
+    let cancelled = false;
+    bridge.openPlanFile(info.path).then(
+      ({ ok }) => {
+        if (!cancelled) setOpenedInEditor(ok);
+      },
+      () => {
+        if (!cancelled) setOpenedInEditor(false);
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
   }, [info.path]);
 
   // Read the plan file fresh on open — the user may have edited it since the
@@ -165,15 +183,32 @@ function PlanReviewDialog({ req, info }: { req: ApprovalRequest; info: PlanRevie
         </div>
 
         <div className={cn("overflow-y-auto rounded bg-muted/30 py-2 px-2", expanded ? "flex-1 min-h-0" : "max-h-24 shrink-0")}>
-          {planError !== null && (
-            <div className="text-xs text-red-600 dark:text-red-400 mb-1 break-all">
-              {t("approval.failedToLoad", { path: info.path ?? "", error: planError })}
+          {openedInEditor && info.path !== undefined ? (
+            <div className="text-xs text-muted-foreground flex items-center justify-between gap-2">
+              <span>{t("approval.planOpenedInEditor")}</span>
+              <button
+                onClick={() => {
+                  const planPath = info.path;
+                  if (planPath !== undefined) void bridge.openPlanFile(planPath).catch(() => undefined);
+                }}
+                className="text-blue-500 hover:underline shrink-0 cursor-pointer"
+              >
+                {t("approval.reopenPlan")}
+              </button>
             </div>
-          )}
-          {planContent === null ? (
-            <div className="text-xs text-muted-foreground">{t("approval.loadingPlan")}</div>
           ) : (
-            <div className="text-xs text-foreground/90 whitespace-pre-wrap break-words leading-relaxed">{planContent}</div>
+            <>
+              {planError !== null && (
+                <div className="text-xs text-red-600 dark:text-red-400 mb-1 break-all">
+                  {t("approval.failedToLoad", { path: info.path ?? "", error: planError })}
+                </div>
+              )}
+              {planContent === null ? (
+                <div className="text-xs text-muted-foreground">{t("approval.loadingPlan")}</div>
+              ) : (
+                <div className="text-xs text-foreground/90 whitespace-pre-wrap break-words leading-relaxed">{planContent}</div>
+              )}
+            </>
           )}
         </div>
 

@@ -160,6 +160,8 @@ export const en = {
   "approval.executeThisPlan": "Execute this plan?",
   "approval.failedToLoad": "Failed to load {path}: {error}",
   "approval.loadingPlan": "Loading plan...",
+  "approval.planOpenedInEditor": "Plan opened in the VS Code editor",
+  "approval.reopenPlan": "Reopen",
   "approval.revisePlaceholder": "What should the plan change?",
   "approval.sendFeedback": "Send feedback",
   "approval.execute": "Execute",

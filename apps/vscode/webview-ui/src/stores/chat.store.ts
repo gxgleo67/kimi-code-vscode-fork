@@ -564,6 +564,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
       pendingRetry: null,
     });
     useApprovalStore.getState().clearRequests();
+    // Session switch: the resumed session's announced model/effort is the
+    // truth again — drop any composer pick pending against the old session.
+    useSettingsStore.getState().clearPendingSync();
 
     // Replay folds every event in ONE store update: per-event set() calls
     // (each running produce + notifying subscribers) are what made long
@@ -611,6 +614,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
     // composer indicator truthful until its status announcement arrives.
     useSettingsStore.getState().setPermissionMode("manual");
     useSettingsStore.getState().resetThinkingEffortToDefault();
+    // Fresh session: the next session's announced model/effort is the truth.
+    useSettingsStore.getState().clearPendingSync();
     set({
       sessionId: null,
       messages: [],

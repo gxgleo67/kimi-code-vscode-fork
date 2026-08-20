@@ -607,10 +607,26 @@ const eventHandlers: Record<string, EventHandler> = {
     }
 
     if (typeof model === "string" && model.length > 0) {
-      useSettingsStore.getState().setCurrentModel(model);
+      const settings = useSettingsStore.getState();
+      // A composer model pick reaches the engine session only when the next
+      // prompt is sent; until then status announcements still carry the
+      // session's previous model and must not snap the picker back (this was
+      // the "plan mode switches the model" bug).
+      if (settings.pendingModelSync === null || settings.pendingModelSync === model) {
+        if (settings.pendingModelSync === model) {
+          useSettingsStore.setState({ pendingModelSync: null });
+        }
+        settings.setCurrentModel(model);
+      }
     }
     if (typeof thinking_effort === "string" && thinking_effort.length > 0) {
-      useSettingsStore.getState().setThinkingEffort(thinking_effort);
+      const settings = useSettingsStore.getState();
+      if (settings.pendingEffortSync === null || settings.pendingEffortSync === thinking_effort) {
+        if (settings.pendingEffortSync === thinking_effort) {
+          useSettingsStore.setState({ pendingEffortSync: null });
+        }
+        settings.setThinkingEffort(thinking_effort);
+      }
     }
     if (permission === "manual" || permission === "yolo" || permission === "auto") {
       useSettingsStore.getState().setPermissionMode(permission);

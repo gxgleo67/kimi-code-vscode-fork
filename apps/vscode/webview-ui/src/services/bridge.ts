@@ -318,6 +318,10 @@ class Bridge {
     return this.call<string>(Methods.ReadPlanFile, { filePath });
   }
 
+  openPlanFile(filePath: string) {
+    return this.call<{ ok: boolean }>(Methods.OpenPlanFile, { filePath });
+  }
+
   setPlanMode(enabled: boolean) {
     return this.call<{ ok: boolean; planMode: boolean }>(Methods.SetPlanMode, { enabled });
   }

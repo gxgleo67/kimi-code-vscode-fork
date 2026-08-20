@@ -153,6 +153,8 @@ export const zh: Record<TranslationKey, string> = {
   "approval.executeThisPlan": "执行此计划?",
   "approval.failedToLoad": "加载 {path} 失败:{error}",
   "approval.loadingPlan": "正在加载计划...",
+  "approval.planOpenedInEditor": "计划已在 VS Code 编辑器中打开",
+  "approval.reopenPlan": "重新打开",
   "approval.revisePlaceholder": "计划需要修改什么?",
   "approval.sendFeedback": "发送反馈",
   "approval.execute": "执行",

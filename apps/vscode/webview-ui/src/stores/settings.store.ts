@@ -180,6 +180,11 @@ export function getMediaFallbackModel(
 interface SettingsState {
   currentModel: string;
   thinkingEffort: string;
+  /** Composer picks not yet applied to the engine session (they only reach
+   *  it when the next prompt is sent); until then stale status announcements
+   *  must not overwrite them. Session switches clear these. */
+  pendingModelSync: string | null;
+  pendingEffortSync: string | null;
   /** Active session's permission mode; engine truth arrives via StatusUpdate. */
   permissionMode: PermissionMode;
   extensionConfig: ExtensionConfig;
@@ -219,6 +224,8 @@ interface SettingsState {
   syncModelsConfig: (config: KimiConfig) => void;
   setWireSlashCommands: (commands: SlashCommandInfo[]) => void;
   setIsLoggedIn: (loggedIn: boolean) => void;
+  /** Drop pending composer picks (session switch — engine truth wins again). */
+  clearPendingSync: () => void;
   getCurrentThinkingMode: () => ThinkingMode;
 }
 
@@ -240,6 +247,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   wireSlashCommands: [],
   slashCommands: [],
   isLoggedIn: false,
+  pendingModelSync: null,
+  pendingEffortSync: null,
 
   setCurrentModel: (currentModel) => set({ currentModel }),
 
@@ -286,7 +295,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     }
 
     const thinkingEffort = preferredDefaultEffort(model, defaultThinking, defaultThinkingEffort, extensionConfig.defaultThinkingEffort);
-    set({ currentModel: modelId, thinkingEffort });
+    // Mark the pick as pending: until the next prompt applies it to the
+    // engine session, status announcements still carry the previous model.
+    set({ currentModel: modelId, thinkingEffort, pendingModelSync: modelId, pendingEffortSync: thinkingEffort });
     saveConfigWithRollback(
       {
         model: modelId,
@@ -338,7 +349,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     } // Can only toggle in switch mode
 
     const newEffort = thinkingEffort === "off" ? "on" : "off";
-    set({ thinkingEffort: newEffort, defaultThinking: newEffort !== "off" });
+    set({ thinkingEffort: newEffort, defaultThinking: newEffort !== "off", pendingEffortSync: newEffort });
     saveConfigWithRollback(
       { model: currentModel, thinking: newEffort !== "off", effort: newEffort },
       { thinkingEffort, defaultThinking },
@@ -367,6 +378,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     set({
       thinkingEffort,
       defaultThinking: thinkingEffort !== "off",
+      pendingEffortSync: thinkingEffort,
       // The model's top declared tier is session-only (only the boolean
       // toggle is persisted), so it must not become the configured-effort
       // seed for future sessions.
@@ -412,6 +424,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       modelsLoaded: true,
       currentModel: initialModel,
       thinkingEffort,
+      // (Re)initialized from the engine config — no composer pick is in flight.
+      pendingModelSync: null,
+      pendingEffortSync: null,
     });
   },
 
@@ -427,6 +442,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
 
   setIsLoggedIn: (isLoggedIn) => set({ isLoggedIn }),
+
+  clearPendingSync: () => set({ pendingModelSync: null, pendingEffortSync: null }),
 
   getCurrentThinkingMode: () => {
     const { models, currentModel } = get();

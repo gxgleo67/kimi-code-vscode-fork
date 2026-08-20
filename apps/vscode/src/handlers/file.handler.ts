@@ -238,6 +238,25 @@ const readPlanFile: Handler<FilePathParams, string> = async ({ filePath }) => {
   return Buffer.from(await vscode.workspace.fs.readFile(uri)).toString("utf8");
 };
 
+/**
+ * Open a plan file in a VSCode editor tab. Plan files live outside the
+ * workspace, so the workspace-only `openFile` rejects them — this sibling
+ * keeps the same narrow surface as `readPlanFile` and reports failure as
+ * `{ ok: false }` so the webview can fall back to its inline preview.
+ */
+const openPlanFile: Handler<FilePathParams, { ok: boolean }> = async ({ filePath }) => {
+  if (!filePath.toLowerCase().endsWith(".md")) return { ok: false };
+  try {
+    const uri = vscode.Uri.file(filePath);
+    const stat = await vscode.workspace.fs.stat(uri);
+    if (stat.size > PLAN_FILE_MAX_BYTES) return { ok: false };
+    await vscode.window.showTextDocument(uri, { preview: false });
+    return { ok: true };
+  } catch {
+    return { ok: false };
+  }
+};
+
 export const fileHandlers: Record<string, Handler<any, any>> = {
   [Methods.GetProjectFiles]: getProjectFiles,
   [Methods.PickMedia]: pickMedia,
@@ -252,6 +271,7 @@ export const fileHandlers: Record<string, Handler<any, any>> = {
   [Methods.GetImageDataUri]: getImageDataUri,
   [Methods.GetBlobDataUri]: getBlobDataUri,
   [Methods.ReadPlanFile]: readPlanFile,
+  [Methods.OpenPlanFile]: openPlanFile,
 };
 
 function requireBaselineSession(ctx: Parameters<Handler>[1]): BaselineSession {

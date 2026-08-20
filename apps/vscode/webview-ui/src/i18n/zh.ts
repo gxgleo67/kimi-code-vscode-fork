@@ -264,10 +264,10 @@ export const zh: Record<TranslationKey, string> = {
   // ── 状态胶囊(后台任务 / 待办) ──────────────────────────────────────────
   "pills.bash": "后台 Bash ({count})",
   "pills.agents": "子 Agent ({count})",
-  "pills.todos": "待办 ({done}/{total})",
+  "pills.todos": "当前进度 {done}/{total}",
   "pills.bashTitle": "后台 Bash · {count} 运行中",
   "pills.agentsTitle": "子 Agent · {count} 运行中",
-  "pills.todosTitle": "待办 · {done}/{total}",
+  "pills.todosTitle": "当前进度 {done}/{total}",
   "pills.statusRunning": "运行中 · {seconds}s",
   "pills.statusDone": "完成 · {seconds}s",
   "pills.statusFailed": "失败 · {seconds}s",
@@ -400,6 +400,7 @@ export const zh: Record<TranslationKey, string> = {
   // ── Toast(store、媒体上传) ──────────────────────────────────────────────
   "toast.noRunningTask": "没有正在运行的任务。",
   "toast.autoCompactStarted": "任务结束后上下文已超过 256K，正在自动执行 /compact 压缩。",
+  "toast.queuedAfterBusy": "当前任务仍在进行，消息已加入队列。",
   "toast.saveModelSettingsFailed": "保存模型设置失败:{error}",
   "toast.processMediaFailed": "媒体文件处理失败",
   "toast.pickMediaFailed": "选择媒体失败",

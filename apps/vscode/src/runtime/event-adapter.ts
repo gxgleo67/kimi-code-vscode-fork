@@ -89,21 +89,35 @@ export function adaptSdkEvent(
 
   if (sdkEvent.type === 'subagent.spawned') {
     const parentAgentId = sdkEvent.parentAgentId ?? sdkEvent.callerAgentId ?? sdkEvent.agentId;
-    return {
-      state: {
-        ...state,
-        subagentParents: {
-          ...state.subagentParents,
-          [sdkEvent.subagentId]: {
+    const nextState: EventAdapterState = {
+      ...state,
+      subagentParents: {
+        ...state.subagentParents,
+        [sdkEvent.subagentId]: {
+          parentAgentId,
+          parentToolCallId: scopedToolCallId(
             parentAgentId,
-            parentToolCallId: scopedToolCallId(
-              parentAgentId,
-              sdkEvent.parentToolCallId,
-              mainAgentId,
-            ),
-          },
+            sdkEvent.parentToolCallId,
+            mainAgentId,
+          ),
         },
       },
+    };
+    // Surface the child's bound model so the owning tool card can tag
+    // subagents that do not follow the main model.
+    const spawned: LegacyWireEvent = {
+      type: 'SubagentSpawned',
+      payload: {
+        tool_call_id: scopedToolCallId(parentAgentId, sdkEvent.parentToolCallId, mainAgentId),
+        ...(sdkEvent.model === undefined ? {} : { model: sdkEvent.model }),
+        subagent_name: sdkEvent.subagentName,
+      },
+    };
+    const routed = routeSubagentEvent(nextState, parentAgentId, spawned, mainAgentId);
+    if (routed === undefined) return { state: nextState };
+    return {
+      state: nextState,
+      event: withSessionId(routed, sdkEvent.sessionId),
     };
   }
 

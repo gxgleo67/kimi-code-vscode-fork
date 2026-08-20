@@ -178,6 +178,7 @@ export class SessionRuntime {
           plan_mode: status.planMode,
           swarm_mode: status.swarmMode ?? false,
           permission: status.permission,
+          turn_active: this.isBusy,
           goal: goal === null
             ? null
             : {

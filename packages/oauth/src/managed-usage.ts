@@ -21,6 +21,8 @@
  * presentation (labels, reset hints) is left to the consumer.
  */
 
+import { Agent } from 'undici';
+
 import { readApiErrorMessage } from './api-error';
 import { isRecord } from './utils';
 
@@ -270,6 +272,20 @@ function toInt(value: unknown): number | null {
 
 // ── HTTP fetch ────────────────────────────────────────────────────────
 
+// The managed platform is directly reachable, but a process-wide proxy
+// dispatcher (installed by the VS Code proxy resolver from system proxy
+// settings, or by our own proxy hook from env vars) intermittently breaks
+// this poll. Pin a dedicated direct dispatcher so the usage query always
+// bypasses the global proxy dispatcher. One shared agent: the call recurs
+// on every usage-ring refresh.
+let directDispatcher: Agent | undefined;
+function usageDispatcher(): RequestInit['dispatcher'] {
+  directDispatcher ??= new Agent();
+  // The undici runtime Dispatcher and the one @types/node declares on the
+  // global fetch RequestInit drift apart nominally; same runtime shape.
+  return directDispatcher as unknown as RequestInit['dispatcher'];
+}
+
 export interface FetchManagedUsageResult {
   readonly kind: 'ok';
   readonly parsed: ParsedManagedUsage;
@@ -297,6 +313,7 @@ export async function fetchManagedUsage(
         Accept: 'application/json',
       },
       signal: controller.signal,
+      dispatcher: usageDispatcher(),
     });
     if (!res.ok) {
       const status = res.status;

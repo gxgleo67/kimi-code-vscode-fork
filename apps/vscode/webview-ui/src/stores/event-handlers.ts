@@ -3,7 +3,7 @@ import { useApprovalStore } from "./approval.store";
 import { useSettingsStore } from "./settings.store";
 import { isPreflightError, isUserInterrupt } from "shared/errors";
 import type { ChatMessage, UIStep, UIStepItem, ChatState, TokenUsage } from "./chat.store";
-import type { ContentPart, ToolCall, ToolResult, TurnBegin, SubagentEvent, ApprovalRequestPayload, DiffBlock, RunResult, QuestionRequest } from "shared/legacy-sdk";
+import type { ContentPart, ToolCall, ToolResult, TurnBegin, SubagentEvent, SubagentSpawned, ApprovalRequestPayload, DiffBlock, RunResult, QuestionRequest } from "shared/legacy-sdk";
 import type { UIStreamEvent, StreamError } from "shared/types";
 
 type EventHandler = (draft: ChatState, payload: any) => void;
@@ -84,6 +84,15 @@ function resolveSubagentTarget(
   }
 
   return { steps: toolItem.subagent_steps, event, toolItem };
+}
+
+/** Tag the Agent/AgentSwarm card with the spawned child's bound model alias. */
+function applySubagentSpawned(steps: UIStep[], payload: SubagentSpawned): void {
+  if (payload.model === undefined) return;
+  const item = findToolUseItem(steps, payload.tool_call_id);
+  if (item) {
+    item.subagentModel = payload.model;
+  }
 }
 
 function finishAllTextItems(steps: UIStep[]): void {
@@ -231,6 +240,11 @@ function applyEventToSteps(steps: UIStep[], event: { type: string; payload: any 
         void bridge.trackFiles(paths);
       }
 
+      break;
+    }
+
+    case "SubagentSpawned": {
+      applySubagentSpawned(steps, event.payload as SubagentSpawned);
       break;
     }
   }
@@ -558,6 +572,14 @@ const eventHandlers: Record<string, EventHandler> = {
     applyEventToSteps(target.steps, target.event);
   },
 
+  SubagentSpawned: (draft, payload: SubagentSpawned) => {
+    const last = getLastAssistant(draft);
+    if (!last?.steps) {
+      return;
+    }
+    applySubagentSpawned(last.steps, payload);
+  },
+
   ApprovalRequest: (_, payload: ApprovalRequestPayload) => {
     useApprovalStore.getState().addRequest({
       id: payload.id,
@@ -574,7 +596,15 @@ const eventHandlers: Record<string, EventHandler> = {
   },
 
   StatusUpdate: (draft, payload) => {
-    const { context_usage, context_tokens, max_context_tokens, token_usage, plan_mode, swarm_mode, goal, model, thinking_effort, permission, retrying } = payload;
+    const { context_usage, context_tokens, max_context_tokens, token_usage, plan_mode, swarm_mode, goal, model, thinking_effort, permission, retrying, turn_active } = payload;
+
+    // Attach-time engine truth: a view created mid-turn (panel re-created
+    // while a task runs) starts with isStreaming=false and would let a send
+    // race the busy engine. Only repair in the busy direction — an accepted
+    // send's TurnBegin re-asserts isStreaming on its own.
+    if (turn_active === true) {
+      draft.isStreaming = true;
+    }
 
     if (typeof model === "string" && model.length > 0) {
       useSettingsStore.getState().setCurrentModel(model);

@@ -24,6 +24,8 @@ interface SubagentReplayInvocation {
   readonly childAgentId: string;
   readonly startedAt: number;
   readonly order: number;
+  /** Bound model alias of the child agent, when the resumed state exposes it. */
+  readonly model?: string;
   records: readonly AgentReplayRecord[];
 }
 
@@ -238,7 +240,8 @@ function buildSubagentReplayIndex(state: ResumedSessionState): SubagentReplayInd
       if (call === undefined || (call.name !== "Agent" && call.name !== "AgentSwarm")) continue;
       for (const childAgentId of subagentIdsFromResult(call.name, message.content)) {
         const metadata = state.sessionMetadata.agents[childAgentId];
-        if (metadata?.parentAgentId !== parentAgentId || state.agents[childAgentId] === undefined) {
+        const childAgent = state.agents[childAgentId];
+        if (metadata?.parentAgentId !== parentAgentId || childAgent === undefined) {
           continue;
         }
         invocations.push({
@@ -247,6 +250,9 @@ function buildSubagentReplayIndex(state: ResumedSessionState): SubagentReplayInd
           childAgentId,
           startedAt: call.startedAt,
           order: call.order,
+          ...(childAgent.config.modelAlias === undefined
+            ? {}
+            : { model: childAgent.config.modelAlias }),
           records: [],
         });
       }
@@ -321,6 +327,22 @@ function renderSubagentInvocations(
     const invocationKey = `${invocation.parentAgentId}\u0000${invocation.parentToolCallId}\u0000${invocation.childAgentId}\u0000${String(invocation.startedAt)}`;
     if (visited.has(invocationKey)) continue;
     const nextVisited = new Set([...visited, invocationKey]);
+    if (invocation.model !== undefined) {
+      // Tag the owning tool card with the child's bound model; the event
+      // addresses the parent's card, so it wraps in the parent's chain.
+      result.push(
+        wrapSubagentEvent(
+          {
+            type: "SubagentSpawned",
+            payload: {
+              tool_call_id: scopedReplayToolCallId(invocation.parentAgentId, invocation.parentToolCallId),
+              model: invocation.model,
+            },
+          },
+          parentChain,
+        ),
+      );
+    }
     result.push(
       ...renderSubagentInvocation(index, invocation, [invocation, ...parentChain], nextVisited),
     );

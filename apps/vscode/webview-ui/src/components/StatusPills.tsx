@@ -175,6 +175,15 @@ export function StatusPills() {
       active ? "bg-accent text-accent-foreground" : "hover:bg-muted/50 text-muted-foreground",
     );
 
+  // The queue pill renders only while messages are queued — give it a blue
+  // fill so a pending queue stands out from the other status pills.
+  const queuePillClass = (active: boolean) =>
+    cn(
+      "flex items-center gap-1.5 px-2 py-0.5 rounded text-xs transition-colors cursor-pointer",
+      "bg-blue-500/15 text-blue-600 dark:text-blue-400 hover:bg-blue-500/25",
+      active && "bg-blue-500/25",
+    );
+
   const runningBash = bashTasks.filter((task) => task.status === "running").length;
   const runningAgents = agentTasks.filter((task) => task.status === "running").length;
 
@@ -214,7 +223,7 @@ export function StatusPills() {
       <div className="flex items-center justify-between gap-1 py-0.5 min-h-7">
         <div className="flex items-center gap-1 min-w-0">
           {hasQueue && (
-            <button type="button" onClick={() => togglePanel("queue")} className={pillClass(openPanel === "queue")}>
+            <button type="button" onClick={() => togglePanel("queue")} className={queuePillClass(openPanel === "queue")}>
               <IconStack2 className="size-3.5" />
               <span>{t("queue.queuedCount", { count: queue.length })}</span>
             </button>

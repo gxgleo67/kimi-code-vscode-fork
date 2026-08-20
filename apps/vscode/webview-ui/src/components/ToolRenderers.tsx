@@ -20,6 +20,7 @@ import { formatContentOutput } from "shared/legacy-sdk";
 import { cleanSystemTags } from "shared/utils";
 import { ThinkingBlock } from "./ThinkingBlock";
 import { useT } from "@/i18n";
+import { getModelById, useChatStore, useSettingsStore } from "@/stores";
 import type { UIToolCall, UIStep, UIStepItem } from "@/stores/chat.store";
 import type { ToolResult, DisplayBlock, TodoBlock } from "shared/legacy-sdk";
 
@@ -31,6 +32,29 @@ interface ToolRendererProps {
   call: UIToolCall;
   result?: ToolResultValue;
   subagentSteps?: UIStep[];
+  subagentModel?: string;
+}
+
+/** Model tag for a subagent card: hidden when the child follows the main
+ * model, otherwise the bound model's display name (or raw alias). */
+function useSubagentModelLabel(subagentModel?: string): string | null {
+  const models = useSettingsStore((s) => s.models);
+  const currentModel = useSettingsStore((s) => s.currentModel);
+  const sessionModel = useChatStore((s) => s.lastStatus?.model);
+  if (subagentModel === undefined) return null;
+  const mainModel = sessionModel ?? currentModel;
+  if (mainModel !== undefined && subagentModel === mainModel) return null;
+  return getModelById(models, subagentModel)?.name ?? subagentModel;
+}
+
+function SubagentModelBadge({ subagentModel }: { subagentModel?: string }) {
+  const label = useSubagentModelLabel(subagentModel);
+  if (label === null) return null;
+  return (
+    <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 font-medium shrink-0">
+      {label}
+    </span>
+  );
 }
 
 function parseArgs(args: string | null): Record<string, unknown> {
@@ -324,12 +348,12 @@ function SubagentStepItemRenderer({ item }: { item: UIStepItem }) {
     return <Markdown content={item.content} className="text-[0.75rem] leading-relaxed" enableEnrichment={item.finished} />;
   }
   if (item.type === "tool_use") {
-    return <ToolCallCard call={item.call} result={item.result} subagentSteps={item.subagent_steps} />;
+    return <ToolCallCard call={item.call} result={item.result} subagentSteps={item.subagent_steps} subagentModel={item.subagentModel} />;
   }
   return null;
 }
 
-function TaskTool({ call, result, subagentSteps }: ToolRendererProps) {
+function TaskTool({ call, result, subagentSteps, subagentModel }: ToolRendererProps) {
   const t = useT();
   const [showProcess, setShowProcess] = useState(false);
   const args = parseArgs(call.arguments);
@@ -355,7 +379,8 @@ function TaskTool({ call, result, subagentSteps }: ToolRendererProps) {
       <div className="py-2">
         <div className="flex items-center gap-2 mb-1.5">
           <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 font-medium">{subagentName}</span>
-          <span className="text-xs font-medium">{description}</span>
+          <span className="text-xs font-medium truncate">{description}</span>
+          <span className="ml-auto"><SubagentModelBadge subagentModel={subagentModel} /></span>
         </div>
         {prompt && <div className="text-[10px] text-muted-foreground line-clamp-2">{prompt}</div>}
       </div>
@@ -416,13 +441,13 @@ function getToolLabel(call: UIToolCall, t: ReturnType<typeof useT>): string {
   }
 }
 
-export function ToolCallCard({ call, result, subagentSteps }: ToolRendererProps) {
+export function ToolCallCard({ call, result, subagentSteps, subagentModel }: ToolRendererProps) {
   const t = useT();
   const [expanded, setExpanded] = useState(false);
   const status = !result ? "pending" : !result.is_error ? "success" : "error";
 
   const renderContent = () => {
-    const props = { call, result, subagentSteps };
+    const props = { call, result, subagentSteps, subagentModel };
     switch (call.name) {
       case "Shell":
         return <ShellTool {...props} />;
@@ -451,6 +476,7 @@ export function ToolCallCard({ call, result, subagentSteps }: ToolRendererProps)
         <ToolIcon name={call.name} />
         <span className="text-xs font-medium">{call.name}</span>
         <span className="text-xs text-muted-foreground truncate flex-1 text-left">{getToolLabel(call, t)}</span>
+        {(call.name === "Task" || call.name === "Agent") && <SubagentModelBadge subagentModel={subagentModel} />}
         {subagentSteps && subagentSteps.length > 0 && (
           <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-500">
             {subagentSteps.length === 1

@@ -756,6 +756,7 @@ describe("session runtime (adapts one SDK session for subscribed Webviews)", () 
           swarm_mode: false,
           permission: "auto",
           goal: null,
+          turn_active: false,
         },
         _sessionId: "session-1",
       },

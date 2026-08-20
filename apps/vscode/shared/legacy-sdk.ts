@@ -101,6 +101,10 @@ export interface StatusUpdate {
   model?: string | null;
   thinking_effort?: string | null;
   permission?: 'manual' | 'yolo' | 'auto' | null;
+  /** Engine-side busy truth, sent by announceStatus when a view attaches or
+   * re-enters a session: lets a recreated view lock the composer while a
+   * turn is still running. Absent from periodic status updates. */
+  turn_active?: boolean | null;
   retrying?: {
     next_attempt: number;
     max_attempts: number;
@@ -178,6 +182,14 @@ export interface SubagentEvent {
   event: LegacyWireEvent;
 }
 
+export interface SubagentSpawned {
+  /** The Agent/AgentSwarm tool call card this child hangs off (scoped id). */
+  tool_call_id: string;
+  /** Display-normalized model alias the child is bound to. */
+  model?: string;
+  subagent_name?: string;
+}
+
 export type LegacyWireEvent =
   | { type: 'TurnBegin'; payload: TurnBegin & { forkable?: boolean } }
   | { type: 'TurnEnd'; payload: Record<string, never> }
@@ -192,6 +204,7 @@ export type LegacyWireEvent =
   | { type: 'ToolResult'; payload: ToolResult }
   | { type: 'SteerInput'; payload: { user_input: string | ContentPart[] } }
   | { type: 'SubagentEvent'; payload: SubagentEvent }
+  | { type: 'SubagentSpawned'; payload: SubagentSpawned }
   | { type: string; payload: unknown };
 
 export type StreamEvent =

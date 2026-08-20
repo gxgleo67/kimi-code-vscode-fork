@@ -51,6 +51,8 @@ export type UIStepItem =
       call: UIToolCall;
       result?: ToolResult["return_value"];
       subagent_steps?: UIStep[];
+      /** Bound model alias of the spawned subagent (SubagentSpawned event). */
+      subagentModel?: string;
     };
 
 export interface ChatMessage {
@@ -469,6 +471,24 @@ export const useChatStore = create<ChatState>((set, get) => ({
     // are surfaced as a transient toast only.
     if (event.type === "error" && "terminal" in event && event.terminal === false) {
       clearHandshakeTimer();
+      // A direct send that raced a still-busy engine (e.g. this view was
+      // re-created mid-turn and had not learned the busy state yet) comes
+      // back as a non-terminal rejection. The content still sits in
+      // pendingInput with no TurnBegin — re-queue it so the drain after the
+      // active turn delivers it instead of losing it.
+      const pending = get().pendingInput;
+      if (pending !== null && !get().handshakeReceived) {
+        set(
+          produce((draft: ChatState) => {
+            draft.pendingInput = null;
+            // Front of the queue: the rejected send predates anything queued
+            // after it.
+            draft.queue.unshift({ id: crypto.randomUUID(), content: pending.content, model: pending.model });
+          }),
+        );
+        toast.info(t("toast.queuedAfterBusy"));
+        return;
+      }
       toast.warning(event.message);
       return;
     }

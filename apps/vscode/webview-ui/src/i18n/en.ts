@@ -275,10 +275,10 @@ export const en = {
   // ── StatusPills (background tasks / todos) ──────────────────────────────
   "pills.bash": "Background Bash ({count})",
   "pills.agents": "Sub Agents ({count})",
-  "pills.todos": "Todos ({done}/{total})",
+  "pills.todos": "Progress {done}/{total}",
   "pills.bashTitle": "Background Bash · {count} running",
   "pills.agentsTitle": "Sub Agents · {count} running",
-  "pills.todosTitle": "Todos · {done}/{total}",
+  "pills.todosTitle": "Progress {done}/{total}",
   "pills.statusRunning": "Running · {seconds}s",
   "pills.statusDone": "Done · {seconds}s",
   "pills.statusFailed": "Failed · {seconds}s",
@@ -415,6 +415,7 @@ export const en = {
   // ── Toasts (stores, media upload) ───────────────────────────────────────
   "toast.noRunningTask": "No running task to stop.",
   "toast.autoCompactStarted": "Context exceeded 256K after the last task — running /compact automatically.",
+  "toast.queuedAfterBusy": "A task is still running — your message has been queued.",
   "toast.saveModelSettingsFailed": "Failed to save model settings: {error}",
   "toast.processMediaFailed": "Failed to process media file",
   "toast.pickMediaFailed": "Failed to pick media",

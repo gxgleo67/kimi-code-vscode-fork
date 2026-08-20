@@ -466,7 +466,7 @@ describe("Kimi runtime (owns shared SDK sessions for Webviews)", () => {
       event: Events.StreamEvent,
       data: {
         type: "StatusUpdate",
-        payload: { model: "kimi-test", thinking_effort: "max", plan_mode: true, swarm_mode: false, permission: "auto", goal: null },
+        payload: { model: "kimi-test", thinking_effort: "max", plan_mode: true, swarm_mode: false, permission: "auto", goal: null, turn_active: false },
         _sessionId: "saved-1",
       },
       webviewId: "view-1",

@@ -216,6 +216,10 @@ export function SessionList({ onClose }: SessionListProps) {
   };
 
   const doLoadSession = async (session: SessionInfo) => {
+    // Close the popover as soon as a session is picked instead of after the
+    // load: resuming hydrates the whole wire log, and leaving the list open
+    // over the loading veil for that duration reads as "stuck".
+    onClose();
     // Show the loading veil right away: resuming a session means the engine
     // hydrates every agent's wire log, which can take a moment — without it
     // the UI looks frozen on the previous conversation.
@@ -232,7 +236,6 @@ export function SessionList({ onClose }: SessionListProps) {
       }
       const events = await bridge.loadSessionHistory(session.id);
       await loadSession(session.id, events);
-      onClose();
     } catch (error) {
       console.error("[SessionList] Failed to load session:", error);
       toast.error(t("session.unableToOpen", { error: error instanceof Error ? error.message : String(error) }));

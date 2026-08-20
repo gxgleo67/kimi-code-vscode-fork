@@ -18,6 +18,7 @@ const boundary = vi.hoisted(() => ({
   clearTrackedFiles: vi.fn(),
   toastError: vi.fn(),
   toastWarning: vi.fn(),
+  toastInfo: vi.fn(),
   toastSuccess: vi.fn(),
 }));
 
@@ -33,7 +34,7 @@ vi.mock("@/services", () => ({
   },
 }));
 vi.mock("@/components/ui/sonner", () => ({
-  toast: { error: boundary.toastError, warning: boundary.toastWarning, success: boundary.toastSuccess },
+  toast: { error: boundary.toastError, warning: boundary.toastWarning, info: boundary.toastInfo, success: boundary.toastSuccess },
 }));
 
 import {
@@ -74,6 +75,7 @@ beforeEach(() => {
   boundary.clearTrackedFiles.mockResolvedValue({ ok: true });
   boundary.toastError.mockReset();
   boundary.toastWarning.mockReset();
+  boundary.toastInfo.mockReset();
   boundary.toastSuccess.mockReset();
   useSettingsStore.getState().initModels(MODELS, "plain", false);
   useSettingsStore.setState({ permissionMode: "manual", extensionConfig: DEFAULT_EXTENSION_CONFIG });
@@ -612,10 +614,48 @@ describe("Webview default thinking effort setting", () => {
 });
 
 describe("Webview mid-turn warnings", () => {
-  it("shows a non-terminal error as a toast without unlocking the composer", async () => {
+  it("re-queues an in-flight send rejected by a still-busy engine", async () => {
     useChatStore.getState().sendMessage("first message");
     useChatStore.getState().sendMessage("queued follow-up");
     expect(useChatStore.getState().isStreaming).toBe(true);
+    expect(useChatStore.getState().queue).toHaveLength(1);
+
+    // The direct send raced a busy engine (e.g. a view re-created mid-turn):
+    // rejected non-terminally before any TurnBegin acknowledged it.
+    useChatStore.getState().processEvent({
+      type: "error",
+      code: "internal",
+      message: "Internal error occurred.",
+      detail: "A response is already being generated for this session.",
+      phase: "runtime",
+      terminal: false,
+    });
+
+    // The rejected content moves to the FRONT of the queue (it predates the
+    // follow-up), the composer stays locked, and no warning toast shows.
+    expect(boundary.toastInfo).toHaveBeenCalledWith("A task is still running — your message has been queued.");
+    expect(boundary.toastWarning).not.toHaveBeenCalled();
+    const state = useChatStore.getState();
+    expect(state.isStreaming).toBe(true);
+    expect(state.pendingInput).toBeNull();
+    expect(state.queue).toHaveLength(2);
+    expect(state.queue[0]?.content).toBe("first message");
+    expect(state.queue[1]?.content).toBe("queued follow-up");
+    expect(state.messages.at(-1)?.inlineError).toBeUndefined();
+
+    // The genuine terminal still completes the turn and drains the queue.
+    useChatStore.getState().processEvent({ type: "stream_complete", result: { status: "finished" } });
+    expect(useChatStore.getState().isStreaming).toBe(false);
+    await vi.waitFor(() => {
+      expect(boundary.streamChat).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it("shows a non-terminal error as a toast when no send is in flight", () => {
+    useChatStore.getState().sendMessage("queued follow-up");
+    // Engine accepted it: TurnBegin clears pendingInput and locks the composer.
+    useChatStore.getState().processEvent({ type: "TurnBegin", payload: { user_input: "queued follow-up" } });
+    useChatStore.getState().sendMessage("next queued");
     expect(useChatStore.getState().queue).toHaveLength(1);
 
     useChatStore.getState().processEvent({
@@ -627,19 +667,13 @@ describe("Webview mid-turn warnings", () => {
       terminal: false,
     });
 
-    // The turn is still running: nothing unlocks, nothing flushes, nothing is retried.
+    // A mid-turn warning with nothing in flight disturbs nothing.
     expect(boundary.toastWarning).toHaveBeenCalledWith("Internal error occurred.");
+    expect(boundary.toastInfo).not.toHaveBeenCalled();
     const state = useChatStore.getState();
     expect(state.isStreaming).toBe(true);
     expect(state.queue).toHaveLength(1);
-    expect(state.pendingInput).not.toBeNull();
+    expect(state.queue[0]?.content).toBe("next queued");
     expect(state.messages.at(-1)?.inlineError).toBeUndefined();
-
-    // The genuine terminal still completes the turn and flushes the queue.
-    useChatStore.getState().processEvent({ type: "stream_complete", result: { status: "finished" } });
-    expect(useChatStore.getState().isStreaming).toBe(false);
-    await vi.waitFor(() => {
-      expect(boundary.streamChat).toHaveBeenCalledTimes(2);
-    });
   });
 });

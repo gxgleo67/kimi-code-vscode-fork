@@ -91,6 +91,13 @@ export interface PendingInput {
   model: string;
 }
 
+/** A resent message whose old [user, assistant] pair stays visible until the
+ * engine accepts the retry (TurnBegin) — popping it up-front would lose the
+ * exchange from view when the retry fails before the turn starts. */
+export interface PendingRetry {
+  content: string | ContentPart[];
+}
+
 export interface QueuedItem {
   id: string;
   content: string | ContentPart[];
@@ -122,6 +129,8 @@ export interface ChatState {
   historyLoading: boolean;
   /** How the in-flight compaction was triggered; consumed by CompactionBegin. */
   pendingCompactTrigger: "manual" | "auto" | null;
+  /** A retry in flight: the old exchange stays visible until TurnBegin replaces it. */
+  pendingRetry: PendingRetry | null;
 
   sendMessage: (text: string) => void;
   setHistoryLoading: (loading: boolean) => void;
@@ -352,6 +361,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   goalArmed: false,
   historyLoading: false,
   pendingCompactTrigger: null,
+  pendingRetry: null,
 
   sendMessage: (text) => {
     const { draftMedia, isStreaming, stopping, isCompacting, goalArmed, goal } = get();
@@ -417,16 +427,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const content = lastUser.content;
     const { currentModel } = useSettingsStore.getState();
 
-    // Remove failed assistant message and user message
+    // Keep the failed exchange on screen while the retry is in flight: the
+    // TurnBegin handler swaps the old pair out only once the engine has
+    // accepted the resend, so a retry that fails before the turn starts
+    // (e.g. quota still exhausted) can no longer make the round vanish.
     set(
       produce((draft: ChatState) => {
-        clearAllInlineErrors(draft);
         draft.isStreaming = true;
         draft.stopping = false;
         draft.handshakeReceived = false;
         draft.pendingInput = { content, model: currentModel };
-        draft.messages.pop();
-        draft.messages.pop();
+        draft.pendingRetry = { content };
       }),
     );
     useApprovalStore.getState().clearRequests();
@@ -530,6 +541,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       goal: null,
       goalArmed: false,
       pendingCompactTrigger: null,
+      pendingRetry: null,
     });
     useApprovalStore.getState().clearRequests();
 
@@ -598,6 +610,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       goal: null,
       goalArmed: false,
       pendingCompactTrigger: null,
+      pendingRetry: null,
     });
     useApprovalStore.getState().clearRequests();
   },

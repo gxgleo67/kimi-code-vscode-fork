@@ -377,10 +377,32 @@ describe("custom provider bridge validation", () => {
 
   it("rejects malformed add requests", () => {
     expect(validateAdd({ ...ADD_PARAMS, alias: "" }).ok).toBe(false);
-    expect(validateAdd({ ...ADD_PARAMS, apiKey: "" }).ok).toBe(false);
+    // An empty key passes wire validation (editing keeps the stored secret);
+    // the handler rejects it only when the provider does not exist yet.
+    expect(validateAdd({ ...ADD_PARAMS, apiKey: "" }).ok).toBe(true);
+    const { apiKey: _apiKey, ...withoutApiKey } = ADD_PARAMS;
+    void _apiKey;
+    expect(validateAdd(withoutApiKey).ok).toBe(false);
     expect(validateAdd({ ...ADD_PARAMS, maxContextSize: 0 }).ok).toBe(false);
     expect(validateAdd({ ...ADD_PARAMS, maxContextSize: 1.5 }).ok).toBe(false);
     expect(validateAdd({ ...ADD_PARAMS, displayName: 3 }).ok).toBe(false);
+  });
+
+  it("validates get requests", () => {
+    expect(
+      validateRpcMessage({
+        id: "1",
+        method: Methods.GetCustomProvider,
+        params: { alias: "deepseek" },
+      }).ok,
+    ).toBe(true);
+    expect(
+      validateRpcMessage({
+        id: "1",
+        method: Methods.GetCustomProvider,
+        params: { alias: "" },
+      }).ok,
+    ).toBe(false);
   });
 
   it("validates remove requests", () => {

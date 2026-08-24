@@ -11,6 +11,7 @@ import { Toaster, toast } from "./components/ui/sonner";
 import { useChatStore, useSettingsStore } from "./stores";
 import { bridge, Events } from "./services";
 import { useAppInit, resolveAppView } from "./hooks/useAppInit";
+import { readCurrentSessionId, writeCurrentSessionId } from "./lib/current-session";
 import { isPreflightError } from "shared/errors";
 import type { UIStreamEvent, StreamError, ExtensionConfig } from "shared/types";
 import "./styles/index.css";
@@ -67,6 +68,46 @@ function MainContent({ onAuthAction }: { onAuthAction: () => void }) {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [enableNewConversationShortcut, startNewConversation]);
+
+  // Persist the live session id so the re-attach below can find it after a
+  // webview recreation.
+  useEffect(() => {
+    return useChatStore.subscribe((state, previous) => {
+      if (state.sessionId !== previous.sessionId) {
+        writeCurrentSessionId(state.sessionId);
+      }
+    });
+  }, []);
+
+  // Re-attach to the session that was live when this webview was last alive.
+  // VS Code hands a recreated webview a fresh random webviewId and never
+  // pushes the current transcript — without this, the running conversation
+  // vanished until the next status event trickled in (an empty chat with a
+  // stray "processing" label and an enabled send button). The history-loading
+  // cover hides the interim state; attachResumedSession re-announces the
+  // engine status, so a mid-turn session restores straight into streaming.
+  useEffect(() => {
+    const saved = readCurrentSessionId();
+    if (saved === null || useChatStore.getState().sessionId !== null) return;
+    let cancelled = false;
+    useChatStore.getState().setHistoryLoading(true);
+    bridge
+      .loadSessionHistory(saved)
+      .then((events) => {
+        if (cancelled) return;
+        return useChatStore.getState().loadSession(saved, events);
+      })
+      .catch(() => {
+        // Unresumable (deleted, or another workDir's session): drop the key.
+        if (!cancelled) writeCurrentSessionId(null);
+      })
+      .finally(() => {
+        if (!cancelled) useChatStore.getState().setHistoryLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <>

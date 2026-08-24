@@ -4,6 +4,7 @@ import type {
   ApprovalResponse,
   BackgroundTaskItem,
   ContentPart,
+  CustomProviderDetails,
   GoalStateInfo,
   MCPServerConfig,
   RemoveCustomProviderParams,
@@ -161,6 +162,10 @@ class Bridge {
     return this.call<{ ok: boolean }>(Methods.SetAutoCompactContext, { enabled });
   }
 
+  setCompactComposer(enabled: boolean) {
+    return this.call<{ ok: boolean }>(Methods.SetCompactComposer, { enabled });
+  }
+
   setPermissionMode(mode: PermissionMode) {
     return this.call<{ ok: boolean }>(Methods.SetPermissionMode, { mode });
   }
@@ -183,6 +188,10 @@ class Bridge {
 
   removeCustomProvider(params: RemoveCustomProviderParams) {
     return this.call<KimiConfig>(Methods.RemoveCustomProvider, params);
+  }
+
+  getCustomProvider(alias: string) {
+    return this.call<CustomProviderDetails>(Methods.GetCustomProvider, { alias });
   }
 
   getMCPServers() {

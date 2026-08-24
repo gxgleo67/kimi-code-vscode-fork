@@ -23,12 +23,14 @@ export const Methods = {
   GetExtensionConfig: "getExtensionConfig",
   SetLanguage: "setLanguage",
   SetAutoCompactContext: "setAutoCompactContext",
+  SetCompactComposer: "setCompactComposer",
   SetPermissionMode: "setPermissionMode",
   OpenSettings: "openSettings",
   OpenFolder: "openFolder",
   GetModels: "getModels",
   AddCustomProvider: "addCustomProvider",
   RemoveCustomProvider: "removeCustomProvider",
+  GetCustomProvider: "getCustomProvider",
 
   GetMCPServers: "getMCPServers",
   AddMCPServer: "addMCPServer",
@@ -175,6 +177,7 @@ function validateParams(method: RpcMethod, params: unknown): boolean {
     case Methods.SetLanguage:
       return isPlainObject(params) && (params["language"] === "en" || params["language"] === "zh");
     case Methods.SetAutoCompactContext:
+    case Methods.SetCompactComposer:
       return hasBoolean(params, "enabled");
     case Methods.SetPermissionMode:
       return isPlainObject(params)
@@ -197,11 +200,14 @@ function validateParams(method: RpcMethod, params: unknown): boolean {
         && Number.isInteger(params["maxContextSize"])
         && (params["maxContextSize"] as number) > 0
         && isOptionalType(params["displayName"], "string")
-        && isNonEmptyString(params["apiKey"]);
+        // May be empty when editing an existing provider (key stays as stored).
+        && typeof params["apiKey"] === "string";
     case Methods.RemoveCustomProvider:
       return isPlainObject(params)
         && isNonEmptyString(params["alias"])
         && isNonEmptyString(params["modelAlias"]);
+    case Methods.GetCustomProvider:
+      return isPlainObject(params) && isNonEmptyString(params["alias"]);
     case Methods.UpdateMCPServer:
       return isMcpUpdate(params);
     case Methods.RemoveMCPServer:

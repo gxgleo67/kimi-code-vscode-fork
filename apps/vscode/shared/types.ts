@@ -46,6 +46,13 @@ export interface ExtensionConfig {
    * lose context. Default off — compacting costs tokens, so the user decides.
    */
   autoCompactContext: boolean;
+  /**
+   * Compact composer: show the permission/mode buttons under the composer as
+   * icons regardless of width, saving space in narrow sidebars. The model
+   * name and thinking effort are never compacted or truncated — they always
+   * stay fully visible. Default off.
+   */
+  compactComposer: boolean;
   version: string;
 }
 

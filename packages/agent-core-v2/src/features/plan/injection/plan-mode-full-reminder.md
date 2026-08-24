@@ -17,3 +17,12 @@ AskUserQuestion is for clarifying missing requirements or user preferences that 
 Never ask about plan approval via text or AskUserQuestion.
 Your turn must end with either AskUserQuestion (to clarify requirements or preferences) or ExitPlanMode (to request plan approval). Do NOT end your turn any other way.
 Do NOT use AskUserQuestion to ask about plan approval or reference "the plan" — the user cannot see the plan until you call ExitPlanMode.
+
+## Plan document format
+Write the plan file for a human reviewer, not for yourself — it is read in an editor before approval.
+- Open with a `#` title and 1-3 sentences summarizing the goal and the chosen approach.
+- Organize the body into short `##` sections (e.g. Background, Changes, Implementation steps, Verification); one topic per section, never a wall of text.
+- Prefer bullet points over paragraphs. Keep bullets short; nest sub-bullets for detail instead of writing long sentences.
+- Wrap file paths, symbols, commands and inline code in backticks; use fenced code blocks with a language tag for multi-line snippets.
+- Number the implementation steps in execution order; each step names the concrete file/function it touches and how to verify it.
+- Keep it scannable: a reviewer should grasp the whole plan in under a minute. Cut anything that does not change the decision.

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { IconSettings, IconServer, IconLogout, IconLogin, IconLoader2, IconRefresh, IconFileText, IconFolder, IconCheck, IconLanguage, IconRecycle } from "@tabler/icons-react";
+import { IconSettings, IconServer, IconLogout, IconLogin, IconLoader2, IconRefresh, IconFileText, IconFolder, IconCheck, IconLanguage, IconRecycle, IconViewportNarrow } from "@tabler/icons-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -86,6 +86,11 @@ export function ActionMenu({ className, onAuthAction }: ActionMenuProps) {
     void bridge.setAutoCompactContext(enabled).catch(() => undefined);
   };
 
+  const handleToggleCompactComposer = (enabled: boolean) => {
+    useSettingsStore.getState().setExtensionConfig({ ...extensionConfig, compactComposer: enabled });
+    void bridge.setCompactComposer(enabled).catch(() => undefined);
+  };
+
   const handleAuthAction = async () => {
     setLoading(true);
     try {
@@ -168,6 +173,19 @@ export function ActionMenu({ className, onAuthAction }: ActionMenuProps) {
               checked={extensionConfig.autoCompactContext}
               onCheckedChange={handleToggleAutoCompact}
               aria-label={t("menu.autoCompact")}
+            />
+          </div>
+          <div className="flex items-center gap-2 px-2.5 py-1.5 text-xs">
+            <IconViewportNarrow className="size-4 shrink-0 text-muted-foreground" />
+            <span className="flex-1">
+              {t("menu.compactComposer")}
+              <span className="block text-[10px] text-muted-foreground leading-snug">{t("menu.compactComposerDesc")}</span>
+            </span>
+            <Switch
+              size="sm"
+              checked={extensionConfig.compactComposer}
+              onCheckedChange={handleToggleCompactComposer}
+              aria-label={t("menu.compactComposer")}
             />
           </div>
         </div>

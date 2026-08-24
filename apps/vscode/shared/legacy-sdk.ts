@@ -253,6 +253,16 @@ export interface RemoveCustomProviderParams {
   modelAlias: string;
 }
 
+/** Editable details of a VS Code–managed custom provider (never the API key). */
+export interface CustomProviderDetails {
+  alias: string;
+  providerType: string;
+  baseUrl: string;
+  modelId: string;
+  maxContextSize: number;
+  displayName?: string;
+}
+
 /** The subagent (secondary) model recipe projected to the Webview. */
 export interface SecondaryModelSelection {
   model: string;

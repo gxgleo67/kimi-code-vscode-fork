@@ -326,12 +326,13 @@ export function InputArea({ onAuthAction }: InputAreaProps) {
   const canSend = (text.trim() || draftMedia.length > 0) && !isProcessing;
 
   // Measure the button row and degrade gracefully as the sidebar narrows:
-  // full labels → icon-only → "⋯" overflow menu.
+  // full labels → icon-only → "⋯" overflow menu. The compact-composer setting
+  // forces icon-only at any width; the model name never compacts either way.
   const { ref: toolbarRef, width: toolbarWidth } = useElementWidth<HTMLDivElement>();
   const collapse =
     toolbarWidth < COLLAPSE_OVERFLOW_BELOW
       ? "overflow"
-      : toolbarWidth < COLLAPSE_ICONS_BELOW
+      : extensionConfig.compactComposer || toolbarWidth < COLLAPSE_ICONS_BELOW
         ? "icons"
         : "full";
   const compact = collapse !== "full";
@@ -467,7 +468,6 @@ export function InputArea({ onAuthAction }: InputAreaProps) {
                 availableModels={availableModels}
                 hasConversationHistory={hasConversationHistory}
                 disabled={isStreaming || !hasModels}
-                compact={compact}
               />
               <ActionMenu onAuthAction={onAuthAction} />
 

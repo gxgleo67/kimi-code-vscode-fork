@@ -3,7 +3,7 @@
   "publisher": "gxgleo",
   "displayName": "Kimi Code (Fork)",
   "description": "Official Kimi Code plugin for VS Code",
-  "version": "0.8.1",
+  "version": "0.8.4",
   "private": true,
   "license": "Apache-2.0",
   "type": "module",
@@ -119,6 +119,11 @@
           "type": "boolean",
           "default": false,
           "description": "Automatically run /compact when a turn ends with the context above 256K tokens, preventing context overflow on 256K-context models (e.g. K3-256k). Default off. / 任务结束后上下文超过 256K 时自动执行 /compact，防止 256K 上下文模型（如 K3-256k）超限丢失上下文，默认关闭"
+        },
+        "kimifork.compactComposer": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show the composer's permission/mode buttons in compact icon form to save space in narrow sidebars; the model name and thinking effort always stay fully visible. Default off. / 输入框的权限/模式按钮以图标形式精简显示，节省窄侧栏空间；模型名称与思考强度始终完整显示，默认关闭"
         },
         "kimifork.useAgentCoreV1": {
           "type": "boolean",

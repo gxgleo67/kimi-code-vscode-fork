@@ -53,7 +53,6 @@ beforeEach(() => {
     tokenUsage: { input_other: 0, output: 0, input_cache_read: 0, input_cache_creation: 0 },
     activeTokenUsage: { input_other: 0, output: 0, input_cache_read: 0, input_cache_creation: 0 },
     pendingInput: null,
-    pendingRetry: null,
     queue: [],
     pendingQuestion: null,
     planMode: false,
@@ -125,66 +124,6 @@ describe("Webview sent-message rollback", () => {
     } finally {
       vi.useRealTimers();
     }
-  });
-
-  it("resends the failed message on retry after pendingInput was cleared", () => {
-    useChatStore.getState().sendMessage("do the thing");
-    beginTurn();
-    useChatStore.getState().processEvent({
-      type: "error",
-      code: "provider.api_error",
-      message: "Service temporarily unavailable.",
-      phase: "runtime",
-    });
-    expect(useChatStore.getState().pendingInput).toBeNull();
-
-    useChatStore.getState().retryLastMessage();
-
-    expect(boundary.streamChat).toHaveBeenCalledTimes(2);
-    expect(boundary.streamChat).toHaveBeenLastCalledWith("do the thing", "plain", "off", false, undefined, "manual", undefined);
-    const state = useChatStore.getState();
-    expect(state.isStreaming).toBe(true);
-    // The failed exchange stays visible until the engine accepts the resend.
-    expect(state.messages).toHaveLength(2);
-    expect(state.pendingRetry).toEqual({ content: "do the thing" });
-
-    // TurnBegin for the retry swaps the stale pair (with its inline error) out.
-    useChatStore.getState().processEvent({ type: "TurnBegin", payload: { user_input: "do the thing" } });
-    const swapped = useChatStore.getState();
-    expect(swapped.pendingRetry).toBeNull();
-    expect(swapped.messages).toHaveLength(2);
-    expect(swapped.messages[0]).toMatchObject({ role: "user", content: "do the thing" });
-    expect(swapped.messages[1]).toMatchObject({ role: "assistant", content: "" });
-    expect(swapped.messages[1]?.inlineError).toBeUndefined();
-  });
-
-  it("keeps the failed exchange visible when the retry fails before the turn starts", () => {
-    useChatStore.getState().sendMessage("do the thing");
-    beginTurn();
-    useChatStore.getState().processEvent({
-      type: "error",
-      code: "provider.api_error",
-      message: "Service temporarily unavailable.",
-      phase: "runtime",
-    });
-
-    useChatStore.getState().retryLastMessage();
-    // The resend is rejected before the engine starts a turn (e.g. quota is
-    // still exhausted): the retried round must not disappear from the chat.
-    useChatStore.getState().processEvent({
-      type: "error",
-      code: "provider.api_error",
-      message: "Service temporarily unavailable.",
-      phase: "preflight",
-    });
-
-    const state = useChatStore.getState();
-    expect(state.isStreaming).toBe(false);
-    expect(state.pendingRetry).toBeNull();
-    expect(state.pendingInput).toBeNull();
-    expect(state.messages).toHaveLength(2);
-    expect(state.messages[0]).toMatchObject({ role: "user", content: "do the thing" });
-    expect(state.messages[1]?.inlineError).toMatchObject({ code: "provider.api_error" });
   });
 });
 

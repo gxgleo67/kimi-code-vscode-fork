@@ -49,6 +49,8 @@ export const zh: Record<TranslationKey, string> = {
   "menu.language": "Language / 语言",
   "menu.autoCompact": "自动压缩上下文",
   "menu.autoCompactDesc": "任务结束后，若上下文超过 256K 自动执行 /compact，防止 K3-256k 等 256K 模型上下文超限丢失（默认关闭）",
+  "menu.compactComposer": "精简模式",
+  "menu.compactComposerDesc": "输入框的权限/模式按钮以图标形式精简显示；模型名称与思考强度始终完整显示（默认关闭）",
 
   // ── 欢迎页 ──────────────────────────────────────────────────────────────
   "welcome.commands": "⚡ 命令",
@@ -111,6 +113,7 @@ export const zh: Record<TranslationKey, string> = {
   "error.couldNotStart": "Kimi Code 无法启动",
   "error.couldNotStartDesc": "请查看下方错误。完整的诊断信息位于 Kimi Code 输出通道。",
   "error.details": "错误详情",
+  "error.retypeHint": "请在下方输入框中重新输入指令后发送。",
 
   // ── 聊天状态 / Token 信息 ───────────────────────────────────────────────
   "status.tokenUsage": "Token 用量",
@@ -400,6 +403,13 @@ export const zh: Record<TranslationKey, string> = {
   "subagent.error.addFailed": "添加自定义供应商失败:{error}",
   "subagent.error.removeFailed": "删除自定义供应商失败:{error}",
   "subagent.added": "已添加自定义供应商 \"{alias}\"。",
+  "subagent.updated": "已更新自定义供应商 \"{alias}\"。",
+  "subagent.edit": "编辑",
+  "subagent.form.submitEdit": "保存修改",
+  "subagent.form.saving": "正在保存...",
+  "subagent.form.apiKeyKeepHint": "留空则保持已保存的密钥不变。密钥保存在 VS Code Secret Storage(系统级加密)中。",
+  "subagent.error.saveFailed": "保存自定义供应商失败:{error}",
+  "subagent.error.loadFailed": "读取供应商配置失败:{error}",
   "subagent.removed": "已删除自定义供应商 \"{alias}\"。",
 
   // ── Toast(store、媒体上传) ──────────────────────────────────────────────

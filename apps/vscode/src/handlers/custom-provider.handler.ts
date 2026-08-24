@@ -1,5 +1,8 @@
+import { effectiveModelAlias } from "@moonshot-ai/kimi-code-sdk";
+
 import type {
   AddCustomProviderParams,
+  CustomProviderDetails,
   KimiConfig as WebviewKimiConfig,
   RemoveCustomProviderParams,
 } from "../../shared/legacy-sdk";
@@ -32,6 +35,7 @@ function requireNoNewlines(value: string, field: string): string {
  * (mirrored into process.env for the engine), config.toml receives only the
  * `api_key_env_var` reference, then the harness reloads. defaultModel is never
  * touched. Returns the refreshed model list so the Webview can update in place.
+ * Also serves edits: an empty `apiKey` keeps the stored secret as-is.
  */
 const addCustomProvider: Handler<AddCustomProviderParams, WebviewKimiConfig> = async (
   params,
@@ -50,7 +54,9 @@ const addCustomProvider: Handler<AddCustomProviderParams, WebviewKimiConfig> = a
   const modelId = requireNoNewlines(params.modelId, "model ID");
   const displayName =
     params.displayName === undefined ? undefined : requireNoNewlines(params.displayName, "display name");
-  const apiKey = requireNoNewlines(params.apiKey, "API key");
+  // Empty key means "edit without rotating the secret": only valid for an
+  // existing custom provider that still has a stored key.
+  const apiKey = params.apiKey.trim().length === 0 ? undefined : requireNoNewlines(params.apiKey, "API key");
   // One model per custom provider: the model alias is the provider alias.
   const modelAlias = alias;
 
@@ -63,10 +69,18 @@ const addCustomProvider: Handler<AddCustomProviderParams, WebviewKimiConfig> = a
   if (existingModel !== undefined && existingModel.provider !== alias) {
     throw new Error(`A model named "${modelAlias}" already exists in config.toml.`);
   }
+  if (
+    apiKey === undefined &&
+    (existingProvider === undefined || (await ctx.secrets.get(secretKeyForAlias(alias))) === undefined)
+  ) {
+    throw new Error("An API key is required for a new custom provider.");
+  }
 
-  await ctx.secrets.store(secretKeyForAlias(alias), apiKey);
-  await registerProviderAlias(ctx.secrets, alias);
-  process.env[envVarForAlias(alias)] = apiKey;
+  if (apiKey !== undefined) {
+    await ctx.secrets.store(secretKeyForAlias(alias), apiKey);
+    await registerProviderAlias(ctx.secrets, alias);
+    process.env[envVarForAlias(alias)] = apiKey;
+  }
   try {
     await upsertCustomProvider(ctx.harness.configPath, {
       alias,
@@ -123,7 +137,36 @@ const removeCustomProviderHandler: Handler<RemoveCustomProviderParams, WebviewKi
   return toWebviewConfig(reloaded);
 };
 
+/**
+ * Read back a VS Code–managed custom provider's editable details (never the
+ * API key) so the dialog can prefill the edit form.
+ */
+const getCustomProviderHandler: Handler<{ alias: string }, CustomProviderDetails> = async (
+  params,
+  ctx,
+) => {
+  const config = await ctx.harness.getConfig({ reload: true });
+  const provider = config.providers[params.alias];
+  if (provider === undefined || !isCustomProvider(provider)) {
+    throw new Error(`Provider "${params.alias}" is not a custom provider managed by VS Code.`);
+  }
+  const modelEntry = config.models?.[params.alias];
+  if (modelEntry === undefined) {
+    throw new Error(`Custom provider "${params.alias}" has no model section in config.toml.`);
+  }
+  const model = effectiveModelAlias(modelEntry);
+  return {
+    alias: params.alias,
+    providerType: provider.type,
+    baseUrl: provider.baseUrl ?? "",
+    modelId: model.model ?? "",
+    maxContextSize: model.maxContextSize ?? 131072,
+    ...(model.displayName === undefined ? {} : { displayName: model.displayName }),
+  };
+};
+
 export const customProviderHandlers = {
   [Methods.AddCustomProvider]: addCustomProvider,
   [Methods.RemoveCustomProvider]: removeCustomProviderHandler,
+  [Methods.GetCustomProvider]: getCustomProviderHandler,
 } as Record<string, Handler<any, any>>;

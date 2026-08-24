@@ -52,6 +52,8 @@ export const en = {
   "menu.language": "Language / 语言",
   "menu.autoCompact": "Auto-compact context",
   "menu.autoCompactDesc": "After a task ends, run /compact automatically when the context exceeds 256K — prevents context overflow on 256K models (e.g. K3-256k). Default off.",
+  "menu.compactComposer": "Compact composer",
+  "menu.compactComposerDesc": "Show the composer's permission/mode buttons as icons to save space; the model name and thinking effort always stay fully visible. Default off.",
 
   // ── WelcomeScreen / useWelcomeHint ──────────────────────────────────────
   "welcome.commands": "⚡ Commands",
@@ -118,6 +120,7 @@ export const en = {
   "error.couldNotStartDesc":
     "Check the error below. Full diagnostics are available in the Kimi Code output channel.",
   "error.details": "Error details",
+  "error.retypeHint": "Re-enter the instruction in the composer below and send it again.",
 
   // ── ChatStatus / TokenInfo ──────────────────────────────────────────────
   "status.tokenUsage": "Token Usage",
@@ -415,6 +418,14 @@ export const en = {
   "subagent.error.addFailed": "Failed to add the custom provider: {error}",
   "subagent.error.removeFailed": "Failed to remove the custom provider: {error}",
   "subagent.added": "Custom provider \"{alias}\" added.",
+  "subagent.updated": "Custom provider \"{alias}\" updated.",
+  "subagent.edit": "Edit",
+  "subagent.form.submitEdit": "Save changes",
+  "subagent.form.saving": "Saving...",
+  "subagent.form.apiKeyKeepHint":
+    "Leave empty to keep the stored key. The key lives in VS Code Secret Storage (system-encrypted).",
+  "subagent.error.saveFailed": "Failed to save the custom provider: {error}",
+  "subagent.error.loadFailed": "Failed to load the provider details: {error}",
   "subagent.removed": "Custom provider \"{alias}\" removed.",
 
   // ── Toasts (stores, media upload) ───────────────────────────────────────

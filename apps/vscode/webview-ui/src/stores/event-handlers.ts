@@ -267,15 +267,6 @@ function handlePreflightError(draft: ChatState, _code: string, _message: string)
   draft.stopping = false;
   useApprovalStore.getState().clearRequests();
 
-  // A failed retry must not disturb the transcript: the old exchange stayed
-  // visible (pendingRetry), and nothing new ever reached the list.
-  const wasRetry = draft.pendingRetry !== null;
-  draft.pendingRetry = null;
-  if (wasRetry) {
-    draft.pendingInput = null;
-    return;
-  }
-
   // 删除空的 assistant 消息
   const lastAssistant = getLastAssistant(draft);
   if (lastAssistant && !hasContent(lastAssistant)) {
@@ -299,7 +290,6 @@ function handleRuntimeError(draft: ChatState, code: string, message: string, det
   draft.isStreaming = false;
   draft.isCompacting = false;
   draft.stopping = false;
-  draft.pendingRetry = null;
   useApprovalStore.getState().clearRequests();
 
   const lastAssistant = getLastAssistant(draft);
@@ -329,7 +319,6 @@ const eventHandlers: Record<string, EventHandler> = {
     draft.isCompacting = false;
     draft.stopping = false;
     draft.pendingInput = null;
-    draft.pendingRetry = null;
     useApprovalStore.getState().clearRequests();
     const lastAssistant = getLastAssistant(draft);
     if (lastAssistant?.steps) {
@@ -354,7 +343,6 @@ const eventHandlers: Record<string, EventHandler> = {
         draft.isStreaming = false;
         draft.isCompacting = false;
         draft.stopping = false;
-        draft.pendingRetry = null;
         useApprovalStore.getState().clearRequests();
         const lastAssistant = getLastAssistant(draft);
         if (lastAssistant?.steps) {
@@ -370,25 +358,6 @@ const eventHandlers: Record<string, EventHandler> = {
   TurnBegin: (draft, payload: TurnBegin & { forkable?: boolean }) => {
     draft.tokenUsage = createEmptyTokenUsage();
     draft.activeTokenUsage = createEmptyTokenUsage();
-
-    // A retried message kept its old [user, assistant(with inlineError)] pair
-    // visible while in flight; now that the engine has accepted the resend,
-    // swap the stale pair out before appending the fresh one.
-    if (draft.pendingRetry !== null) {
-      const retry = draft.pendingRetry;
-      draft.pendingRetry = null;
-      const lastAssistant = draft.messages.at(-1);
-      const lastUser = draft.messages.at(-2);
-      if (
-        lastAssistant?.role === "assistant" &&
-        lastAssistant.inlineError !== undefined &&
-        lastUser?.role === "user" &&
-        JSON.stringify(lastUser.content) === JSON.stringify(retry.content)
-      ) {
-        draft.messages.pop();
-        draft.messages.pop();
-      }
-    }
 
     draft.messages.push({
       id: crypto.randomUUID(),

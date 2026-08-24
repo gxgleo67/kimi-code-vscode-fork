@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { IconCheck, IconChevronDown, IconCpu } from "@tabler/icons-react";
+import { IconCheck, IconChevronDown } from "@tabler/icons-react";
 
 import {
   DropdownMenu,
@@ -23,9 +23,6 @@ interface ModelPickerProps {
   /** Mid-conversation switches lose the prompt cache — surface the cost note. */
   hasConversationHistory: boolean;
   disabled?: boolean;
-  /** Icon-only: show a chip icon instead of the model name to keep the button
-   *  a fixed width when the sidebar narrows (the name stays in the tooltip). */
-  compact?: boolean;
 }
 
 function effortLabel(effort: string): string {
@@ -34,8 +31,10 @@ function effortLabel(effort: string): string {
 
 /** Model switcher: the pill shows "name · effort" and opens a quick dropdown
  *  (starred + current-provider models, thinking segments, cache note); the
- *  full searchable picker lives behind "More models...". */
-export function ModelPicker({ availableModels, hasConversationHistory, disabled, compact = false }: ModelPickerProps) {
+ *  full searchable picker lives behind "More models...". The name and effort
+ *  are never truncated or collapsed to an icon — they must stay readable at
+ *  any sidebar width. */
+export function ModelPicker({ availableModels, hasConversationHistory, disabled }: ModelPickerProps) {
   const t = useT();
   const currentModel = useSettingsStore((s) => s.currentModel);
   const models = useSettingsStore((s) => s.models);
@@ -104,21 +103,17 @@ export function ModelPicker({ availableModels, hasConversationHistory, disabled,
                 type="button"
                 disabled={disabled}
                 className={cn(
-                  "flex items-center gap-0.5 h-6 px-1.5 min-w-0 rounded-md transition-all text-xs",
+                  "flex items-center gap-0.5 h-6 px-1.5 shrink-0 rounded-md transition-all text-xs",
                   "bg-muted/50 text-muted-foreground",
                   disabled ? "cursor-default" : "cursor-pointer hover:bg-muted hover:text-foreground",
                 )}
               >
-                {compact ? (
-                  <IconCpu className="size-3.5 shrink-0" />
-                ) : (
-                  <span className="flex min-w-0 items-center">
-                    <span className="truncate">{buttonLabel}</span>
-                    {currentModelConfig !== undefined && showEffortSuffix && (
-                      <span className="shrink-0 text-blue-500">{" · "}{effortLabel(thinkingEffort)}</span>
-                    )}
-                  </span>
-                )}
+                <span className="flex shrink-0 items-center whitespace-nowrap">
+                  <span>{buttonLabel}</span>
+                  {currentModelConfig !== undefined && showEffortSuffix && (
+                    <span className="shrink-0 text-blue-500">{" · "}{effortLabel(thinkingEffort)}</span>
+                  )}
+                </span>
                 {hasModels && <IconChevronDown className="size-3.5 shrink-0" />}
               </button>
             </DropdownMenuTrigger>

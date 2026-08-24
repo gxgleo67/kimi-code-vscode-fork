@@ -1,5 +1,5 @@
 import { Fragment, useMemo, useState } from "react";
-import { IconPlus, IconRobot, IconTrash } from "@tabler/icons-react";
+import { IconPencil, IconPlus, IconRobot, IconTrash } from "@tabler/icons-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,7 +20,7 @@ import { getModelById, groupModelsByProvider, useSettingsStore } from "@/stores"
 import { bridge } from "@/services";
 import { useT } from "@/i18n";
 import { cn } from "@/lib/utils";
-import type { KimiConfig, ModelConfig, SecondaryModelSelection } from "shared/legacy-sdk";
+import type { CustomProviderDetails, KimiConfig, ModelConfig, SecondaryModelSelection } from "shared/legacy-sdk";
 
 const SECONDARY_MODEL_DOCS_URL =
   "https://github.com/MoonshotAI/kimi-code/blob/main/docs/zh/configuration/config-files.md";
@@ -99,6 +99,7 @@ export function SubagentModelDialog({ disabled, open: controlledOpen, onOpenChan
     controlledOnOpenChange?.(next);
   };
   const [formOpen, setFormOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<CustomProviderDetails | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ModelConfig | null>(null);
   const [deleting, setDeleting] = useState(false);
   const modelGroups = useMemo(
@@ -120,6 +121,22 @@ export function SubagentModelDialog({ disabled, open: controlledOpen, onOpenChan
     syncModelsConfig(config);
     setFormOpen(false);
     toast.success(t("subagent.added", { alias }));
+  };
+
+  const handleEdited = (config: KimiConfig, alias: string) => {
+    syncModelsConfig(config);
+    setEditTarget(null);
+    toast.success(t("subagent.updated", { alias }));
+  };
+
+  const handleEditStart = async (model: ModelConfig) => {
+    try {
+      const details = await bridge.getCustomProvider(model.provider);
+      setFormOpen(false);
+      setEditTarget(details);
+    } catch (error) {
+      toast.error(t("subagent.error.loadFailed", { error: errorMessage(error) }));
+    }
   };
 
   const handleDelete = async () => {
@@ -210,6 +227,16 @@ export function SubagentModelDialog({ disabled, open: controlledOpen, onOpenChan
                 <span className="text-[10px] text-muted-foreground shrink-0">{model.provider}</span>
                 <button
                   type="button"
+                  onClick={() => {
+                    void handleEditStart(model);
+                  }}
+                  title={t("subagent.edit")}
+                  className="text-muted-foreground hover:text-foreground p-1 cursor-pointer"
+                >
+                  <IconPencil className="size-3" />
+                </button>
+                <button
+                  type="button"
                   onClick={() => setDeleteTarget(model)}
                   className="text-muted-foreground hover:text-destructive p-1 cursor-pointer"
                 >
@@ -217,7 +244,7 @@ export function SubagentModelDialog({ disabled, open: controlledOpen, onOpenChan
                 </button>
               </div>
             ))}
-            {!formOpen && (
+            {!formOpen && editTarget === null && (
               <button
                 type="button"
                 onClick={() => setFormOpen(true)}
@@ -227,8 +254,16 @@ export function SubagentModelDialog({ disabled, open: controlledOpen, onOpenChan
                 {t("subagent.addCustomProvider")}
               </button>
             )}
-            {formOpen && (
+            {formOpen && editTarget === null && (
               <CustomProviderForm onAdded={handleAdded} onCancel={() => setFormOpen(false)} />
+            )}
+            {editTarget !== null && (
+              <CustomProviderForm
+                key={editTarget.alias}
+                initial={editTarget}
+                onAdded={handleEdited}
+                onCancel={() => setEditTarget(null)}
+              />
             )}
           </div>
 
@@ -274,19 +309,28 @@ export function SubagentModelDialog({ disabled, open: controlledOpen, onOpenChan
 }
 
 function CustomProviderForm({
+  initial,
   onAdded,
   onCancel,
 }: {
+  /** When set, the form edits that provider: the alias is locked and the API
+   *  key may be left empty to keep the stored secret. */
+  initial?: CustomProviderDetails;
   onAdded: (config: KimiConfig, alias: string) => void;
   onCancel: () => void;
 }) {
   const t = useT();
-  const [alias, setAlias] = useState("");
-  const [providerType, setProviderType] = useState<(typeof PROVIDER_TYPES)[number]>("openai");
-  const [baseUrl, setBaseUrl] = useState("");
-  const [modelId, setModelId] = useState("");
-  const [maxContextSize, setMaxContextSize] = useState("131072");
-  const [displayName, setDisplayName] = useState("");
+  const isEdit = initial !== undefined;
+  const [alias, setAlias] = useState(initial?.alias ?? "");
+  const [providerType, setProviderType] = useState<(typeof PROVIDER_TYPES)[number]>(
+    PROVIDER_TYPES.includes(initial?.providerType as (typeof PROVIDER_TYPES)[number])
+      ? (initial?.providerType as (typeof PROVIDER_TYPES)[number])
+      : "openai",
+  );
+  const [baseUrl, setBaseUrl] = useState(initial?.baseUrl ?? "");
+  const [modelId, setModelId] = useState(initial?.modelId ?? "");
+  const [maxContextSize, setMaxContextSize] = useState(String(initial?.maxContextSize ?? 131072));
+  const [displayName, setDisplayName] = useState(initial?.displayName ?? "");
   const [apiKey, setApiKey] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -297,12 +341,13 @@ function CustomProviderForm({
       trimmedAlias.length === 0 ||
       baseUrl.trim().length === 0 ||
       modelId.trim().length === 0 ||
-      apiKey.trim().length === 0
+      // Editing keeps the stored secret when the key field is left empty.
+      (!isEdit && apiKey.trim().length === 0)
     ) {
       setError(t("subagent.error.required"));
       return;
     }
-    if (!ALIAS_PATTERN.test(trimmedAlias)) {
+    if (!isEdit && !ALIAS_PATTERN.test(trimmedAlias)) {
       setError(t("subagent.error.aliasInvalid"));
       return;
     }
@@ -325,7 +370,11 @@ function CustomProviderForm({
       });
       onAdded(config, trimmedAlias);
     } catch (submitError) {
-      setError(t("subagent.error.addFailed", { error: errorMessage(submitError) }));
+      setError(
+        isEdit
+          ? t("subagent.error.saveFailed", { error: errorMessage(submitError) })
+          : t("subagent.error.addFailed", { error: errorMessage(submitError) }),
+      );
       setSubmitting(false);
     }
   };
@@ -339,7 +388,8 @@ function CustomProviderForm({
             value={alias}
             onChange={(event) => setAlias(event.target.value)}
             placeholder={t("subagent.form.aliasPlaceholder")}
-            className="h-7 text-xs font-mono"
+            disabled={isEdit}
+            className={cn("h-7 text-xs font-mono", isEdit && "opacity-60")}
           />
         </div>
         <div>
@@ -408,7 +458,7 @@ function CustomProviderForm({
           className="h-7 text-xs font-mono"
         />
         <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">
-          {t("subagent.form.securityNote")}
+          {isEdit ? t("subagent.form.apiKeyKeepHint") : t("subagent.form.securityNote")}
         </p>
       </div>
 
@@ -426,7 +476,13 @@ function CustomProviderForm({
           }}
           disabled={submitting}
         >
-          {submitting ? t("subagent.form.submitting") : t("subagent.form.submit")}
+          {submitting
+            ? isEdit
+              ? t("subagent.form.saving")
+              : t("subagent.form.submitting")
+            : isEdit
+              ? t("subagent.form.submitEdit")
+              : t("subagent.form.submit")}
         </Button>
       </div>
     </div>

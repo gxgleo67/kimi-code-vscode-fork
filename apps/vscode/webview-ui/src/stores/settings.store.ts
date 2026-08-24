@@ -33,6 +33,7 @@ export const DEFAULT_EXTENSION_CONFIG: ExtensionConfig = {
   language: "en",
   defaultThinkingEffort: "high",
   autoCompactContext: false,
+  compactComposer: false,
   version: "",
 };
 

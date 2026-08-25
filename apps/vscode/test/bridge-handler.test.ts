@@ -471,6 +471,12 @@ describe("Webview RPC boundary (validates requests before host dispatch)", () =>
     );
     expect(next).toEqual({ id: "rpc-2", result: { ok: true } });
   });
+
+  it("reports no live session on a fresh host so the webview starts blank", async () => {
+    const result = await bridge.handle({ id: "rpc-1", method: Methods.GetLiveSession }, "view-1");
+
+    expect(result).toEqual({ id: "rpc-1", result: { sessionId: null } });
+  });
 });
 
 describe("Webview config saves (thinking effort persistence parity with the TUI)", () => {

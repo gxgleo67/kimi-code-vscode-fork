@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const boundary = vi.hoisted(() => ({
   streamChat: vi.fn(),
+  steerChat: vi.fn(),
   abortChat: vi.fn(),
   trackFiles: vi.fn(),
   toastInfo: vi.fn(),
@@ -18,6 +19,7 @@ const boundary = vi.hoisted(() => ({
 vi.mock("@/services", () => ({
   bridge: {
     streamChat: boundary.streamChat,
+    steerChat: boundary.steerChat,
     abortChat: boundary.abortChat,
     trackFiles: boundary.trackFiles,
   },
@@ -34,6 +36,8 @@ const MODELS = [{ id: "plain", name: "Plain", provider: "managed:kimi-code", cap
 beforeEach(() => {
   boundary.streamChat.mockReset();
   boundary.streamChat.mockResolvedValue({ done: false });
+  boundary.steerChat.mockReset();
+  boundary.steerChat.mockResolvedValue({ ok: true });
   boundary.abortChat.mockReset();
   boundary.abortChat.mockResolvedValue({ aborted: true });
   boundary.trackFiles.mockReset();
@@ -280,5 +284,40 @@ describe("Webview streaming text batching", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe("Webview steerNow (Shift+Enter immediate send)", () => {
+  it("steers into a busy turn without touching the queue", () => {
+    useChatStore.getState().sendMessage("first");
+    beginTurn();
+
+    useChatStore.getState().steerNow("jump in");
+
+    expect(boundary.steerChat).toHaveBeenCalledWith("jump in");
+    expect(boundary.streamChat).toHaveBeenCalledTimes(1);
+    expect(useChatStore.getState().queue).toHaveLength(0);
+  });
+
+  it("takes the plain send path when the session is idle", () => {
+    useChatStore.getState().steerNow("hello");
+
+    expect(boundary.steerChat).not.toHaveBeenCalled();
+    expect(boundary.streamChat).toHaveBeenCalledOnce();
+    expect(useChatStore.getState().pendingInput).toEqual({ content: "hello", model: "plain" });
+  });
+
+  it("falls back to the normal path when the turn ended before the roundtrip", async () => {
+    boundary.steerChat.mockResolvedValue({ ok: false });
+    useChatStore.getState().sendMessage("first");
+    beginTurn();
+
+    useChatStore.getState().steerNow("jump in");
+
+    // ok=false → sendMessage → still streaming → queued for the next drain.
+    await vi.waitFor(() => {
+      expect(useChatStore.getState().queue).toHaveLength(1);
+    });
+    expect(useChatStore.getState().queue[0]?.content).toBe("jump in");
   });
 });

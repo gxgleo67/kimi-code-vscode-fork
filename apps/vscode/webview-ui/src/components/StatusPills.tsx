@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRequest } from "ahooks";
 import {
   IconBrain,
@@ -119,6 +119,19 @@ export function StatusPills() {
   const [openPanel, setOpenPanel] = useState<PanelId | null>(null);
   const [fileChanges, setFileChanges] = useState<FileChange[]>([]);
   const [contextOpen, setContextOpen] = useState(false);
+  const [queueFlash, setQueueFlash] = useState(false);
+  const prevQueueLen = useRef(queue.length);
+
+  // Reminder animation: whenever the queue grows (a message was just queued),
+  // ping the queue pill briefly instead of popping a top toast banner.
+  useEffect(() => {
+    const grew = queue.length > prevQueueLen.current;
+    prevQueueLen.current = queue.length;
+    if (!grew) return;
+    setQueueFlash(true);
+    const timer = setTimeout(() => setQueueFlash(false), 1800);
+    return () => clearTimeout(timer);
+  }, [queue.length]);
 
   useEffect(() => {
     return bridge.on<FileChange[]>(Events.FileChangesUpdated, setFileChanges);
@@ -223,7 +236,8 @@ export function StatusPills() {
       <div className="flex items-center justify-between gap-1 py-0.5 min-h-7">
         <div className="flex items-center gap-1 min-w-0">
           {hasQueue && (
-            <button type="button" onClick={() => togglePanel("queue")} className={queuePillClass(openPanel === "queue")}>
+            <button type="button" onClick={() => togglePanel("queue")} className={cn(queuePillClass(openPanel === "queue"), "relative")}>
+              {queueFlash && <span aria-hidden className="absolute inset-0 rounded bg-blue-500/40 animate-ping" />}
               <IconStack2 className="size-3.5" />
               <span>{t("queue.queuedCount", { count: queue.length })}</span>
             </button>

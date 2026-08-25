@@ -81,14 +81,22 @@ export function ActionMenu({ className, onAuthAction }: ActionMenuProps) {
 
   // Optimistic flip; the ExtensionConfigChanged broadcast confirms the write.
   // The popover stays open so the toggle feels like a setting, not a command.
+  // A failed write rolls the flip back loudly — a silently dropped save looked
+  // exactly like "the setting is lost on reload".
   const handleToggleAutoCompact = (enabled: boolean) => {
     useSettingsStore.getState().setExtensionConfig({ ...extensionConfig, autoCompactContext: enabled });
-    void bridge.setAutoCompactContext(enabled).catch(() => undefined);
+    void bridge.setAutoCompactContext(enabled).catch((error: unknown) => {
+      useSettingsStore.getState().setExtensionConfig({ ...useSettingsStore.getState().extensionConfig, autoCompactContext: !enabled });
+      toast.error(t("toast.saveSettingFailed", { error: error instanceof Error ? error.message : String(error) }));
+    });
   };
 
   const handleToggleCompactComposer = (enabled: boolean) => {
     useSettingsStore.getState().setExtensionConfig({ ...extensionConfig, compactComposer: enabled });
-    void bridge.setCompactComposer(enabled).catch(() => undefined);
+    void bridge.setCompactComposer(enabled).catch((error: unknown) => {
+      useSettingsStore.getState().setExtensionConfig({ ...useSettingsStore.getState().extensionConfig, compactComposer: !enabled });
+      toast.error(t("toast.saveSettingFailed", { error: error instanceof Error ? error.message : String(error) }));
+    });
   };
 
   const handleAuthAction = async () => {

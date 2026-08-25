@@ -96,6 +96,13 @@ export class KimiRuntime {
     return this.sessions.get(id);
   }
 
+  /** The most recently opened live session, or null when this host has never
+   *  opened one — the webview uses this to re-attach after an in-place reload
+   *  while starting blank on a fresh extension host. */
+  getLiveSessionId(): string | null {
+    return [...this.sessions.keys()].at(-1) ?? null;
+  }
+
   async openSession(options: OpenSessionOptions): Promise<SessionRuntime> {
     this.ensureOpen();
     await this.enableForkExperiments();

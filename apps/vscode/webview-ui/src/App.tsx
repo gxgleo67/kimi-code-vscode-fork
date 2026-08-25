@@ -11,9 +11,9 @@ import { Toaster, toast } from "./components/ui/sonner";
 import { useChatStore, useSettingsStore } from "./stores";
 import { bridge, Events } from "./services";
 import { useAppInit, resolveAppView } from "./hooks/useAppInit";
-import { readCurrentSessionId, writeCurrentSessionId } from "./lib/current-session";
+import { MODE_ORDER } from "./components/YoloModeButton";
 import { isPreflightError } from "shared/errors";
-import type { UIStreamEvent, StreamError, ExtensionConfig } from "shared/types";
+import type { UIStreamEvent, StreamError, ExtensionConfig, PermissionMode } from "shared/types";
 import "./styles/index.css";
 
 function MainContent({ onAuthAction }: { onAuthAction: () => void }) {
@@ -69,40 +69,53 @@ function MainContent({ onAuthAction }: { onAuthAction: () => void }) {
     return () => window.removeEventListener("keydown", handler);
   }, [enableNewConversationShortcut, startNewConversation]);
 
-  // Persist the live session id so the re-attach below can find it after a
-  // webview recreation.
+  // Shift+Tab cycles the permission mode (Claude Code style). The listener
+  // lives on this webview's window, so the shortcut only exists inside the
+  // plugin — VS Code and other editors never see it. Open dialogs keep
+  // Shift+Tab for focus navigation; the button label (not a toast) is the
+  // feedback.
   useEffect(() => {
-    return useChatStore.subscribe((state, previous) => {
-      if (state.sessionId !== previous.sessionId) {
-        writeCurrentSessionId(state.sessionId);
-      }
-    });
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== "Tab" || !e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) return;
+      if ((e.target as HTMLElement | null)?.closest?.('[role="dialog"]')) return;
+      e.preventDefault();
+      const { permissionMode, selectPermissionMode } = useSettingsStore.getState();
+      const current = MODE_ORDER.indexOf(permissionMode);
+      const next: PermissionMode = MODE_ORDER[(current + 1) % MODE_ORDER.length];
+      selectPermissionMode(next);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  // Re-attach to the session that was live when this webview was last alive.
-  // VS Code hands a recreated webview a fresh random webviewId and never
-  // pushes the current transcript — without this, the running conversation
-  // vanished until the next status event trickled in (an empty chat with a
-  // stray "processing" label and an enabled send button). The history-loading
-  // cover hides the interim state; attachResumedSession re-announces the
-  // engine status, so a mid-turn session restores straight into streaming.
+  // Re-attach only when the extension host still holds a live session, which
+  // means this webview was reloaded in place (a recreation gets a fresh random
+  // webviewId and the host never pushes the current transcript — without
+  // re-attaching, the running conversation vanished until the next status
+  // event trickled in). A fresh extension host (VS Code start, window reload)
+  // has no live session, so the plugin opens on the home page instead of
+  // resurrecting the last conversation every time. The history-loading cover
+  // hides the interim state; a mid-turn session restores into streaming.
   useEffect(() => {
-    const saved = readCurrentSessionId();
-    if (saved === null || useChatStore.getState().sessionId !== null) return;
+    if (useChatStore.getState().sessionId !== null) return;
     let cancelled = false;
-    useChatStore.getState().setHistoryLoading(true);
     bridge
-      .loadSessionHistory(saved)
-      .then((events) => {
-        if (cancelled) return;
-        return useChatStore.getState().loadSession(saved, events);
+      .getLiveSession()
+      .then(({ sessionId: liveId }) => {
+        if (cancelled || liveId === null) return;
+        useChatStore.getState().setHistoryLoading(true);
+        return bridge
+          .loadSessionHistory(liveId)
+          .then((events) => {
+            if (cancelled) return;
+            return useChatStore.getState().loadSession(liveId, events);
+          })
+          .finally(() => {
+            if (!cancelled) useChatStore.getState().setHistoryLoading(false);
+          });
       })
       .catch(() => {
-        // Unresumable (deleted, or another workDir's session): drop the key.
-        if (!cancelled) writeCurrentSessionId(null);
-      })
-      .finally(() => {
-        if (!cancelled) useChatStore.getState().setHistoryLoading(false);
+        // Unresumable or bridge not ready — stay on the home page.
       });
     return () => {
       cancelled = true;

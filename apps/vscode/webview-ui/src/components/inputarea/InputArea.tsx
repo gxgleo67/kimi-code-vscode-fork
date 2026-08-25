@@ -61,6 +61,7 @@ export function InputArea({ onAuthAction }: InputAreaProps) {
   const isStreaming = useChatStore((s) => s.isStreaming);
   const stopping = useChatStore((s) => s.stopping);
   const sendMessage = useChatStore((s) => s.sendMessage);
+  const steerNow = useChatStore((s) => s.steerNow);
   const abort = useChatStore((s) => s.abort);
   const draftMedia = useChatStore((s) => s.draftMedia);
   const removeDraftMedia = useChatStore((s) => s.removeDraftMedia);
@@ -180,6 +181,18 @@ export function InputArea({ onAuthAction }: InputAreaProps) {
     clearInput();
   });
 
+  // Shift+Enter: send immediately — steers into a busy turn without touching
+  // the queue; a plain send when idle.
+  const handleSendImmediate = useMemoizedFn(() => {
+    if (isProcessing || (!text.trim() && draftMedia.length === 0)) {
+      return;
+    }
+
+    addToHistory(text);
+    steerNow(text);
+    clearInput();
+  });
+
   const handleSlashCommand = useMemoizedFn((name: string) => {
     sendMessage(`/${name}`);
     clearInput();
@@ -286,6 +299,14 @@ export function InputArea({ onAuthAction }: InputAreaProps) {
     }
 
     if (handleHistoryKey(e)) {
+      return;
+    }
+
+    // Shift+Enter is hijacked for immediate send (queue bypass); multiline
+    // input remains possible by pasting or via the Ctrl+Enter-to-send setting.
+    if (e.key === "Enter" && e.shiftKey) {
+      e.preventDefault();
+      handleSendImmediate();
       return;
     }
 

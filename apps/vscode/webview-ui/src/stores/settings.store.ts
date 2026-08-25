@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { bridge } from "@/services";
 import { toast } from "@/components/ui/sonner";
-import { t, type TranslationKey } from "@/i18n";
+import { t } from "@/i18n";
 import type { ExtensionConfig, PermissionMode } from "shared/types";
 import type { KimiConfig, MCPServerConfig, ModelConfig, SecondaryModelSelection, ThinkingMode, SlashCommandInfo } from "shared/legacy-sdk";
 
@@ -35,12 +35,6 @@ export const DEFAULT_EXTENSION_CONFIG: ExtensionConfig = {
   autoCompactContext: false,
   compactComposer: false,
   version: "",
-};
-
-const PERMISSION_MODE_LABEL_KEYS: Record<PermissionMode, TranslationKey> = {
-  manual: "permMode.manual",
-  yolo: "permMode.yolo",
-  auto: "permMode.auto",
 };
 
 /** Metadata-driven only; mirrors the TUI's thinkingAvailability rules. */
@@ -272,16 +266,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     // Re-confirming the mode already shown is not an explicit choice.
     if (mode === previous) return;
     set({ permissionMode: mode });
+    // No success toast: the top-of-window popup covered the UI, and the
+    // composer button already reflects the new mode. When no live session
+    // exists (ok=false) the selection rides along with the first prompt
+    // (streamChat aligns it) and lands when the turn starts.
     void bridge.setPermissionMode(mode)
-      .then(({ ok }) => {
-        if (ok) {
-          toast.success(t("permMode.switched", { mode: t(PERMISSION_MODE_LABEL_KEYS[mode]) }));
-          return;
-        }
-        // No live session yet: keep the selection — it rides along with the
-        // first prompt (streamChat aligns it) and lands when the turn starts.
-        toast.success(t("permMode.pendingNext", { mode: t(PERMISSION_MODE_LABEL_KEYS[mode]) }));
-      })
       .catch((error: unknown) => {
         set({ permissionMode: previous });
         toast.error(t("permMode.switchFailed", { error: error instanceof Error ? error.message : String(error) }));

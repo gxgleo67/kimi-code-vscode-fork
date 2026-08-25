@@ -5,6 +5,7 @@ import { Content } from "@/lib/content";
 import { useApprovalStore } from "./approval.store";
 import { toast } from "@/components/ui/sonner";
 import { t } from "@/i18n";
+import { localizeErrorMessage } from "@/lib/error-text";
 
 import { useSettingsStore } from "./settings.store";
 import { processEvent } from "./event-handlers";
@@ -125,6 +126,8 @@ export interface ChatState {
   /** How the in-flight compaction was triggered; consumed by CompactionBegin. */
   pendingCompactTrigger: "manual" | "auto" | null;
   sendMessage: (text: string) => void;
+  /** Shift+Enter send: steers into a busy turn (queue bypassed); a plain send when idle. */
+  steerNow: (text: string) => void;
   setHistoryLoading: (loading: boolean) => void;
   processEvent: (event: UIStreamEvent) => void;
   loadSession: (sessionId: string, events: UIStreamEvent[]) => Promise<void>;
@@ -396,6 +399,38 @@ export const useChatStore = create<ChatState>((set, get) => ({
     doSend(get(), content, currentModel, goalObjective);
   },
 
+  steerNow: (text) => {
+    const { isStreaming, stopping, isCompacting, goal } = get();
+    if (!(isStreaming || stopping || isCompacting || isGoalBusy(goal))) {
+      get().sendMessage(text);
+      return;
+    }
+
+    const readyMedia = get().draftMedia.filter((m) => m.dataUri).map((m) => m.dataUri!);
+    const content = readyMedia.length > 0 ? Content.build(text, readyMedia) : text;
+    if (Content.isEmpty(content)) {
+      return;
+    }
+
+    // Busy turn: steer the message in immediately, skipping the queue. The
+    // host echoes a SteerInput event on success, which renders the inline
+    // bubble — no optimistic append here.
+    void bridge
+      .steerChat(content)
+      .then(({ ok }) => {
+        if (ok) {
+          set({ draftMedia: [] });
+          return;
+        }
+        // The turn ended between the keypress and the roundtrip — take the
+        // normal path (sends when idle, queues when still busy).
+        get().sendMessage(text);
+      })
+      .catch((error: unknown) => {
+        toast.error(error instanceof Error ? error.message : String(error));
+      });
+  },
+
   setHistoryLoading: (historyLoading) => set({ historyLoading }),
 
   processEvent: (event) => {
@@ -437,10 +472,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
             draft.queue.unshift({ id: crypto.randomUUID(), content: pending.content, model: pending.model });
           }),
         );
-        toast.info(t("toast.queuedAfterBusy"));
+        // No top toast here — the queue pill flashes its own reminder
+        // animation when the queue grows (see StatusPills).
         return;
       }
-      toast.warning(event.message);
+      toast.warning(localizeErrorMessage(event.code ?? "", event.message, event.detail, t));
       return;
     }
     // Clear handshake timeout on receiving valid response

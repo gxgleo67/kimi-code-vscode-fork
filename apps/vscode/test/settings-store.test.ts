@@ -225,14 +225,14 @@ describe("Webview secondary model settings", () => {
 });
 
 describe("Webview permission mode selection", () => {
-  it("applies the selection optimistically and confirms it with a toast", async () => {
+  it("applies the selection optimistically without any toast", async () => {
     useSettingsStore.getState().selectPermissionMode("auto");
 
     expect(useSettingsStore.getState().permissionMode).toBe("auto");
     expect(boundary.setPermissionMode).toHaveBeenCalledWith("auto");
-    await vi.waitFor(() => {
-      expect(boundary.toastSuccess).toHaveBeenCalledWith("Permission mode: Auto");
-    });
+    // The composer button reflects the change — no success toast by design.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(boundary.toastSuccess).not.toHaveBeenCalled();
   });
 
   it("skips the bridge call when re-confirming the current mode", () => {
@@ -247,10 +247,10 @@ describe("Webview permission mode selection", () => {
     useSettingsStore.getState().selectPermissionMode("yolo");
     expect(useSettingsStore.getState().permissionMode).toBe("yolo");
 
-    await vi.waitFor(() => {
-      expect(boundary.toastSuccess).toHaveBeenCalledWith("YOLO — applies when the next conversation starts");
-    });
-    // The selection stays — it is carried by the next streamChat call.
+    // No toast here either: the selection stays and is carried by the next
+    // streamChat call, the composer button shows it right away.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(boundary.toastSuccess).not.toHaveBeenCalled();
     expect(useSettingsStore.getState().permissionMode).toBe("yolo");
   });
 
@@ -632,8 +632,9 @@ describe("Webview mid-turn warnings", () => {
     });
 
     // The rejected content moves to the FRONT of the queue (it predates the
-    // follow-up), the composer stays locked, and no warning toast shows.
-    expect(boundary.toastInfo).toHaveBeenCalledWith("A task is still running — your message has been queued.");
+    // follow-up), the composer stays locked, and no toast shows — the queue
+    // pill flashes its own reminder animation when the queue grows.
+    expect(boundary.toastInfo).not.toHaveBeenCalled();
     expect(boundary.toastWarning).not.toHaveBeenCalled();
     const state = useChatStore.getState();
     expect(state.isStreaming).toBe(true);

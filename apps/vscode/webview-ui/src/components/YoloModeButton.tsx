@@ -15,7 +15,8 @@ interface YoloModeButtonProps {
   onSelect: (mode: PermissionMode) => void;
 }
 
-const MODE_ORDER: PermissionMode[] = ["manual", "yolo", "auto"];
+/** Cycle order for the Shift+Tab shortcut and the dropdown listing. */
+export const MODE_ORDER: PermissionMode[] = ["manual", "yolo", "auto"];
 
 const MODE_LABEL_KEYS: Record<PermissionMode, TranslationKey> = {
   manual: "permMode.manual",

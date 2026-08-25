@@ -59,6 +59,7 @@ export const Methods = {
   SetWorkDir: "setWorkDir",
   BrowseWorkDir: "browseWorkDir",
   LoadKimiSessionHistory: "loadKimiSessionHistory",
+  GetLiveSession: "getLiveSession",
   DeleteKimiSession: "deleteKimiSession",
   RenameKimiSession: "renameKimiSession",
   ForkKimiSession: "forkKimiSession",
@@ -170,6 +171,7 @@ function validateParams(method: RpcMethod, params: unknown): boolean {
     case Methods.ClearTrackedFiles:
     case Methods.ShowLogs:
     case Methods.ReloadWebview:
+    case Methods.GetLiveSession:
       return params === undefined;
 
     case Methods.AddInputHistory:

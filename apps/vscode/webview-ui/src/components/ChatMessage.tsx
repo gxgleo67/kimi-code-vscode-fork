@@ -39,12 +39,17 @@ function ThinkingIndicator() {
 }
 
 function SteerBubble({ content }: { content: string | ContentPart[] }) {
+  const [previewMedia, setPreviewMedia] = useState<string | null>(null);
   const text = typeof content === "string" ? content : Content.getText(content);
+  const images = Content.getImages(content);
+  const videos = Content.getVideos(content);
   return (
     <div className="flex justify-end my-1">
       <div className="max-w-[85%] px-3 py-1 rounded-2xl rounded-br-md bg-zinc-100 dark:bg-zinc-800 text-foreground">
-        <p className="text-xs leading-relaxed">{text}</p>
+        {text && <p className="text-xs leading-relaxed">{text}</p>}
+        <MessageMedia images={images} videos={videos} onPreview={setPreviewMedia} />
       </div>
+      <MediaPreviewModal src={previewMedia} onClose={() => setPreviewMedia(null)} />
     </div>
   );
 }

@@ -130,6 +130,10 @@ export const sessionHandlers: Record<string, Handler<any, any>> = {
     return { ok: true, workDir: selected };
   },
 
+  [Methods.GetLiveSession]: async (_, ctx): Promise<{ sessionId: string | null }> => {
+    return { sessionId: ctx.runtime.getLiveSessionId() };
+  },
+
   [Methods.LoadKimiSessionHistory]: async (params: LoadHistoryParams, ctx) => {
     if (!ctx.workDir || !isSessionId(params.kimiSessionId)) return [];
     const runtime = await ctx.resumeSession(params.kimiSessionId);

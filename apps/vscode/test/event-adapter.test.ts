@@ -299,6 +299,43 @@ describe('event adapter (projects SDK events into the legacy Webview contract)',
     });
   });
 
+  it('derives context_usage from raw token counts when the v2 event omits the ratio', () => {
+    const result = adaptSdkEvent(createEventAdapterState(), {
+      type: 'agent.status.updated',
+      sessionId: 'session-1',
+      agentId: 'main',
+      // v2's withStatusSnapshot enrichment carries only these two counts.
+      contextTokens: 51200,
+      maxContextTokens: 204800,
+    });
+
+    expect(result.event).toEqual({
+      type: 'StatusUpdate',
+      payload: {
+        context_usage: 0.25,
+        context_tokens: 51200,
+        max_context_tokens: 204800,
+      },
+      _sessionId: 'session-1',
+    });
+  });
+
+  it('omits context_usage when the token counts are absent or unusable', () => {
+    const result = adaptSdkEvent(createEventAdapterState(), {
+      type: 'agent.status.updated',
+      sessionId: 'session-1',
+      agentId: 'main',
+      contextTokens: 100,
+      maxContextTokens: 0,
+    });
+
+    expect(result.event).toEqual({
+      type: 'StatusUpdate',
+      payload: { context_tokens: 100, max_context_tokens: 0 },
+      _sessionId: 'session-1',
+    });
+  });
+
   it('emits only new token usage when SDK status carries cumulative turn usage', () => {
     const first = adaptSdkEvent(createEventAdapterState(), {
       type: 'agent.status.updated',

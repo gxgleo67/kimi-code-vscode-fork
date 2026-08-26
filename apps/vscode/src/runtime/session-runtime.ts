@@ -179,6 +179,11 @@ export class SessionRuntime {
           swarm_mode: status.swarmMode ?? false,
           permission: status.permission,
           turn_active: this.isBusy,
+          // Forward the context snapshot too — re-entering a session must not
+          // leave the usage ring blank until the next live status event.
+          context_usage: status.contextUsage,
+          context_tokens: status.contextTokens,
+          max_context_tokens: status.maxContextTokens,
           goal: goal === null
             ? null
             : {

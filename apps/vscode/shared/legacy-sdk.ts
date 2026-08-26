@@ -80,6 +80,8 @@ export interface ToolResult {
 
 export interface TurnBegin {
   user_input: string | ContentPart[];
+  /** Original record time (ms epoch) when replayed from history; live turns omit it. */
+  time?: number;
 }
 
 export interface TokenUsage {

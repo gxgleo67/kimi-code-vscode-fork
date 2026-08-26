@@ -126,7 +126,7 @@ export interface ChatState {
   /** How the in-flight compaction was triggered; consumed by CompactionBegin. */
   pendingCompactTrigger: "manual" | "auto" | null;
   sendMessage: (text: string) => void;
-  /** Shift+Enter send: steers into a busy turn (queue bypassed); a plain send when idle. */
+  /** Alt+Enter send: steers into a busy turn (queue bypassed); a plain send when idle. */
   steerNow: (text: string) => void;
   setHistoryLoading: (loading: boolean) => void;
   processEvent: (event: UIStreamEvent) => void;

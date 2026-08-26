@@ -181,7 +181,7 @@ export function InputArea({ onAuthAction }: InputAreaProps) {
     clearInput();
   });
 
-  // Shift+Enter: send immediately — steers into a busy turn without touching
+  // Alt+Enter: send immediately — steers into a busy turn without touching
   // the queue; a plain send when idle.
   const handleSendImmediate = useMemoizedFn(() => {
     if (isProcessing || (!text.trim() && draftMedia.length === 0)) {
@@ -302,9 +302,10 @@ export function InputArea({ onAuthAction }: InputAreaProps) {
       return;
     }
 
-    // Shift+Enter is hijacked for immediate send (queue bypass); multiline
-    // input remains possible by pasting or via the Ctrl+Enter-to-send setting.
-    if (e.key === "Enter" && e.shiftKey) {
+    // Alt+Enter: send immediately (queue bypass via steer); Shift+Enter keeps
+    // its default newline role. This branch must precede the plain-Enter
+    // checks below — they don't test altKey.
+    if (e.key === "Enter" && e.altKey) {
       e.preventDefault();
       handleSendImmediate();
       return;

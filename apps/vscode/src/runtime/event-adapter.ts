@@ -344,7 +344,17 @@ function mapStatusUpdate(
   sdkEvent: Extract<Event, { type: 'agent.status.updated' }>,
 ): MappedLegacyWireEvent {
   const payload: StatusUpdate = {};
-  if (sdkEvent.contextUsage !== undefined) payload.context_usage = sdkEvent.contextUsage;
+  if (sdkEvent.contextUsage !== undefined) {
+    payload.context_usage = sdkEvent.contextUsage;
+  } else if (
+    sdkEvent.contextTokens !== undefined &&
+    sdkEvent.maxContextTokens !== undefined &&
+    sdkEvent.maxContextTokens > 0
+  ) {
+    // v2 status snapshots carry only the raw token counts — derive the ratio
+    // so legacy context_usage consumers (header status, ring) do not freeze.
+    payload.context_usage = sdkEvent.contextTokens / sdkEvent.maxContextTokens;
+  }
   if (sdkEvent.contextTokens !== undefined) payload.context_tokens = sdkEvent.contextTokens;
   if (sdkEvent.maxContextTokens !== undefined) payload.max_context_tokens = sdkEvent.maxContextTokens;
   if (sdkEvent.planMode !== undefined) payload.plan_mode = sdkEvent.planMode;

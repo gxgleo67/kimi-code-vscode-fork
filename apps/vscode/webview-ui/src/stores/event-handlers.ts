@@ -359,11 +359,15 @@ const eventHandlers: Record<string, EventHandler> = {
     draft.tokenUsage = createEmptyTokenUsage();
     draft.activeTokenUsage = createEmptyTokenUsage();
 
+    // History replay carries the original record time; live turns fall back
+    // to now.
+    const timestamp = payload.time ?? Date.now();
+
     draft.messages.push({
       id: crypto.randomUUID(),
       role: "user",
       content: payload.user_input,
-      timestamp: Date.now(),
+      timestamp,
       forkable: payload.forkable,
     });
 
@@ -371,7 +375,7 @@ const eventHandlers: Record<string, EventHandler> = {
       id: crypto.randomUUID(),
       role: "assistant",
       content: "",
-      timestamp: Date.now(),
+      timestamp,
       steps: [],
       forkable: payload.forkable,
     });

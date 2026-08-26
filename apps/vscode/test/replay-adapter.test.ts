@@ -170,7 +170,7 @@ describe("replay adapter (renders the public SDK resume state for the Webview)",
     expect(events.filter((event) => event.type !== "StatusUpdate")).toEqual([
       {
         type: "TurnBegin",
-        payload: { user_input: [{ type: "text", text: "Fix the test" }] },
+        payload: { user_input: [{ type: "text", text: "Fix the test" }], time: 1 },
         _sessionId: "session-1",
       },
       {
@@ -204,6 +204,7 @@ describe("replay adapter (renders the public SDK resume state for the Webview)",
           { type: "audio_url", audio_url: { url: "file:///workspace/a.mp3", id: "audio-1" } },
           { type: "video_url", video_url: { url: "file:///workspace/a.mp4", id: "video-1" } },
         ],
+        time: 1,
       },
       _sessionId: "session-1",
     });
@@ -402,7 +403,7 @@ describe("replay adapter (renders the public SDK resume state for the Webview)",
     expect(events.filter((event) => event.type === "TurnBegin")).toEqual([
       {
         type: "TurnBegin",
-        payload: { user_input: [{ type: "text", text: "Visible prompt" }] },
+        payload: { user_input: [{ type: "text", text: "Visible prompt" }], time: 2 },
         _sessionId: "session-1",
       },
     ]);
@@ -425,7 +426,7 @@ describe("replay adapter (renders the public SDK resume state for the Webview)",
 
     expect(events).toContainEqual({
       type: "TurnBegin",
-      payload: { user_input: [{ type: "text", text: "/skill:review focus on errors" }] },
+      payload: { user_input: [{ type: "text", text: "/skill:review focus on errors" }], time: 1 },
       _sessionId: "session-1",
     });
   });
@@ -452,7 +453,7 @@ describe("replay adapter (renders the public SDK resume state for the Webview)",
 
     expect(events).toContainEqual({
       type: "TurnBegin",
-      payload: { user_input: [{ type: "text", text: "/import notes.md" }] },
+      payload: { user_input: [{ type: "text", text: "/import notes.md" }], time: 1 },
       _sessionId: "session-1",
     });
     expect(events).toContainEqual({

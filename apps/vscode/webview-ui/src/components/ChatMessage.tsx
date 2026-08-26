@@ -1,6 +1,6 @@
 import { useState, Fragment, memo } from "react";
 import { IconLoader3, IconGitFork } from "@tabler/icons-react";
-import { cn } from "@/lib/utils";
+import { cn, formatMessageTime } from "@/lib/utils";
 import { Content } from "@/lib/content";
 import { Markdown } from "./Markdown";
 import { ToolCallCard } from "./ToolRenderers";
@@ -225,7 +225,8 @@ function UserMessage({ message }: { message: ChatMessageType }) {
   const videos = Content.getVideos(message.content);
 
   return (
-    <div className="px-3 pt-3 pb-1 flex justify-end">
+    <div className="px-3 pt-3 pb-1 flex justify-end items-end gap-2">
+      <span className="shrink-0 mb-1.5 text-[10px] text-muted-foreground/60">{formatMessageTime(message.timestamp)}</span>
       <div className={cn("max-w-[85%] px-3.5 py-1.5 rounded-2xl rounded-br-md", "bg-zinc-100 dark:bg-zinc-800", "text-foreground")}>
         {displayContent && (
           // FIX: removed whitespace-pre-wrap — it conflicted with ReactMarkdown's
@@ -279,6 +280,7 @@ function AssistantMessage({ message, turnIndex, isStreaming }: { message: ChatMe
           {/* kimi-logo.png is 3:2 — object-contain keeps it unstretched in the square slot */}
           <KimiLogo className="shrink-0 size-5 object-contain" />
           <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Kimi</div>
+          <span className="text-[10px] normal-case tracking-normal text-muted-foreground/60">{formatMessageTime(message.timestamp)}</span>
         </div>
 
         <div className="flex-1 min-w-0">

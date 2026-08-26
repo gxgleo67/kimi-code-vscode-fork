@@ -53,7 +53,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   let isLoggedIn = false;
   try {
-    isLoggedIn = await updateLoginContext(provider.harness);
+    // The external ACP process owns authentication and account selection;
+    // querying the embedded SDK here would show a second, unrelated account.
+    isLoggedIn = provider.usesExternalAcp
+      ? true
+      : await updateLoginContext(provider.harness);
   } catch (error) {
     logError("Unable to determine login status", error);
   }
@@ -147,14 +151,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     context.subscriptions.push(vscode.commands.registerCommand(id, handler));
   }
 
-  void offerLegacyMigration(
-    migrationManager,
-    () => runMigration(false),
-    context.globalState,
-    isLoggedIn,
-  ).catch((error) => {
-    logError("Unable to check for legacy Kimi data", error);
-  });
+  if (!provider.usesExternalAcp) {
+    void offerLegacyMigration(
+      migrationManager,
+      () => runMigration(false),
+      context.globalState,
+      isLoggedIn,
+    ).catch((error) => {
+      logError("Unable to check for legacy Kimi data", error);
+    });
+  }
   log("Kimi Code activated");
 }
 

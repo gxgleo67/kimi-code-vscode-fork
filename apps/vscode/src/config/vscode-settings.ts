@@ -30,6 +30,26 @@ function getConfig() {
 }
 
 export const VSCodeSettings = {
+  /** Engine used by the extension. External ACP keeps account routing outside the SDK. */
+  get backend(): "embedded" | "externalAcp" {
+    const value = getConfig().get<string>("backend", "embedded");
+    return value === "externalAcp" ? "externalAcp" : "embedded";
+  },
+
+  get acpCommand(): string {
+    return getConfig().get<string>("acpCommand", "kimi-subscription-router").trim();
+  },
+
+  get acpTarget(): string {
+    return getConfig().get<string>("acpTarget", "kimi-vscode-fork").trim();
+  },
+
+  get acpAccounts(): string[] {
+    const value = getConfig().get<unknown>("acpAccounts", []);
+    if (!Array.isArray(value)) return [];
+    return value.filter((account): account is string => typeof account === "string" && account.trim().length > 0).map((account) => account.trim());
+  },
+
   get yoloMode(): boolean {
     return getConfig().get<boolean>("yoloMode", false);
   },
@@ -81,6 +101,9 @@ export const VSCodeSettings = {
 
   getExtensionConfig(): ExtensionConfig {
     return {
+      backend: this.backend,
+      acpTarget: this.backend === "externalAcp" ? this.acpTarget : undefined,
+      acpAccounts: this.backend === "externalAcp" ? this.acpAccounts : undefined,
       yoloMode: this.yoloMode,
       autosave: this.autosave,
       useCtrlEnterToSend: this.useCtrlEnterToSend,
@@ -101,7 +124,7 @@ export function onSettingsChange(callback: (changedKeys: string[]) => void): vsc
     if (!e.affectsConfiguration("kimifork")) {
       return;
     }
-    const keys = ["yoloMode", "autosave", "enableNewConversationShortcut", "useCtrlEnterToSend", "showThinkingContent", "showThinkingExpanded", "editorContext", "language", "defaultThinkingEffort", "autoCompactContext", "compactComposer"];
+    const keys = ["backend", "acpCommand", "acpTarget", "acpAccounts", "yoloMode", "autosave", "enableNewConversationShortcut", "useCtrlEnterToSend", "showThinkingContent", "showThinkingExpanded", "editorContext", "language", "defaultThinkingEffort", "autoCompactContext", "compactComposer"];
     const changedKeys = keys.filter((key) => e.affectsConfiguration(`kimifork.${key}`));
     if (changedKeys.length > 0) {
       callback(changedKeys);

@@ -32,6 +32,10 @@ export interface FileChange {
 }
 
 export interface ExtensionConfig {
+  /** Embedded SDK is the default; externalAcp delegates account routing to the router. */
+  backend?: "embedded" | "externalAcp";
+  acpTarget?: string;
+  acpAccounts?: string[];
   yoloMode: boolean;
   autosave: boolean;
   useCtrlEnterToSend: boolean;

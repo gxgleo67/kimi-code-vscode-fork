@@ -49,6 +49,10 @@ export class KimiWebviewProvider implements vscode.WebviewViewProvider {
     return this.bridgeHandler.runtime.harness;
   }
 
+  get usesExternalAcp(): boolean {
+    return this.bridgeHandler.externalAcp !== undefined;
+  }
+
   resolveWebviewView(webviewView: vscode.WebviewView): void {
     const webviewId = `sidebar_${crypto.randomUUID()}`;
     this.setupWebview(webviewId, webviewView.webview);

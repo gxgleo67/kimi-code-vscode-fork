@@ -4,6 +4,7 @@ import {
   SECONDARY_DERIVED_MODEL_ALIAS,
   type KimiConfig as SdkKimiConfig,
   type ModelAlias,
+  type ProviderType,
   type ThinkingEffort,
 } from "@moonshot-ai/kimi-code-sdk";
 
@@ -45,9 +46,14 @@ const saveConfig: Handler<SessionConfig, { ok: boolean }> = async (params, ctx) 
   const effortChanged = params.effortChanged !== false;
   const config = await ctx.harness.getConfig({ reload: true });
   const model = config.models?.[params.model];
+  // Resolve with the provider type the way the TUI's effectiveModelForHost
+  // does: without it the Anthropic fallback profile (e.g. `claude-latest`)
+  // never matches, so the inferred default that gates persistence is missed.
+  const providerType =
+    model === undefined ? undefined : (config.providers?.[model.provider]?.type ?? model.protocol);
   const full = thinkingConfig(
     effort,
-    model === undefined ? undefined : effectiveModelAlias(model).supportEfforts,
+    model === undefined ? undefined : effectiveModelAlias(model, providerType),
   );
   // Re-confirming the effort already shown is not an explicit choice —
   // persist the model but leave the stored effort preference alone (the TUI's
@@ -234,7 +240,13 @@ function toWebviewModel(
   model: ModelAlias,
   providers: SdkKimiConfig["providers"] | undefined,
 ): ModelConfig {
-  const effective = effectiveModelAlias(model);
+  // Resolve with the provider type the way saveConfig does: without it the
+  // Anthropic fallback profile never matches, and the webview's effort
+  // persistence seed would gate on a different effective model.
+  const effective = effectiveModelAlias(
+    model,
+    providers?.[model.provider]?.type ?? model.protocol,
+  );
   return {
     id,
     name: effective.displayName ?? effective.model ?? id,
@@ -258,20 +270,33 @@ function sessionConfigEffort(config: SessionConfig): ThinkingEffort {
  * Project a thinking effort to the `[thinking]` config patch persisted to
  * config.toml — mirrors the TUI's thinkingEffortToConfig. "off" disables
  * thinking; "on" is the boolean-model on-signal, so it only persists
- * `enabled`. A concrete effort persists as the global default, EXCEPT the
- * model's highest declared level — the last entry of `support_efforts` —
- * which is session-only and records just `enabled`, so the most expensive
- * tier never becomes the global default for every new session. When the
- * model's levels are unknown the concrete effort is persisted as-is.
+ * `enabled`. A concrete effort persists as the global default, EXCEPT when it
+ * ranks above the model's effective default effort: `support_efforts` is
+ * ordered by strength, and a pick more expensive than the default stays
+ * session-only and records just `enabled`, so it never becomes the global
+ * default for every new session. The default here is the effective model's,
+ * however it arose — declared via the catalog or overrides, or synthesized
+ * by the protocol-profile inference (`withAnthropicProfile` resolves Claude
+ * models to "high", so an "xhigh" pick stays session-only there). When the
+ * effective model carries no default effort at all, its highest declared
+ * level stays session-only (the historical rule). When the model's levels
+ * are unknown the concrete effort is persisted as-is.
  */
 function thinkingConfig(
   effort: ThinkingEffort,
-  supportEfforts?: readonly string[],
+  model?: Pick<ModelAlias, "supportEfforts" | "defaultEffort">,
 ): { enabled: boolean; effort?: string } {
   if (effort === "off") return { enabled: false };
   if (effort === "on") return { enabled: true };
-  const top = supportEfforts?.at(-1);
-  if (top !== undefined && effort === top) return { enabled: true };
+  const efforts = model?.supportEfforts;
+  if (efforts !== undefined && efforts.includes(effort)) {
+    const declared = model?.defaultEffort;
+    const ceiling =
+      declared !== undefined && efforts.includes(declared)
+        ? efforts.indexOf(declared)
+        : efforts.length - 2;
+    if (efforts.indexOf(effort) > ceiling) return { enabled: true };
+  }
   return { enabled: true, effort };
 }
 

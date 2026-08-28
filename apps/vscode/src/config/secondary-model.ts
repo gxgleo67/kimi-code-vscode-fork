@@ -31,6 +31,7 @@ export async function removeSecondaryModelSection(configPath: string): Promise<v
  */
 export function stripTomlSection(text: string, section: string): string {
   const header = `[${section}]`;
+  const subPrefix = `[${section}.`;
   const lines = text.split("\n");
   const out: string[] = [];
   let skipping = false;
@@ -41,7 +42,11 @@ export function stripTomlSection(text: string, section: string): string {
       continue;
     }
     if (skipping && trimmed.startsWith("[") && trimmed.endsWith("]")) {
-      skipping = false;
+      // Sub-table headers of the stripped section (e.g. `[providers.x.source]`,
+      // which the engine's serializer expands inline tables into on rewrite)
+      // belong to it and must be stripped too; any other header ends the skip.
+      skipping = trimmed.startsWith(subPrefix);
+      if (skipping) continue;
     }
     if (!skipping) {
       out.push(line);

@@ -240,6 +240,43 @@ describe("TOML surgery on disk", () => {
     expect(text).toContain("[providers.local]");
   });
 
+  it("upsert over the engine's sub-table form produces a valid config", async () => {
+    // The engine's TOML serializer expands the inline `source = {...}` table
+    // into a `[providers.deepseek.source]` sub-table when it rewrites the
+    // file. The next edit must strip that sub-table too, or the re-appended
+    // inline `source` collides with it: "trying to redefine an already
+    // defined table or value".
+    const engineForm = `${BASE_TOML}
+[providers.deepseek]
+type = "openai"
+base_url = "https://api.deepseek.com/v1"
+api_key_env_var = "KIMIFORK_PROVIDER_KEY_DEEPSEEK"
+
+[providers.deepseek.source]
+managed_by = "vscode-custom"
+
+[models.deepseek]
+provider = "deepseek"
+model = "deepseek-chat"
+max_context_size = 131072
+`;
+    const configPath = await tempConfig(engineForm);
+    await upsertCustomProvider(configPath, {
+      alias: "deepseek",
+      providerType: "openai",
+      baseUrl: "https://api2.deepseek.com/v1",
+      modelId: "deepseek-reasoner",
+      modelAlias: "deepseek",
+      maxContextSize: 65536,
+    });
+    const text = await readFile(configPath, "utf8");
+    expect(text.match(/\[providers\.deepseek\]/g)).toHaveLength(1);
+    expect(text).not.toContain("[providers.deepseek.source]");
+    expect(text).toContain('source = { managed_by = "vscode-custom" }');
+    expect(text).toContain("https://api2.deepseek.com/v1");
+    expect(text).toContain("deepseek-reasoner");
+  });
+
   it("remove strips both sections and optionally the secondary recipe", async () => {
     const withRecipe = `${BASE_TOML}
 [secondary_model]
@@ -314,6 +351,27 @@ describe("addCustomProvider handler", () => {
     const result: WebviewKimiConfig = await addHandler({ ...ADD_PARAMS, apiKey: "sk-rotated" }, ctx);
     expect(secrets.store).toHaveBeenCalledWith("kimifork.providerKey.deepseek", "sk-rotated");
     expect(result.models.find((model) => model.id === "deepseek")).toMatchObject({ custom: true });
+  });
+
+  it("keeps the stored secret when an edit leaves the key field empty", async () => {
+    const configPath = await tempConfig();
+    const { ctx, secrets, setConfig } = fakeContext(configPath, configWithCustomProvider());
+    setConfig(configWithCustomProvider());
+    secrets.values.set("kimifork.providerKey.deepseek", "sk-original");
+    const result: WebviewKimiConfig = await addHandler({ ...ADD_PARAMS, apiKey: "" }, ctx);
+    expect(secrets.store).not.toHaveBeenCalled();
+    expect(secrets.values.get("kimifork.providerKey.deepseek")).toBe("sk-original");
+    expect(result.models.find((model) => model.id === "deepseek")).toMatchObject({ custom: true });
+  });
+
+  it("tells the user to re-enter the key when no secret survives for an existing provider", async () => {
+    const configPath = await tempConfig();
+    const { ctx, secrets, setConfig } = fakeContext(configPath, configWithCustomProvider());
+    setConfig(configWithCustomProvider());
+    await expect(addHandler({ ...ADD_PARAMS, apiKey: "" }, ctx)).rejects.toThrow(
+      'No API key is stored for "deepseek"',
+    );
+    expect(secrets.store).not.toHaveBeenCalled();
   });
 });
 

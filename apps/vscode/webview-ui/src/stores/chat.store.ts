@@ -324,13 +324,21 @@ function doSend(state: ChatState, content: string | ContentPart[], model: string
   void bridge
     .streamChat(content, model, thinkingEffort, planMode, sessionId ?? undefined, permissionMode, goalObjective)
     .catch((error: unknown) => {
+      const s = useChatStore.getState();
+      // The turn's real outcome arrives as stream events. A rejection that
+      // lands after the state already settled is stale, and once the engine
+      // has acknowledged the turn (handshake) the failure is mid-turn — in
+      // both cases the sent text must not roll back into the composer.
+      if (!s.isStreaming) {
+        return;
+      }
       const detail = error instanceof Error ? error.message : String(error);
-      useChatStore.getState().processEvent({
+      s.processEvent({
         type: "error",
         code: "internal",
         message: "Unable to send the message.",
         detail,
-        phase: "preflight",
+        phase: s.handshakeReceived ? "runtime" : "preflight",
       });
     });
 }

@@ -129,6 +129,74 @@ describe("Webview sent-message rollback", () => {
       vi.useRealTimers();
     }
   });
+
+  it("treats a late StreamChat rejection after the handshake as a runtime error, keeping the exchange", async () => {
+    boundary.streamChat.mockRejectedValueOnce(new Error("Bridge StreamChat timed out"));
+    useChatStore.getState().sendMessage("do the thing");
+    beginTurn();
+
+    // Flush the rejection handler microtask.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const state = useChatStore.getState();
+    expect(state.isStreaming).toBe(false);
+    expect(state.messages.map((m) => m.role)).toEqual(["user", "assistant"]);
+    expect(state.pendingInput).toBeNull();
+    expect(state.messages[1]?.inlineError).toMatchObject({ code: "internal" });
+  });
+
+  it("ignores a StreamChat rejection that arrives after the turn already settled", async () => {
+    let rejectStream: (error: Error) => void = () => undefined;
+    boundary.streamChat.mockImplementationOnce(
+      () =>
+        new Promise((_, reject) => {
+          rejectStream = reject;
+        }),
+    );
+    useChatStore.getState().sendMessage("do the thing");
+    beginTurn();
+    useChatStore.getState().processEvent({ type: "stream_complete", result: { status: "finished" } });
+
+    rejectStream(new Error("Bridge StreamChat timed out"));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const state = useChatStore.getState();
+    expect(state.isStreaming).toBe(false);
+    expect(state.pendingInput).toBeNull();
+    expect(state.messages[1]?.inlineError).toBeUndefined();
+  });
+
+  it("still rolls the input back when StreamChat rejects before the engine acknowledges", async () => {
+    boundary.streamChat.mockRejectedValueOnce(new Error("connection lost"));
+    useChatStore.getState().sendMessage("do the thing");
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const state = useChatStore.getState();
+    expect(state.isStreaming).toBe(false);
+    // No TurnBegin ever arrived: pendingInput (set at send) survives so the
+    // composer restore effect can pick the text up.
+    expect(state.pendingInput).toEqual({ content: "do the thing", model: "plain" });
+    expect(state.messages).toHaveLength(0);
+  });
+
+  it("keeps the exchange when a preflight-coded error event arrives mid-turn", () => {
+    useChatStore.getState().sendMessage("do the thing");
+    beginTurn();
+
+    useChatStore.getState().processEvent({
+      type: "error",
+      code: "session.state_invalid",
+      message: "Session data is invalid.",
+      phase: "preflight",
+    });
+
+    const state = useChatStore.getState();
+    expect(state.isStreaming).toBe(false);
+    expect(state.pendingInput).toBeNull();
+    expect(state.messages.map((m) => m.role)).toEqual(["user", "assistant"]);
+    expect(state.messages[1]?.inlineError).toMatchObject({ code: "session.state_invalid" });
+  });
 });
 
 describe("Webview stop button state", () => {

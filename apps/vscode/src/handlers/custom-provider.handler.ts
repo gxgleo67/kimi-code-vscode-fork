@@ -69,11 +69,18 @@ const addCustomProvider: Handler<AddCustomProviderParams, WebviewKimiConfig> = a
   if (existingModel !== undefined && existingModel.provider !== alias) {
     throw new Error(`A model named "${modelAlias}" already exists in config.toml.`);
   }
-  if (
-    apiKey === undefined &&
-    (existingProvider === undefined || (await ctx.secrets.get(secretKeyForAlias(alias))) === undefined)
-  ) {
-    throw new Error("An API key is required for a new custom provider.");
+  if (apiKey === undefined) {
+    if (existingProvider === undefined) {
+      throw new Error("An API key is required for a new custom provider.");
+    }
+    if ((await ctx.secrets.get(secretKeyForAlias(alias))) === undefined) {
+      // Editing with an empty field keeps the stored secret — but there is
+      // none (SecretStorage was cleared, or the provider was created on
+      // another machine). Say so plainly instead of the "new provider" text.
+      throw new Error(
+        `No API key is stored for "${alias}"; enter the key once to re-save it. It stays in SecretStorage afterwards.`,
+      );
+    }
   }
 
   if (apiKey !== undefined) {

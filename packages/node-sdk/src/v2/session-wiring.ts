@@ -282,10 +282,18 @@ function withStatusSnapshot(agent: IAgentScopeHandle, event: Event2<any>): Event
   const contextTokens = tokenCounting.statusSize();
   const capabilities = profile.getModelCapabilities();
   const maxContextTokens = capabilities.max_input_tokens ?? capabilities.max_context_tokens;
+  const contextUsage =
+    Number.isFinite(contextTokens) &&
+    maxContextTokens !== undefined &&
+    Number.isFinite(maxContextTokens) &&
+    maxContextTokens > 0
+      ? contextTokens / maxContextTokens
+      : undefined;
   return Object.assign({}, event, {
     usage: usageService.status(),
     contextTokens,
     maxContextTokens,
+    contextUsage,
     model: profile.getModel(),
   }) as unknown as Event2<any>;
 }

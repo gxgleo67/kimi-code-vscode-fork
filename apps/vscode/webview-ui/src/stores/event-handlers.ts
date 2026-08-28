@@ -335,7 +335,15 @@ const eventHandlers: Record<string, EventHandler> = {
     } // 忽略未知事件类型错误，通常是版本不匹配导致
 
     if (phase === "preflight") {
-      handlePreflightError(draft, code, payload.message);
+      if (draft.handshakeReceived) {
+        // A preflight-coded failure arriving after the engine accepted the
+        // message is really a mid-turn failure: keep the exchange on screen
+        // with an inline error instead of deleting it and rolling the text
+        // back into the composer.
+        handleRuntimeError(draft, code, payload.message, payload.detail);
+      } else {
+        handlePreflightError(draft, code, payload.message);
+      }
     } else {
       if (isUserInterrupt(code)) {
         addTokenUsage(draft.tokenUsage, draft.activeTokenUsage);

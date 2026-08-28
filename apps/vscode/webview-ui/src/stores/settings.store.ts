@@ -108,6 +108,23 @@ function defaultEffortForModel(model: ModelConfig, defaultThinking: boolean, con
 }
 
 /**
+ * Whether picking `effort` persists it as the global default — mirrors the
+ * extension host's thinkingConfig gate: a pick above the model's effective
+ * default effort stays session-only, with the ceiling falling back to the
+ * tier below the top when the model carries no listed default. Only listed
+ * efforts reach this helper (selectThinkingEffort rejects the rest).
+ */
+function persistsAsDefaultEffort(model: ModelConfig, effort: string): boolean {
+  const efforts = model.support_efforts ?? [];
+  const declared = model.default_effort;
+  const ceiling =
+    declared !== undefined && efforts.includes(declared)
+      ? efforts.indexOf(declared)
+      : efforts.length - 2;
+  return efforts.indexOf(effort) <= ceiling;
+}
+
+/**
  * The VSCode `kimifork.defaultThinkingEffort` setting wins over the engine
  * config when the current model supports the value; anything else falls back
  * to the engine/model defaults.
@@ -285,17 +302,33 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     }
 
     const thinkingEffort = preferredDefaultEffort(model, defaultThinking, defaultThinkingEffort, extensionConfig.defaultThinkingEffort);
+    const effortChanged = thinkingEffort !== previousEffort;
     // Mark the pick as pending: until the next prompt applies it to the
     // engine session, status announcements still carry the previous model.
-    set({ currentModel: modelId, thinkingEffort, pendingModelSync: modelId, pendingEffortSync: thinkingEffort });
+    set({
+      currentModel: modelId,
+      thinkingEffort,
+      pendingModelSync: modelId,
+      pendingEffortSync: thinkingEffort,
+      // The save below persists the derived effort when it changed and
+      // clears the gate — keep the seed in sync, or the next switch derives
+      // from a stale value and saves it back over the persisted one.
+      defaultThinkingEffort:
+        effortChanged &&
+        thinkingEffort !== "off" &&
+        thinkingEffort !== "on" &&
+        persistsAsDefaultEffort(model, thinkingEffort)
+          ? thinkingEffort
+          : defaultThinkingEffort,
+    });
     saveConfigWithRollback(
       {
         model: modelId,
         thinking: thinkingEffort !== "off",
         effort: thinkingEffort,
-        effortChanged: thinkingEffort !== previousEffort,
+        effortChanged,
       },
-      { currentModel, thinkingEffort: previousEffort },
+      { currentModel, thinkingEffort: previousEffort, defaultThinkingEffort },
       set,
     );
   },
@@ -369,11 +402,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       thinkingEffort,
       defaultThinking: thinkingEffort !== "off",
       pendingEffortSync: thinkingEffort,
-      // The model's top declared tier is session-only (only the boolean
-      // toggle is persisted), so it must not become the configured-effort
-      // seed for future sessions.
+      // A pick above the model's effective default effort is session-only
+      // (only the boolean toggle is persisted), so it must not become the
+      // configured-effort seed for future sessions.
       defaultThinkingEffort:
-        thinkingEffort !== "off" && thinkingEffort !== "on" && thinkingEffort !== allowed.at(-1)
+        thinkingEffort !== "off" && thinkingEffort !== "on" && persistsAsDefaultEffort(model, thinkingEffort)
           ? thinkingEffort
           : defaultThinkingEffort,
     });

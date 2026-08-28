@@ -29,11 +29,15 @@ import type {
 interface PendingRequest {
   resolve: (value: unknown) => void;
   reject: (error: Error) => void;
-  timeout: ReturnType<typeof setTimeout>;
+  timeout?: ReturnType<typeof setTimeout>;
 }
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 10 * 60 * 1000;
 const OAUTH_REQUEST_TIMEOUT_MS = 16 * 60 * 1000;
+// Turn-length RPCs (StreamChat) resolve only when the whole turn ends, so a
+// fixed client-side deadline misfires on long turns — the turn lifecycle is
+// already tracked by stream events (TurnBegin / stream_complete / error).
+const NO_REQUEST_TIMEOUT_MS = 0;
 
 interface VSCodeAPI {
   postMessage(message: unknown): void;
@@ -93,10 +97,13 @@ class Bridge {
     const id = `${++this.requestId}_${Date.now()}`;
 
     return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        this.pending.delete(id);
-        reject(new Error(`Bridge ${method} timed out`));
-      }, timeoutMs);
+      const timeout =
+        timeoutMs > 0
+          ? setTimeout(() => {
+              this.pending.delete(id);
+              reject(new Error(`Bridge ${method} timed out`));
+            }, timeoutMs)
+          : undefined;
 
       this.pending.set(id, { resolve: resolve as (v: unknown) => void, reject, timeout });
       this.vscode.postMessage({ id, method, params, webviewId: this.webviewId });
@@ -224,7 +231,10 @@ class Bridge {
   }
 
   streamChat(content: string | ContentPart[], model: string, effort: string, planMode: boolean, sessionId?: string, permissionMode?: import("shared/types").PermissionMode, goalObjective?: string) {
-    return this.call<{ done: boolean }>(Methods.StreamChat, { content, model, effort, planMode, sessionId, permissionMode, goalObjective });
+    // No client-side deadline: this RPC spans the whole turn, and the turn
+    // outcome is delivered as stream events — a timeout here used to reject
+    // mid-turn on long runs and roll the sent text back into the composer.
+    return this.call<{ done: boolean }>(Methods.StreamChat, { content, model, effort, planMode, sessionId, permissionMode, goalObjective }, NO_REQUEST_TIMEOUT_MS);
   }
 
   abortChat() {

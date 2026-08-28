@@ -172,7 +172,7 @@ export class AgentLifecycleService extends Disposable implements IAgentLifecycle
     } catch (error) {
       if (this.handles.get(agentId) === handle) this.handles.delete(agentId);
       try {
-        handle.dispose();
+        await handle.dispose();
       } catch { }
       this.onDidDisposeEmitter.fire(agentId);
       throw error;
@@ -276,7 +276,7 @@ export class AgentLifecycleService extends Disposable implements IAgentLifecycle
       compaction.abortController.abort(reason);
     }
     await Promise.all([loop.settled(), compactionSettled, prompt.drain(reason)]);
-    handle.dispose();
+    await handle.dispose();
     this.onDidDisposeEmitter.fire(agentId);
   }
 }

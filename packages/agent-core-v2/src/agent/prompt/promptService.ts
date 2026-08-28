@@ -171,7 +171,9 @@ export class AgentPromptService implements IAgentPromptService {
         if (submitted) throw new Error2(ErrorCodes.REQUEST_INVALID, 'prompt reservation already submitted');
         submitted = true;
         this.reservedPromptIds.delete(id);
-        await this.dispatcher.dispatch(new PromptAccepted({ promptId: id }));
+        await this.dispatcher.dispatch(
+          new PromptAccepted({ promptId: id, content: stripBundledSkillBlocks(message) }),
+        );
         return this.enqueue({ id, message });
       },
       dispose: () => {
@@ -423,6 +425,14 @@ export class AgentPromptService implements IAgentPromptService {
     void this.dispatcher.dispatch(new PromptQueued({ promptId: record.id, content: record.message.content, queueLength: this.pending.length }));
   }
   private publishAborted(promptId: string): void { void this.dispatcher.dispatch(new PromptAborted({ promptId, abortedAt: new Date().toISOString() })); }
+}
+
+function bundledSkillBlockCount(message: ContextMessage): number {
+  return message.origin?.kind === 'user' ? (message.origin.skillActivations?.length ?? 0) : 0;
+}
+
+function stripBundledSkillBlocks(message: ContextMessage): ContentPart[] {
+  return message.content.slice(bundledSkillBlockCount(message));
 }
 
 function snapshot(item: Record): PromptSnapshot { return { id: item.id, userMessageId: item.userMessageId, createdAt: item.createdAt, state: item.state, message: item.message }; }

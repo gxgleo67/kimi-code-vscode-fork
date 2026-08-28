@@ -4,11 +4,15 @@ import { z } from 'zod';
 import { Event2 } from '#/app/event/event2';
 import { defineState } from '#/state/state';
 
-const promptAcceptedSchema = z.object({ promptId: z.string().min(1) });
+const promptAcceptedSchema = z.object({
+  promptId: z.string().min(1),
+  content: z.unknown().optional(),
+});
 
 export class PromptAccepted extends Event2<z.infer<typeof promptAcceptedSchema>> {
   static override readonly type = 'prompt.accepted';
   static override readonly durable = true;
+  static override readonly observable = true;
   static override readonly schema = promptAcceptedSchema;
 }
 export interface PromptAccepted extends z.infer<typeof promptAcceptedSchema> {}

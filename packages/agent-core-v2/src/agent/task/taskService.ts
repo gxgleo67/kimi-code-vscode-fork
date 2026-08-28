@@ -26,6 +26,7 @@ import { IAgentConversationUndoParticipantRegistry } from '#/agent/contextMemory
 import { IEventDispatcher } from '#/state/eventDispatcher';
 import type { ContextMessage, TaskOrigin } from '#/agent/contextMemory/types';
 import { IAgentContextInjectorService } from '#/agent/contextInjector/contextInjector';
+import { wrapSystemReminder } from '#/agent/systemReminder/systemReminder';
 import { IAgentLoopService } from '#/agent/loop/loop';
 import { MessageStepRequest } from '#/agent/loop/stepRequest';
 import { IAgentScopeContext } from '#/agent/scopeContext/scopeContext';
@@ -155,6 +156,7 @@ const TASK_ID_ALPHABET = '0123456789abcdefghijklmnopqrstuvwxyz';
 const SESSION_CLOSED_REASON = 'Session closed';
 const NOTIFICATION_FALLBACK_PREVIEW_BYTES = 3_000;
 const ACTIVE_BACKGROUND_TASK_INJECTION_VARIANT = 'background_task_status';
+const TASK_RESUME_TERMINATION_VARIANT = 'task_resume_termination';
 const ACTIVE_BACKGROUND_TASK_GUIDANCE = [
   'The conversation was compacted, so the earlier messages that started these background tasks are gone — but the tasks are still running from before.',
   'Do not start duplicates. Use TaskList to list them, TaskOutput for a non-blocking status/output snapshot, and TaskStop to cancel one — completion arrives via automatic notification.',
@@ -320,6 +322,104 @@ export class AgentTaskService extends Disposable implements IAgentTaskService {
     const tasks = this.list(true);
     if (tasks.length === 0) return undefined;
     return `${ACTIVE_BACKGROUND_TASK_GUIDANCE}\n\n${formatTaskList(tasks, true)}`;
+  }
+
+  /** One-shot injection telling the model its previous-session background tasks lost contact on app exit. */
+  private appendPreviousSessionTasksReminder(): void {
+    const tasks: AgentTaskInfo[] = [];
+    for (const info of this.ghosts.values()) {
+      if (info.resumeReminded === true) continue;
+      if (!isPreviousSessionTermination(info)) continue;
+      if (
+        this.hasPreviousSessionReminder(info.taskId) ||
+        (info.status === 'lost' && this.hasDeliveredTaskOrigin(info))
+      ) {
+        this.persistPreviousSessionReminderMarker(info);
+        continue;
+      }
+      tasks.push(info);
+    }
+    if (tasks.length === 0) return;
+    const lines = tasks.map((info) => previousSessionTaskLine(info));
+    this.context.append({
+      role: 'user',
+      content: [
+        {
+          type: 'text',
+          text: wrapSystemReminder(
+            [
+              'The user exited the application after your last turn, so your background tasks from the previous session lost contact:',
+              ...lines,
+              "Don't assume any of them completed; check current state (they may still be running), then re-run or resume only what you still need.",
+            ].join('\n'),
+          ),
+        },
+      ],
+      toolCalls: [],
+      origin: { kind: 'injection', variant: TASK_RESUME_TERMINATION_VARIANT },
+    });
+    for (const info of tasks) {
+      this.firePreviousSessionLostTaskNotificationHook(info);
+      this.persistPreviousSessionReminderMarker(info);
+    }
+  }
+
+  private hasPreviousSessionReminder(taskId: string): boolean {
+    const taskLinePrefix = `- ${taskId} "`;
+    return this.context.get().some((message) => {
+      if (
+        message.origin?.kind !== 'injection' ||
+        message.origin.variant !== TASK_RESUME_TERMINATION_VARIANT
+      ) {
+        return false;
+      }
+      return message.content.some(
+        (part) =>
+          part.type === 'text' &&
+          part.text.split('\n').some((line) => line.startsWith(taskLinePrefix)),
+      );
+    });
+  }
+
+  private hasDeliveredTaskOrigin(info: AgentTaskInfo): boolean {
+    const origin: TaskNotificationOrigin = {
+      taskId: info.taskId,
+      status: info.status,
+      notificationId: `task:${info.taskId}:${info.status}`,
+    };
+    const key = notificationKey(origin);
+    return (
+      this.states.get(taskNotificationDeliveryKey).includes(key) ||
+      this.deliveredNotificationKeys.has(key) ||
+      this.hasDeliveredNotification(key)
+    );
+  }
+
+  private persistPreviousSessionReminderMarker(info: AgentTaskInfo): void {
+    const marked: AgentTaskInfo = { ...info, resumeReminded: true };
+    this.ghosts.set(info.taskId, marked);
+    void this.persistence.writeTask(marked).catch((error: unknown) => {
+      this.log.error('previous-session task reminder marker write failed', {
+        taskId: info.taskId,
+        error,
+      });
+    });
+  }
+
+  private firePreviousSessionLostTaskNotificationHook(info: AgentTaskInfo): void {
+    if (info.status !== 'lost') return;
+    if (info.detached === false) return;
+    if (info.terminalNotificationSuppressed === true) return;
+    const origin: TaskNotificationOrigin = {
+      taskId: info.taskId,
+      status: info.status,
+      notificationId: `task:${info.taskId}:${info.status}`,
+    };
+    const key = notificationKey(origin);
+    if (this.scheduledNotificationKeys.has(key)) return;
+    if (this.deliveredNotificationKeys.has(key)) return;
+    if (this.hasDeliveredNotification(key)) return;
+    this.fireNotificationHook(buildAgentTaskNotification(info));
   }
 
   private restoreGhostsFromWire(): void {
@@ -548,6 +648,7 @@ export class AgentTaskService extends Disposable implements IAgentTaskService {
     for (const info of lostTasks) {
       this.recordTaskTerminated(info);
     }
+    this.appendPreviousSessionTasksReminder();
     await this.restoreAgentTaskNotifications();
     return lostTasks;
   }
@@ -1100,6 +1201,7 @@ export class AgentTaskService extends Disposable implements IAgentTaskService {
   private async restoreAgentTaskNotificationsNow(): Promise<void> {
     for (const info of this.list(false)) {
       if (!isAgentTaskTerminal(info.status)) continue;
+      if (info.status === 'lost') continue;
       await this.restoreAgentTaskNotification(info);
     }
   }
@@ -1151,18 +1253,10 @@ export class AgentTaskService extends Disposable implements IAgentTaskService {
       if (this.deliveredNotificationKeys.has(key)) return undefined;
       if (this.hasDeliveredNotification(key)) return undefined;
       this.scheduledNotificationKeys.add(key);
-      const notification: AgentTaskNotification = {
-        id: origin.notificationId,
-        category: 'task',
-        type: `task.${info.status}`,
-        source_kind: 'background_task',
-        source_id: info.taskId,
-        agent_id: info.kind === 'agent' ? info.agentId : undefined,
-        title: `Background ${info.kind} ${info.status}`,
-        severity: info.status === 'completed' ? 'info' : 'warning',
-        body: buildAgentTaskNotificationBody(info),
-        children: agentTaskNotificationChildren(output),
-      };
+      const notification = buildAgentTaskNotification(
+        info,
+        agentTaskNotificationChildren(output),
+      );
       const content = [
         {
           type: 'text',
@@ -1380,6 +1474,40 @@ function buildAgentTaskNotificationBody(info: AgentTaskInfo): string {
   ].join('\n');
 
   return `${baseLine}${recovery}`;
+}
+
+function buildAgentTaskNotification(
+  info: AgentTaskInfo,
+  children?: readonly string[],
+): AgentTaskNotification {
+  return {
+    id: `task:${info.taskId}:${info.status}`,
+    category: 'task',
+    type: `task.${info.status}`,
+    source_kind: 'background_task',
+    source_id: info.taskId,
+    agent_id: info.kind === 'agent' ? info.agentId : undefined,
+    title: `Background ${info.kind} ${info.status}`,
+    severity: info.status === 'completed' ? 'info' : 'warning',
+    body: buildAgentTaskNotificationBody(info),
+    children,
+  };
+}
+
+function previousSessionTaskLine(info: AgentTaskInfo): string {
+  if (info.kind === 'agent' && info.agentId !== undefined) {
+    return `- ${info.taskId} "${info.description}" (subagent) — resume it with Agent(resume="${info.agentId}", prompt="Pick up where you left off; redo the last tool call if its result was never observed.") to continue from its prior context.`;
+  }
+  return `- ${info.taskId} "${info.description}" (${info.kind === 'process' ? 'bash' : info.kind})`;
+}
+
+function isPreviousSessionTermination(info: AgentTaskInfo): boolean {
+  if (info.status === 'lost') return true;
+  return (
+    info.status === 'killed' &&
+    info.terminalNotificationSuppressed === true &&
+    info.stopReason === SESSION_CLOSED_REASON
+  );
 }
 
 function generateTaskId(kind: string): string {

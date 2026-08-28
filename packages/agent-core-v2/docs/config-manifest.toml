@@ -8,38 +8,39 @@
 # commented "# field: type" lines describe the remaining schema fields.
 # Values resolve as: default -> config.toml -> env overlay -> memory.
 
-# Index (25 sections · 2 overlay(s))
-#   background               src/agent/task/configSection.ts
-#   builtinProductSkills     src/app/skillCatalog/configSection.ts
-#   cron                     src/app/cron/configSection.ts
-#   defaultPermissionMode    src/agent/permissionMode/configSection.ts
-#   defaultPlanMode          src/features/plan/configSection.ts
-#   experimental             src/app/flag/flag.ts
-#   extraAgentDirs           src/workspace/workspaceAgentProfileLoader/configSection.ts
-#   extraSkillDirs           src/app/skillCatalog/configSection.ts
-#   hooks                    src/agent/externalHooks/configSection.ts
-#   identity                 src/app/agentIdentity/configSection.ts
-#   image                    src/agent/media/configSection.ts
-#   loopControl              src/agent/loop/configSection.ts
-#   mcp                      src/app/mcpConfig/configSection.ts
-#   mergeAllAvailableSkills  src/app/skillCatalog/configSection.ts
-#   modelCatalog             src/app/kosongConfig/configSection.ts
-#   models                   src/app/kosongConfig/configSection.ts
-#   permission               src/agent/permissionRules/configSection.ts
-#   providers                src/app/kosongConfig/configSection.ts
-#   secondaryModel           src/session/subagent/configSection.ts
-#   services                 src/app/auth/configSection.ts
-#   subagent                 src/session/subagent/configSection.ts
-#   task                     src/agent/task/configSection.ts
-#   thinking                 src/app/kosongConfig/configSection.ts
-#   tokenCounting            src/agent/tokenCounting/configSection.ts
-#   tools                    src/agent/toolPolicy/configSection.ts
-#   (overlay) servicesCredentialEnvOverlay  src/app/auth/configSection.ts
-#   (overlay) kimiModelEnvOverlay  src/app/kosongConfig/envOverlay.ts
+# Index (26 sections · 2 overlay(s))
+#   background               src\agent\task\configSection.ts
+#   builtinProductSkills     src\app\skillCatalog\configSection.ts
+#   cron                     src\app\cron\configSection.ts
+#   defaultPermissionMode    src\agent\permissionMode\configSection.ts
+#   defaultPlanMode          src\features\plan\configSection.ts
+#   experimental             src\app\flag\flag.ts
+#   extraAgentDirs           src\workspace\workspaceAgentProfileLoader\configSection.ts
+#   extraSkillDirs           src\app\skillCatalog\configSection.ts
+#   hooks                    src\agent\externalHooks\configSection.ts
+#   identity                 src\app\agentIdentity\configSection.ts
+#   image                    src\agent\media\configSection.ts
+#   loopControl              src\agent\loop\configSection.ts
+#   mcp                      src\app\mcpConfig\configSection.ts
+#   mergeAllAvailableSkills  src\app\skillCatalog\configSection.ts
+#   modelCatalog             src\app\kosongConfig\configSection.ts
+#   models                   src\app\kosongConfig\configSection.ts
+#   permission               src\agent\permissionRules\configSection.ts
+#   providers                src\app\kosongConfig\configSection.ts
+#   secondaryModel           src\session\subagent\configSection.ts
+#   services                 src\app\auth\configSection.ts
+#   subagent                 src\session\subagent\configSection.ts
+#   swarm                    src\features\swarm\configSection.ts
+#   task                     src\agent\task\configSection.ts
+#   thinking                 src\app\kosongConfig\configSection.ts
+#   tokenCounting            src\agent\tokenCounting\configSection.ts
+#   tools                    src\agent\toolPolicy\configSection.ts
+#   (overlay) servicesCredentialEnvOverlay  src\app\auth\configSection.ts
+#   (overlay) kimiModelEnvOverlay  src\app\kosongConfig\envOverlay.ts
 
 # ##########################################################################
 # background
-#   owner: src/agent/task/configSection.ts
+#   owner: src\agent\task\configSection.ts
 #   scope: core
 #   hooks: stripEnv
 #   env:
@@ -59,7 +60,7 @@
 
 # ##########################################################################
 # builtinProductSkills (config.toml: builtin_product_skills)
-#   owner: src/app/skillCatalog/configSection.ts
+#   owner: src\app\skillCatalog\configSection.ts
 #   scope: core
 #   hooks: stripEnv
 #   env:
@@ -70,7 +71,7 @@ builtin_product_skills = true
 
 # ##########################################################################
 # cron
-#   owner: src/app/cron/configSection.ts
+#   owner: src\app\cron\configSection.ts
 #   scope: core
 #   hooks: stripEnv
 #   env:
@@ -93,7 +94,7 @@ manual_tick = false
 
 # ##########################################################################
 # defaultPermissionMode (config.toml: default_permission_mode)
-#   owner: src/agent/permissionMode/configSection.ts
+#   owner: src\agent\permissionMode\configSection.ts
 #   scope: core
 # ##########################################################################
 
@@ -101,7 +102,7 @@ manual_tick = false
 
 # ##########################################################################
 # defaultPlanMode (config.toml: default_plan_mode)
-#   owner: src/features/plan/configSection.ts
+#   owner: src\features\plan\configSection.ts
 #   scope: core
 # ##########################################################################
 
@@ -109,7 +110,7 @@ default_plan_mode = false
 
 # ##########################################################################
 # experimental
-#   owner: src/app/flag/flag.ts
+#   owner: src\app\flag\flag.ts
 #   scope: core
 #   hooks: custom fromToml · custom toToml
 # ##########################################################################
@@ -119,7 +120,7 @@ default_plan_mode = false
 
 # ##########################################################################
 # extraAgentDirs (config.toml: extra_agent_dirs)
-#   owner: src/workspace/workspaceAgentProfileLoader/configSection.ts
+#   owner: src\workspace\workspaceAgentProfileLoader\configSection.ts
 #   scope: core
 # ##########################################################################
 
@@ -127,7 +128,7 @@ extra_agent_dirs = []
 
 # ##########################################################################
 # extraSkillDirs (config.toml: extra_skill_dirs)
-#   owner: src/app/skillCatalog/configSection.ts
+#   owner: src\app\skillCatalog\configSection.ts
 #   scope: core
 # ##########################################################################
 
@@ -135,7 +136,7 @@ extra_skill_dirs = []
 
 # ##########################################################################
 # hooks
-#   owner: src/agent/externalHooks/configSection.ts
+#   owner: src\agent\externalHooks\configSection.ts
 #   scope: core
 #   hooks: custom fromToml · custom toToml
 # ##########################################################################
@@ -149,7 +150,7 @@ extra_skill_dirs = []
 
 # ##########################################################################
 # identity
-#   owner: src/app/agentIdentity/configSection.ts
+#   owner: src\app\agentIdentity\configSection.ts
 #   scope: core
 #   hooks: stripEnv
 #   env:
@@ -163,7 +164,7 @@ extra_skill_dirs = []
 
 # ##########################################################################
 # image
-#   owner: src/agent/media/configSection.ts
+#   owner: src\agent\media\configSection.ts
 #   scope: core
 #   hooks: stripEnv
 #   env:
@@ -177,7 +178,7 @@ extra_skill_dirs = []
 
 # ##########################################################################
 # loopControl (config.toml: loop_control)
-#   owner: src/agent/loop/configSection.ts
+#   owner: src\agent\loop\configSection.ts
 #   scope: core
 #   hooks: custom toToml · stripEnv
 #   deprecations (old key is ignored + warns; rename manually):
@@ -197,7 +198,7 @@ extra_skill_dirs = []
 
 # ##########################################################################
 # mcp
-#   owner: src/app/mcpConfig/configSection.ts
+#   owner: src\app\mcpConfig\configSection.ts
 #   scope: core
 #   hooks: stripEnv
 #   env:
@@ -211,7 +212,7 @@ extra_skill_dirs = []
 
 # ##########################################################################
 # mergeAllAvailableSkills (config.toml: merge_all_available_skills)
-#   owner: src/app/skillCatalog/configSection.ts
+#   owner: src\app\skillCatalog\configSection.ts
 #   scope: core
 # ##########################################################################
 
@@ -219,7 +220,7 @@ merge_all_available_skills = true
 
 # ##########################################################################
 # modelCatalog (config.toml: model_catalog)
-#   owner: src/app/kosongConfig/configSection.ts
+#   owner: src\app\kosongConfig\configSection.ts
 #   scope: core
 # ##########################################################################
 
@@ -229,7 +230,7 @@ merge_all_available_skills = true
 
 # ##########################################################################
 # models
-#   owner: src/app/kosongConfig/configSection.ts
+#   owner: src\app\kosongConfig\configSection.ts
 #   scope: core
 #   hooks: custom fromToml · custom toToml
 # ##########################################################################
@@ -275,7 +276,7 @@ merge_all_available_skills = true
 
 # ##########################################################################
 # permission
-#   owner: src/agent/permissionRules/configSection.ts
+#   owner: src\agent\permissionRules\configSection.ts
 #   scope: core
 #   hooks: custom fromToml · custom toToml
 # ##########################################################################
@@ -289,7 +290,7 @@ merge_all_available_skills = true
 
 # ##########################################################################
 # providers
-#   owner: src/app/kosongConfig/configSection.ts
+#   owner: src\app\kosongConfig\configSection.ts
 #   scope: core
 #   hooks: custom fromToml · custom toToml · stripEnv
 #   env:
@@ -317,7 +318,7 @@ merge_all_available_skills = true
 
 # ##########################################################################
 # secondaryModel (config.toml: secondary_model)
-#   owner: src/session/subagent/configSection.ts
+#   owner: src\session\subagent\configSection.ts
 #   scope: core
 # ##########################################################################
 
@@ -339,7 +340,7 @@ merge_all_available_skills = true
 
 # ##########################################################################
 # services
-#   owner: src/app/auth/configSection.ts
+#   owner: src\app\auth\configSection.ts
 #   scope: core
 #   hooks: custom fromToml · custom toToml · stripEnv
 #   env:
@@ -371,7 +372,7 @@ merge_all_available_skills = true
 
 # ##########################################################################
 # subagent
-#   owner: src/session/subagent/configSection.ts
+#   owner: src\session\subagent\configSection.ts
 #   scope: core
 #   hooks: stripEnv
 #   env:
@@ -382,8 +383,20 @@ merge_all_available_skills = true
 timeout_ms = 7200000
 
 # ##########################################################################
+# swarm
+#   owner: src\features\swarm\configSection.ts
+#   scope: core
+#   hooks: stripEnv
+#   env:
+#     timeout_ms <- KIMI_SWARM_TIMEOUT_MS (custom parse)
+# ##########################################################################
+
+[swarm]
+timeout_ms = 7200000
+
+# ##########################################################################
 # task
-#   owner: src/agent/task/configSection.ts
+#   owner: src\agent\task\configSection.ts
 #   scope: core
 #   hooks: stripEnv
 #   env:
@@ -403,7 +416,7 @@ timeout_ms = 7200000
 
 # ##########################################################################
 # thinking
-#   owner: src/app/kosongConfig/configSection.ts
+#   owner: src\app\kosongConfig\configSection.ts
 #   scope: core
 #   hooks: stripEnv
 #   env:
@@ -418,7 +431,7 @@ timeout_ms = 7200000
 
 # ##########################################################################
 # tokenCounting (config.toml: token_counting)
-#   owner: src/agent/tokenCounting/configSection.ts
+#   owner: src\agent\tokenCounting\configSection.ts
 #   scope: core
 #   hooks: stripEnv
 #   env:
@@ -430,7 +443,7 @@ strategy = "measured+estimated"
 
 # ##########################################################################
 # tools
-#   owner: src/agent/toolPolicy/configSection.ts
+#   owner: src\agent\toolPolicy\configSection.ts
 #   scope: core
 # ##########################################################################
 

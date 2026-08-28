@@ -14,6 +14,7 @@ import {
   TurnStepInterrupted,
 } from '#/agent/loop/turnEvents';
 import { TurnEnded, turnKey } from '#/agent/loop/turnOps';
+import { ContextUndone } from '#/agent/undo/undoService';
 import { TurnStepRetrying } from '#/agent/stepRetry/stepRetryService';
 import { ToolCallStarted, ToolResultEvent } from '#/agent/toolExecutor/toolExecutorEvents';
 import {
@@ -137,6 +138,9 @@ export class AgentActivityView extends Disposable implements IAgentActivityView 
     );
     this._register(
       this.eventBus.subscribe(TurnEnded, (e) => this.onTurnEnded(e.turnId, e.reason)),
+    );
+    this._register(
+      this.eventBus.subscribe(ContextUndone, (e) => this.onContextUndone(e.turns)),
     );
     this._register(
       this.eventBus.subscribe(PermissionApprovalRequested, (e) =>
@@ -291,6 +295,15 @@ export class AgentActivityView extends Disposable implements IAgentActivityView 
     }
     this.lastTurn = { turnId, reason, durationMs: Date.now() - this.turn.since, at: Date.now() };
     this.turn = undefined;
+    this.publish();
+  }
+
+  private onContextUndone(turns: number): void {
+    const last = this.lastTurn;
+    if (last === undefined) return;
+    const firstRemoved = this.states.get(turnKey).nextTurnId - turns;
+    if (last.turnId < firstRemoved) return;
+    this.lastTurn = undefined;
     this.publish();
   }
 

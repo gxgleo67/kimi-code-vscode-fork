@@ -2,6 +2,7 @@ import { produce } from 'immer';
 import { describe, expect, it } from 'vitest';
 
 import { ContextAppendLoopEvent } from '#/agent/contextMemory/contextEvents';
+import { ContextUndone } from '#/agent/undo/undoService';
 import type { Event2, Event2Class } from '#/app/event/event2';
 import type { FoldContext } from '#/state/state';
 import {
@@ -60,6 +61,34 @@ describe('turnKey lastEnded', () => {
     s = fold(s, new TurnEnded({ turnId: 0, reason: 'completed' }));
     s = foldLoopEvent(s, '0');
     expect(s.lastEnded?.reason).toBe('completed');
+  });
+
+  it('clears the stored outcome when an undo rewinds the turn it describes', () => {
+    let s = turnKey.initial();
+    s = fold(s, new TurnPrompt({ input: [], origin: { kind: 'user' } }));
+    s = fold(s, new TurnEnded({ turnId: 0, reason: 'completed', durationMs: 10 }));
+    s = fold(s, new TurnPrompt({ input: [], origin: { kind: 'user' } }));
+    s = fold(s, new TurnEnded({ turnId: 1, reason: 'cancelled', durationMs: 10 }));
+    expect(s.lastEnded?.reason).toBe('cancelled');
+    s = fold(s, new ContextUndone({ turns: 1 }));
+    expect(s.lastEnded).toBeUndefined();
+  });
+
+  it('keeps the stored outcome when an undo rewinds only earlier turns', () => {
+    let s = turnKey.initial();
+    s = fold(s, new TurnPrompt({ input: [], origin: { kind: 'user' } }));
+    s = fold(s, new TurnEnded({ turnId: 0, reason: 'completed', durationMs: 10 }));
+    s = fold(s, new TurnPrompt({ input: [], origin: { kind: 'user' } }));
+    s = fold(s, new ContextUndone({ turns: 1 }));
+    expect(s.lastEnded).toMatchObject({ turnId: 0, reason: 'completed' });
+  });
+
+  it('clears the stored outcome when the undo count exceeds the tracked turns', () => {
+    let s = turnKey.initial();
+    s = fold(s, new TurnPrompt({ input: [], origin: { kind: 'user' } }));
+    s = fold(s, new TurnEnded({ turnId: 0, reason: 'cancelled', durationMs: 10 }));
+    s = fold(s, new ContextUndone({ turns: 2 }));
+    expect(s.lastEnded).toBeUndefined();
   });
 
   it('starts without a stored outcome', () => {

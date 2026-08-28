@@ -17,11 +17,11 @@ import {
 } from '#/app/agentProfileCatalog/profile-shared';
 import { IAgentScopeContext } from '#/agent/scopeContext/scopeContext';
 import { IAgentSwarmService } from '#/features/swarm/agent/swarm';
+import { resolveSwarmTimeoutMs } from '#/features/swarm/configSection';
 import {
   buildSubagentModelDescriptions,
   exposesSubagentModelChoice,
   resolveSubagentBinding,
-  resolveSubagentTimeoutMs,
   stripSubagentModelParameter,
 } from '#/session/subagent/configSection';
 import {
@@ -166,7 +166,7 @@ export class AgentSwarmTool implements IAgentSwarmTool {
         binding = { model: resolved.model, thinking: resolved.thinking };
       }
     }
-    const timeoutMs = resolveSubagentTimeoutMs(this.config);
+    const timeoutMs = resolveSwarmTimeoutMs(this.config);
     const specs = await createAgentSwarmSpecs(args, (agentId) =>
       this.swarmService.getSwarmItem({ callerAgentId: this.callerAgentId, agentId }),
     );

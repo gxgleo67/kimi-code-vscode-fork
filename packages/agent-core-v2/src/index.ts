@@ -327,6 +327,7 @@ import '#/features/plan/planFeature';
 export * from '#/features/debugEvents/debugEvents';
 export * from '#/features/debugEvents/debugEventsService';
 import '#/features/debugEvents/debugEventsFeature';
+export * from '#/features/swarm/configSection';
 export * from '#/features/swarm/agent/swarm';
 export * from '#/features/swarm/agent/swarmService';
 export * from '#/features/swarm/session/sessionSwarm';

@@ -8,6 +8,7 @@ import type { Event2, Event2Class } from '#/app/event/event2';
 import { IAgentLoopService } from '#/agent/loop/loop';
 import { TurnStarted } from '#/agent/loop/turnEvents';
 import { TurnEnded, turnKey, type TurnModelState } from '#/agent/loop/turnOps';
+import { ContextUndone } from '#/agent/undo/undoService';
 import { IAgentStateService } from '#/agent/state/agentState';
 import { AgentStateService } from '#/agent/state/agentStateService';
 import { IAgentTaskService } from '#/agent/task/task';
@@ -73,6 +74,7 @@ function harness(
   seedTasks: readonly AgentTaskInfo[] = [],
   compacting: FullCompactionTask | null = null,
   lastEnded?: TurnModelState['lastEnded'],
+  nextTurnId = 1,
 ) {
   const bus = new FakeBus();
   const loop = {
@@ -104,7 +106,7 @@ function harness(
   ix.stub(IEventDispatcher, dispatcher);
   const agentState = new AgentStateService();
   agentState.contributeState(turnKey);
-  agentState.set(turnKey, { nextTurnId: 1, cancelledTurnIds: [], lastEnded });
+  agentState.set(turnKey, { nextTurnId, cancelledTurnIds: [], lastEnded });
   ix.set(IAgentStateService, agentState);
   ix.stub(IAgentFullCompactionService, {
     _serviceBrand: undefined,
@@ -224,6 +226,39 @@ describe('AgentActivityView', () => {
 
     bus.publish(new TurnEnded({ turnId: 2, reason: 'completed' }));
     expect(view.state().lastTurn).toMatchObject({ turnId: 2, reason: 'completed' });
+  });
+
+  it('clears the last outcome when an undo rewinds the turn it describes', () => {
+    const { bus, view } = harness([], null, undefined, 2);
+
+    bus.publish(new TurnStarted({ turnId: 1, origin: { kind: 'user' } }));
+    bus.publish(new TurnEnded({ turnId: 1, reason: 'cancelled' }));
+    expect(view.state().lastTurn).toMatchObject({ turnId: 1, reason: 'cancelled' });
+
+    bus.publish(new ContextUndone({ turns: 1 }));
+    expect(view.state().lastTurn).toBeUndefined();
+  });
+
+  it('keeps the last outcome when an undo rewinds only earlier turns', () => {
+    const { bus, view } = harness([], null, undefined, 2);
+
+    bus.publish(new TurnStarted({ turnId: 0, origin: { kind: 'user' } }));
+    bus.publish(new TurnEnded({ turnId: 0, reason: 'completed' }));
+    expect(view.state().lastTurn).toMatchObject({ turnId: 0, reason: 'completed' });
+
+    bus.publish(new ContextUndone({ turns: 1 }));
+    expect(view.state().lastTurn).toMatchObject({ turnId: 0, reason: 'completed' });
+  });
+
+  it('clears the last outcome when the undo range cannot be determined', () => {
+    const { bus, view } = harness();
+
+    bus.publish(new TurnStarted({ turnId: 1, origin: { kind: 'user' } }));
+    bus.publish(new TurnEnded({ turnId: 1, reason: 'failed' }));
+    expect(view.state().lastTurn).toMatchObject({ turnId: 1, reason: 'failed' });
+
+    bus.publish(new ContextUndone({ turns: 2 }));
+    expect(view.state().lastTurn).toBeUndefined();
   });
 
   it('exposes the engine-minted interaction id as the approval id', () => {

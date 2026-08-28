@@ -59,6 +59,7 @@ import {
   exposesSubagentModelChoice,
   formatSubagentTimeoutDescription,
   resolveSubagentBinding,
+  resolveSubagentThinking,
   resolveSubagentTimeoutMs,
   stripSubagentModelParameter,
   wrapSubagentModelError,
@@ -284,12 +285,12 @@ export class SubagentTool implements ISubagentTool {
       );
       let created: IAgentScopeHandle;
       try {
-        this.modelCatalog.get(binding.model);
+        const model = this.modelCatalog.get(binding.model);
         created = await this.lifecycle.create({
           binding: {
             profile: profile.name,
             model: binding.model,
-            thinking: binding.thinking,
+            thinking: resolveSubagentThinking(this.config, model, binding.thinking),
           },
           labels: subagentLabels(this.callerAgentId),
           runtimeId: runtime.identity.runtimeId,

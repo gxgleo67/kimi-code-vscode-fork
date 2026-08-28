@@ -221,6 +221,14 @@ scripts/              # postinstall (node-pty fix)
 7. 同步官方修复：不允许后台提问时 AskUserQuestion 隐藏并拒绝 background 参数，避免高峰期子代理问题卡死（#3159）
 8. 补回上游 .gitattributes（强制 LF 检出），修复 Windows 下工具描述文件 CRLF 导致的引擎测试快照哈希漂移
 9. 修复长回合进行中已发送文本莫名回到输入框：发送 RPC 的 10 分钟桥接超时在回合中途误触发并被误判为「未发送成功」回滚；现该 RPC 不再设客户端超时，握手完成后到达的失败按运行时错误保留现场，不再回填输入框
+10. 同步官方修复：恢复被中断的会话不再反复崩溃——代理生命周期上下文在 scope 拆除期间保持激活，会话关闭路径等待异步拆除完成（#3206）
+11. 同步官方修复：会话日志损坏自愈——恢复时检测到损坏/截断的 wire 日志，自动截断到有效前缀并保留 .bak 备份，不再导致会话无法恢复（#3281）
+12. 同步官方修复：恢复会话时告知模型「之前的后台任务已被终止」——合并为一条 system-reminder 注入，不自动开新回合（#3292）
+13. 同步官方修复：undo 后「手动停止」状态残留——undo 回卷对应回合时同步清除回合结果（#3278）
+14. 同步官方修复：绑定 secondary 模型的子代理忽略默认思考强度——secondary_model.default_effort 现在优先生效（#3191）
+15. 同步官方修复：OAuth 登录被自身 provisioning 写入误取消——自身写入不再终止登录流程（#3294）
+16. 同步官方修复：swarm 独立 [swarm] timeout_ms 配置，不再跟随 subagent 超时（#3198）
+17. 同步官方修复：任务协议携带 run_in_background，前台子代理不再被误报为后台任务（#3239）
 
 *English:*
 
@@ -233,6 +241,14 @@ scripts/              # postinstall (node-pty fix)
 7. Synced upstream fix: AskUserQuestion hides and rejects the background parameter when background questions are not allowed, avoiding stuck subagent questions at peak hours (#3159)
 8. Restored upstream `.gitattributes` (forces LF checkouts), fixing engine test snapshot hash drift caused by CRLF tool-description files on Windows
 9. Fixed sent text returning to the input box mid-turn on long runs: the send RPC's 10-minute bridge timeout fired mid-turn and was misclassified as a pre-send failure, deleting the exchange and rolling the text back; the RPC no longer has a client-side deadline, and failures arriving after the handshake are treated as runtime errors that keep the exchange on screen
+10. Synced upstream fix: resuming an interrupted session no longer crashes repeatedly — the agent lifecycle context stays active through scope teardown, and the session-close path awaits async teardown (#3206)
+11. Synced upstream fix: corrupted session journals now self-heal — restore detects corrupted/truncated wire logs, truncates them to the valid prefix, and keeps a .bak backup instead of failing to resume (#3281)
+12. Synced upstream fix: on resume, the model is told its previous-session background tasks were terminated — delivered as a single system-reminder injection with no auto-turn (#3292)
+13. Synced upstream fix: stale "manually stopped" status after undo — undoing a turn now clears the turn outcome it describes (#3278)
+14. Synced upstream fix: secondary-bound subagents now honor the default thinking effort — secondary_model.default_effort takes precedence (#3191)
+15. Synced upstream fix: OAuth login no longer cancels itself when its own provisioning writes the provider (#3294)
+16. Synced upstream fix: swarms get an independent [swarm] timeout_ms and no longer follow the subagent timeout (#3198)
+17. Synced upstream fix: the task protocol carries run_in_background, so foreground subagents are no longer misreported as background tasks (#3239)
 
 **2026-08-26**：
 

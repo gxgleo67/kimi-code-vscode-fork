@@ -4,6 +4,7 @@ import { z } from 'zod';
 import type { KimiErrorPayload } from '#/_base/errors/serialize';
 import { ContextAppendLoopEvent } from '#/agent/contextMemory/contextEvents';
 import type { PromptOrigin } from '#/agent/contextMemory/types';
+import { ContextUndone } from '#/agent/undo/undoService';
 import { Event2, type SerializedEvent2 } from '#/app/event/event2';
 import type { ContentPart } from '#/kosong/contract/message';
 import { defineState } from '#/state/state';
@@ -109,6 +110,17 @@ export const turnKey = defineState(
   })
   .on(TurnPrompt, (s) => advanceTurnClock(s, s.nextTurnId + 1))
   .on(TurnSteer, () => {})
+  .on(ContextUndone, (s, e) => {
+    const firstRemoved = s.nextTurnId - e.turns;
+    const lastEnded = s.lastEnded;
+    return {
+      ...s,
+      lastEnded:
+        lastEnded !== undefined && lastEnded.turnId >= firstRemoved
+          ? undefined
+          : lastEnded,
+    };
+  })
   .on(TurnCancel, (s, e) => {
     if (e.target === undefined || e.turnId === undefined) return;
     if (e.turnId < s.nextTurnId) return;

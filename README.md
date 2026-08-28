@@ -1,15 +1,21 @@
-# Kimi Code VS Code 插件 —— 个人修改版 (Fork) | Kimi Code for VS Code — Unofficial Fork
+# Kimi Code VS Code 插件 —— 个人修改版 (Fork)
+
+**Kimi Code for VS Code — Unofficial Personal Fork**
 
 <p align="center">
   <img src="docs/images/hero.jpg" alt="Kimi Code (Fork)" width="100%">
 </p>
 
 > **本仓库是 Moonshot AI 官方 Kimi Code VS Code 插件的第三方修改版（fork）。**
-> **This repository is a third-party modified build (fork) of Moonshot AI's official Kimi Code VS Code extension.**
 >
 > - **原版地址**：[MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code)（插件位于其 `apps/vscode` 子目录）
-> - **Upstream**: [MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code) (the extension lives in its `apps/vscode` directory)
 > - 本仓库已从原版 monorepo **提取并精简**，仅保留构建本插件所需的代码。
+>
+> *English:*
+>
+> **This repository is a third-party modified build (fork) of Moonshot AI's official Kimi Code VS Code extension.**
+>
+> - **Upstream**: [MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code) (the extension lives in its `apps/vscode` directory)
 > - This repo was **extracted and slimmed down** from the upstream monorepo, keeping only the code required to build this extension.
 
 <div align="center">
@@ -25,67 +31,90 @@
 ## ⚠️ 声明 | Disclaimer
 
 - 本插件是 **个人定制修改版**，与官方版 **完全隔离**：扩展 ID `moonshot-ai.kimicode-vscode-fork`、displayName "Kimi Code (Fork)"，命令 / 设置前缀均为 `kimifork.*`，视图容器 `kimifork-sidebar`。可与官方版同时共存，互不冲突。
-- This is a **personal customized build**, **fully isolated** from the official one: extension ID `moonshot-ai.kimicode-vscode-fork`, display name "Kimi Code (Fork)", `kimifork.*` command/setting prefixes, and a `kimifork-sidebar` view container. It coexists with the official extension without conflicts.
 - 本项目 **不隶属于 Moonshot AI**，不提供官方支持，使用风险自负。
-- This project is **not affiliated with Moonshot AI**; no official support is provided — use at your own risk.
 - 原版仓库删除了与 VS Code 无关的部分（Kimi Code CLI/TUI、kimi-web、kap-server、vis 等）；本仓库只包含 `apps/vscode` 插件及构建闭包内必需的 11 个私有内部包（它们不发布到 npm registry，是编译必需依赖）。
-- Parts unrelated to VS Code were dropped (Kimi Code CLI/TUI, kimi-web, kap-server, vis, etc.); this repo contains only the `apps/vscode` extension plus the 11 private internal packages in its build closure (not published to npm; required to compile).
 - 习惯用 VS Code 后被迫用了 5 小时额度，于是改了 VS Code 插件；加上目前官方主要在维护 bug、没有具体功能设置上的更新，所以根据不同人的使用需求增加了一些功能，方便对齐 Web 版本。
+
+*English:*
+
+- This is a **personal customized build**, **fully isolated** from the official one: extension ID `moonshot-ai.kimicode-vscode-fork`, display name "Kimi Code (Fork)", `kimifork.*` command/setting prefixes, and a `kimifork-sidebar` view container. It coexists with the official extension without conflicts.
+- This project is **not affiliated with Moonshot AI**; no official support is provided — use at your own risk.
+- Parts unrelated to VS Code were dropped (Kimi Code CLI/TUI, kimi-web, kap-server, vis, etc.); this repo contains only the `apps/vscode` extension plus the 11 private internal packages in its build closure (not published to npm; required to compile).
 - Origin story: I prefer working in VS Code and kept burning through the 5-hour quota, so I modified the VS Code extension. Since upstream currently focuses on maintenance fixes rather than new feature settings, this fork adds features based on real usage needs, aligning with the Web version.
 
 ## ✨ 与原版的差异（定制功能） | Differences from Upstream
 
 ### 🤖 会话与标题 | Sessions & Titles
 
-- **会话标题自动生成**：官方 V2 引擎已提供该功能但默认关闭，本插件默认开启。
-  - **Automatic session titles**: provided by the official v2 engine but off by default; this fork turns it on by default.
+**会话标题自动生成**：官方 V2 引擎已提供该功能但默认关闭，本插件默认开启。
+
+**Automatic session titles**: provided by the official v2 engine but off by default; this fork turns it on by default.
 
 ### 📊 额度 | Quota
 
-- **额度状态栏**：5 小时 / 7 天额度同心环实时显示，颜色随用量变化（70% 起黄 → 100% 红），含重置倒计时与 Tooltip；额度查询固定走直连，不经系统代理，避免代理导致偶发查询失败。
-  - **Quota status rings**: live concentric rings for the 5-hour / 7-day quotas; color shifts with usage (yellow from 70%, red at 100%), with reset countdown and tooltip. Quota lookups always connect directly, bypassing the system proxy, to avoid intermittent proxy-related failures.
+**额度状态栏**：5 小时 / 7 天额度同心环实时显示，颜色随用量变化（70% 起黄 → 100% 红），含重置倒计时与 Tooltip；额度查询固定走直连，不经系统代理，避免代理导致偶发查询失败。
+
+**Quota status rings**: live concentric rings for the 5-hour / 7-day quotas; color shifts with usage (yellow from 70%, red at 100%), with reset countdown and tooltip. Quota lookups always connect directly, bypassing the system proxy, to avoid intermittent proxy-related failures.
 
 ### 🛡️ 权限与审批 | Permissions & Approval
 
-- **Plan 审批（Claude 式 UX）**：Plan 模式弹窗支持 执行 / Revise+反馈 / 选项，不再在 YOLO 下静默直接执行；计划完成时先在编辑器中打开计划文件，再弹窗确认。
-  - **Plan approval (Claude-style UX)**: the plan-mode dialog offers Execute / Revise with feedback / options instead of silently auto-executing in YOLO mode; when planning finishes, the plan file opens in the editor first, then the confirmation dialog appears.
+**Plan 审批（Claude 式 UX）**：Plan 模式弹窗支持 执行 / Revise+反馈 / 选项，不再在 YOLO 下静默直接执行；计划完成时先在编辑器中打开计划文件，再弹窗确认。
+
+**Plan approval (Claude-style UX)**: the plan-mode dialog offers Execute / Revise with feedback / options instead of silently auto-executing in YOLO mode; when planning finishes, the plan file opens in the editor first, then the confirmation dialog appears.
 
 ### 🧠 上下文 | Context
 
-- **自动压缩上下文**：设置菜单开关（语言设置下方，默认关闭），任务结束后上下文超过 256K 时自动执行 `/compact`，防止 K3-256k 等 256K 模型上下文超限丢失。
-  - **Auto context compaction**: a settings toggle (below the language setting, off by default); when a task finishes with context over 256K, `/compact` runs automatically to prevent overflow on 256K-context models such as K3-256k.
-- **压缩后界面同步**：`/compact` 完成后对话列表与引擎真实上下文同步——压缩记录显示为 Claude Code 风格的单行标记（手动/自动 + 释放 token 数），点击可展开压缩摘要；上下文查看器打开时自动刷新。
-  - **Post-compaction UI sync**: after `/compact`, the chat list matches the engine's real context — the compaction entry renders as a Claude Code–style single-line marker (manual/auto + tokens freed) that expands to the compaction summary; the context viewer refreshes automatically while open.
+**自动压缩上下文**：设置菜单开关（语言设置下方，默认关闭），任务结束后上下文超过 256K 时自动执行 `/compact`，防止 K3-256k 等 256K 模型上下文超限丢失。
+
+**Auto context compaction**: a settings toggle (below the language setting, off by default); when a task finishes with context over 256K, `/compact` runs automatically to prevent overflow on 256K-context models such as K3-256k.
+
+**压缩后界面同步**：`/compact` 完成后对话列表与引擎真实上下文同步——压缩记录显示为 Claude Code 风格的单行标记（手动/自动 + 释放 token 数），点击可展开压缩摘要；上下文查看器打开时自动刷新。
+
+**Post-compaction UI sync**: after `/compact`, the chat list matches the engine's real context — the compaction entry renders as a Claude Code–style single-line marker (manual/auto + tokens freed) that expands to the compaction summary; the context viewer refreshes automatically while open.
 
 ### 📜 历史记录 | History
 
-- **历史记录加载体验**：打开 / 切换历史对话立即显示加载遮罩；加载完成后直接定位到最新消息，不再有从上往下的滚动动画；点选会话后列表立即收起，不再挂在遮罩上。
-  - **History loading UX**: opening or switching to a past conversation shows a loading overlay immediately; once loaded it jumps straight to the newest message (no top-to-bottom scroll animation); picking a session collapses the list at once instead of leaving it hanging over the overlay.
-- **Kimi 眼睛加载动画**：历史加载、会话列表、上下文查看器等加载场景，居中显示毛玻璃加载胶囊——左侧 Kimi 眼睛徽标（左右漂移 + 眨眼，复刻 Kimi Web 左上角图标动画），右侧「加载中…」文案。
-  - **Kimi eyes loading animation**: loading states (history, session list, context viewer) show a centered frosted-glass capsule — the Kimi eyes badge on the left (drifting and blinking, replicating the Kimi Web top-left icon animation) with "Loading…" text on the right.
+**历史记录加载体验**：打开 / 切换历史对话立即显示加载遮罩；加载完成后直接定位到最新消息，不再有从上往下的滚动动画；点选会话后列表立即收起，不再挂在遮罩上。
+
+**History loading UX**: opening or switching to a past conversation shows a loading overlay immediately; once loaded it jumps straight to the newest message (no top-to-bottom scroll animation); picking a session collapses the list at once instead of leaving it hanging over the overlay.
+
+**Kimi 眼睛加载动画**：历史加载、会话列表、上下文查看器等加载场景，居中显示毛玻璃加载胶囊——左侧 Kimi 眼睛徽标（左右漂移 + 眨眼，复刻 Kimi Web 左上角图标动画），右侧「加载中…」文案。
+
+**Kimi eyes loading animation**: loading states (history, session list, context viewer) show a centered frosted-glass capsule — the Kimi eyes badge on the left (drifting and blinking, replicating the Kimi Web top-left icon animation) with "Loading…" text on the right.
 
 ### 🤝 子代理 | Subagents
 
-- **子代理自定义供应商**：可在 VS Code 内为子代理配置自定义供应商（密钥存 SecretStorage，安全），支持添加 / 编辑（密钥留空保持不变）/ 删除。
-  - **Custom subagent providers**: configure custom providers for subagents inside VS Code (keys stored securely in SecretStorage); add / edit (leave the key field empty to keep the stored key) / delete supported.
-- **子代理独立模型（secondary model）**：子代理可绑定独立供应商模型（如 DeepSeek），主代理 Kimi + 子代理 DeepSeek 分流，高峰期更稳更快。
-  - **Dedicated subagent model (secondary model)**: subagents can bind an independent provider/model (e.g. DeepSeek) — main agent on Kimi, subagents on DeepSeek — for steadier, faster runs at peak hours.
-- **子代理模型徽标**：使用第三方模型的子代理在卡片尾部标注紫色模型名徽标，跟随主模型的不标记（实时与历史回放均生效）。
-  - **Subagent model badge**: subagents running on third-party models show a purple model-name badge at the end of their card; subagents following the main model stay unmarked (works live and in history replay).
+**子代理自定义供应商**：可在 VS Code 内为子代理配置自定义供应商（密钥存 SecretStorage，安全），支持添加 / 编辑（密钥留空保持不变）/ 删除。
+
+**Custom subagent providers**: configure custom providers for subagents inside VS Code (keys stored securely in SecretStorage); add / edit (leave the key field empty to keep the stored key) / delete supported.
+
+**子代理独立模型（secondary model）**：子代理可绑定独立供应商模型（如 DeepSeek），主代理 Kimi + 子代理 DeepSeek 分流，高峰期更稳更快。
+
+**Dedicated subagent model (secondary model)**: subagents can bind an independent provider/model (e.g. DeepSeek) — main agent on Kimi, subagents on DeepSeek — for steadier, faster runs at peak hours.
+
+**子代理模型徽标**：使用第三方模型的子代理在卡片尾部标注紫色模型名徽标，跟随主模型的不标记（实时与历史回放均生效）。
+
+**Subagent model badge**: subagents running on third-party models show a purple model-name badge at the end of their card; subagents following the main model stay unmarked (works live and in history replay).
 
 ### 🌐 界面 | UI
 
-- **界面语言**：中英文切换（设置 `kimifork.language`）。
-  - **UI language**: Chinese/English switch (setting `kimifork.language`).
-- **Logo 与视觉**：复刻 Kimi Code CLI 蓝色标识、对话框头像、状态栏布局调整；所有开关 开 = 蓝色 / 关 = 灰色，状态一眼可辨。
-  - **Logo & visuals**: the Kimi Code CLI blue logo, chat avatars, and an adjusted status-bar layout; every toggle is blue when on and gray when off — state at a glance.
-- **Web 同款输入区**：状态行左侧保留队列 / 文件修改，右侧为后台 Bash / 子 Agent / 当前进度（待办）/ 上下文查看器（仅在本对话调用过后显示）；模式与模型选择器（参考 kimi code web 界面）；有待发消息时队列按钮蓝色高亮。
-  - **Web-style input area**: the status row keeps queue / file-changes on the left, and background Bash / sub-agents / current progress (todos) / context viewer on the right (each shown only after use in the current conversation); mode & model pickers modeled on the Kimi Code Web UI; the queue button highlights blue while messages are pending.
+**界面语言**：中英文切换（设置 `kimifork.language`）。
+
+**UI language**: Chinese/English switch (setting `kimifork.language`).
+
+**Logo 与视觉**：复刻 Kimi Code CLI 蓝色标识、对话框头像、状态栏布局调整；所有开关 开 = 蓝色 / 关 = 灰色，状态一眼可辨。
+
+**Logo & visuals**: the Kimi Code CLI blue logo, chat avatars, and an adjusted status-bar layout; every toggle is blue when on and gray when off — state at a glance.
+
+**Web 同款输入区**：状态行左侧保留队列 / 文件修改，右侧为后台 Bash / 子 Agent / 当前进度（待办）/ 上下文查看器（仅在本对话调用过后显示）；模式与模型选择器（参考 kimi code web 界面）；有待发消息时队列按钮蓝色高亮。
+
+**Web-style input area**: the status row keeps queue / file-changes on the left, and background Bash / sub-agents / current progress (todos) / context viewer on the right (each shown only after use in the current conversation); mode & model pickers modeled on the Kimi Code Web UI; the queue button highlights blue while messages are pending.
 
 ### ⚡ 性能与稳定性 | Performance & Stability
 
-- **性能与稳定性**：历史记录长对话加载优化、上下文压缩后查看器、对话框防草稿回流、终止响应更可靠。
-  - **Performance & stability**: faster loading of long history conversations, a post-compaction context viewer, no draft backflow into the input box, and more reliable response cancellation.
+**性能与稳定性**：历史记录长对话加载优化、上下文压缩后查看器、对话框防草稿回流、终止响应更可靠。
+
+**Performance & stability**: faster loading of long history conversations, a post-compaction context viewer, no draft backflow into the input box, and more reliable response cancellation.
 
 ## 🖼️ 界面预览 | UI Preview
 
@@ -95,7 +124,7 @@
 
 ## ⌨️ 快捷键 | Keyboard Shortcuts
 
-**本 fork 独有 | Fork-only**：
+**本 fork 独有**：
 
 | 快捷键 | 作用 |
 | --- | --- |
@@ -103,13 +132,15 @@
 | `Shift + Tab` | 循环切换权限模式（逐条确认 → 自动通过 → 完全自主），仅插件窗口内生效，弹窗打开时不抢占焦点导航 |
 | `Ctrl/Cmd + Enter` | 审批 / 计划弹窗的修改意见框内提交修改意见（`Esc` 取消修改） |
 
+*English (fork-only):*
+
 | Shortcut | Action |
 | --- | --- |
 | `Alt + Enter` | Send now: while a task is running, insert the message directly into the current turn (bypassing the queue); equals a normal send when idle |
 | `Shift + Tab` | Cycle permission modes (confirm each → auto-approve → full autonomy); only inside the extension window, and never steals focus navigation while a dialog is open |
 | `Ctrl/Cmd + Enter` | Submit feedback in the revision box of approval / plan dialogs (`Esc` cancels) |
 
-**官方原有**（沿用上游，行为未改动）| **Upstream shortcuts** (unchanged)：
+**官方原有**（沿用上游，行为未改动）：
 
 | 快捷键 | 作用 |
 | --- | --- |
@@ -120,6 +151,8 @@
 | `↑` / `↓` | 输入框翻阅历史输入 |
 | `@` 菜单：`↑↓` 选择、`Tab/Enter` 确认、`←→` 进出文件夹、`Esc` 关闭 | 文件引用选择 |
 | `Esc` | 关闭图片预览、队列面板等弹层 |
+
+*English (upstream, unchanged):*
 
 | Shortcut | Action |
 | --- | --- |
@@ -133,7 +166,9 @@
 
 ## 🔧 构建与打包 | Build & Package
 
-环境要求 | Requirements：**Node.js >= 24.15.0**、**pnpm 10.33.0**（`engine-strict` 已启用，版本不满足会直接失败 | enforced via `engine-strict`; the install fails on older versions）。
+环境要求：**Node.js >= 24.15.0**、**pnpm 10.33.0**（`engine-strict` 已启用，版本不满足会直接失败）。
+
+*English:* Requirements: **Node.js >= 24.15.0**, **pnpm 10.33.0** (enforced via `engine-strict`; the install fails on older versions).
 
 ```bash
 pnpm install
@@ -149,19 +184,28 @@ node scripts/vsix-package.mjs win32-x64
 
 解包 vsix 中的 `extension/` 子树到 VS Code 扩展目录（如 `~/.vscode/extensions/moonshot-ai.kimicode-vscode-fork-<版本号>`），然后执行 **`Developer: Reload Window`**。
 
-Unpack the `extension/` subtree from the vsix into your VS Code extensions directory (e.g. `~/.vscode/extensions/moonshot-ai.kimicode-vscode-fork-<version>`), then run **`Developer: Reload Window`**.
+*English:* Unpack the `extension/` subtree from the vsix into your VS Code extensions directory (e.g. `~/.vscode/extensions/moonshot-ai.kimicode-vscode-fork-<version>`), then run **`Developer: Reload Window`**.
 
 > 注意：扩展菜单里的 "Reset Kimi" 只刷新 webview，不重载扩展宿主；修改代码后必须 Reload Window 才生效。
 >
-> Note: "Reset Kimi" in the extension menu only refreshes the webview, not the extension host — after code changes you must Reload Window for them to take effect.
+> *English:* "Reset Kimi" in the extension menu only refreshes the webview, not the extension host — after code changes you must Reload Window for them to take effect.
 
 ## 📁 目录结构 | Repository Layout
 
 ```
-apps/vscode/          # 插件源码（extension host + React webview UI + 打包脚本）| extension source (host + React webview UI + packaging scripts)
-packages/             # 构建闭包内的 11 个私有内部包（编译需要）| 11 private internal packages in the build closure (required to compile)
-build/                # 构建工具（raw-text loader 等）| build tooling (raw-text loader, etc.)
-scripts/              # postinstall（node-pty 修复）| postinstall (node-pty fix)
+apps/vscode/          # 插件源码（extension host + React webview UI + 打包脚本）
+packages/             # 构建闭包内的 11 个私有内部包（编译需要）
+build/                # 构建工具（raw-text loader 等）
+scripts/              # postinstall（node-pty 修复）
+```
+
+*English:*
+
+```
+apps/vscode/          # extension source (host + React webview UI + packaging scripts)
+packages/             # 11 private internal packages in the build closure (required to compile)
+build/                # build tooling (raw-text loader, etc.)
+scripts/              # postinstall (node-pty fix)
 ```
 
 ## 🕓 更新记录 | Changelog

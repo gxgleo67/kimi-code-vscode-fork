@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -13,9 +14,13 @@ export const VSIX_TARGETS = Object.freeze([
 export const extensionRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 export const defaultVsixOutputDir = join(extensionRoot, 'artifacts', 'vsix');
 
+export const extensionVersion = JSON.parse(
+  readFileSync(join(extensionRoot, 'package.json'), 'utf8'),
+).version;
+
 export function vsixFileName(target) {
   assertVsixTarget(target);
-  return `kimi-code-${target}.vsix`;
+  return `kimi-code-${extensionVersion}-${target}.vsix`;
 }
 
 export function normalizeVsixTargets(values) {

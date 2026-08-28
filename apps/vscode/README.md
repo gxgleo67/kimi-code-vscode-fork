@@ -180,7 +180,7 @@ pnpm build
 node scripts/vsix-package.mjs win32-x64
 ```
 
-产出 | Output：`apps/vscode/artifacts/vsix/kimi-code-win32-x64.vsix`
+产出 | Output：`apps/vscode/artifacts/vsix/kimi-code-<版本号>-win32-x64.vsix`（文件名带版本号，如 `kimi-code-0.9.0-win32-x64.vsix`，多次打包不再互相覆盖）
 
 ### 安装到 VS Code | Install into VS Code
 

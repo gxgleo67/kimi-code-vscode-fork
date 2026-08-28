@@ -177,10 +177,10 @@ pnpm install
 cd apps/vscode
 pnpm typecheck
 pnpm build
-node scripts/vsix-package.mjs win32-x64
+node scripts/vsix-package.mjs
 ```
 
-产出 | Output：`apps/vscode/artifacts/vsix/kimi-code-<版本号>-win32-x64.vsix`（文件名带版本号，如 `kimi-code-0.9.0-win32-x64.vsix`，多次打包不再互相覆盖）
+产出 | Output：`apps/vscode/artifacts/vsix/kimi-code-<版本号>-universal.vsix`（默认打通用包，全平台可装;文件名带版本号,如 `kimi-code-0.9.1-universal.vsix`,多次打包不再互相覆盖。需要分平台包时执行 `node scripts/vsix-package.mjs all`)
 
 ### 安装到 VS Code | Install into VS Code
 

@@ -2,7 +2,10 @@ import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
+export const UNIVERSAL_TARGET = 'universal';
+
 export const VSIX_TARGETS = Object.freeze([
+  UNIVERSAL_TARGET,
   'darwin-x64',
   'darwin-arm64',
   'linux-x64',
@@ -24,7 +27,13 @@ export function vsixFileName(target) {
 }
 
 export function normalizeVsixTargets(values) {
-  const requested = values.length === 0 || values.includes('all') ? VSIX_TARGETS : values;
+  // No explicit target means the universal (platform-agnostic) package — the
+  // extension ships pure JS, so one universal vsix serves every platform.
+  const requested = values.length === 0
+    ? [UNIVERSAL_TARGET]
+    : values.includes('all')
+      ? [...VSIX_TARGETS]
+      : values;
   if (values.includes('all') && values.length > 1) {
     throw new Error('Target "all" cannot be combined with an explicit VSIX target.');
   }

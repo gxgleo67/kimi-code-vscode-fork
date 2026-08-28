@@ -10,7 +10,7 @@
 
 1. 改 `apps/vscode/package.json` 的 `version`(patch 递增)
 2. `pnpm build`
-3. `node scripts/vsix-package.mjs win32-x64`
+3. `node scripts/vsix-package.mjs`(默认打 universal 通用包,全平台可装;分平台包用 `all` 或指定目标)
 4. 解包或 `verifyVsix` 确认产物内 `package.json` 是新版本号,且文件名含新版本号
 5. 更新 `apps/vscode/CHANGELOG.md`(版本号 + 日期 + 条目)
 

@@ -9,6 +9,7 @@ import {
   extensionRoot,
   isMainModule,
   normalizeVsixTargets,
+  UNIVERSAL_TARGET,
   vsixFileName,
 } from './vsix-targets.mjs';
 import { verifyVsix } from './vsix-verify.mjs';
@@ -59,7 +60,8 @@ function usage() {
     'Usage: node scripts/vsix-package.mjs [targets...] [--out-dir <directory>]',
     '       node scripts/vsix-package.mjs --target win32-x64 --dry-run',
     '',
-    'With no targets, all six supported VSIX targets are built and audited.',
+    'With no targets, the universal (platform-agnostic) package is built and audited.',
+    'Pass "all" to build every per-platform target as well.',
     'This command never publishes an extension.',
   ].join('\n');
 }
@@ -94,7 +96,9 @@ async function main() {
       cwd: extensionRoot,
       dependencies: false,
       packagePath: outputPath,
-      target,
+      // vsce omits TargetPlatform when target is undefined, which is exactly
+      // what the marketplace lists as "Universal".
+      target: target === UNIVERSAL_TARGET ? undefined : target,
     });
     const result = await verifyVsix(outputPath, target, { sourceRoot: extensionRoot });
     console.log(

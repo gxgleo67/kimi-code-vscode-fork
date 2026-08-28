@@ -23,6 +23,7 @@ import {
   extensionRoot,
   isMainModule,
   normalizeVsixTargets,
+  UNIVERSAL_TARGET,
   vsixFileName,
 } from './vsix-targets.mjs';
 
@@ -134,9 +135,11 @@ export async function auditExtractedVsix(extractionRoot, target, options = {}) {
 async function verifyTargetManifest(extractionRoot, target) {
   const xml = await readFile(join(extractionRoot, 'extension.vsixmanifest'), 'utf8');
   const actual = xml.match(/\bTargetPlatform="([^"]+)"/)?.[1];
-  if (actual !== target) {
+  // A universal package carries no TargetPlatform at all.
+  const expected = target === UNIVERSAL_TARGET ? undefined : target;
+  if (actual !== expected) {
     throw new Error(
-      `VSIX manifest target is ${actual ?? 'missing'}, expected ${target}.`,
+      `VSIX manifest target is ${actual ?? 'missing'}, expected ${expected ?? 'missing (universal)'}.`,
     );
   }
 }

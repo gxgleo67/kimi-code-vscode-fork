@@ -321,6 +321,10 @@ describe("Webview streaming text batching", () => {
       { type: "TurnBegin", payload: { user_input: "question" } },
       { type: "StepBegin", payload: { n: 1 } },
       { type: "ContentPart", payload: { type: "text", text: "partial answer" } },
+      // A completed session's replay closes its last turn…
+      { type: "stream_complete", payload: { result: { status: "finished" } } },
+      // …and history loads always end with the host's busy announcement.
+      { type: "StatusUpdate", payload: { turn_active: false } },
     ]);
 
     // No terminal event in the replay: the post-replay flush must still apply
@@ -329,6 +333,21 @@ describe("Webview streaming text batching", () => {
     expect(last?.content).toBe("partial answer");
     expect(last?.steps?.at(-1)?.items).toEqual([{ type: "text", content: "partial answer", finished: true }]);
     expect(useChatStore.getState().isStreaming).toBe(false);
+  });
+
+  it("keeps streaming when re-attaching to a session whose turn is still running", async () => {
+    // The replay closes the still-open turn with stream_complete (history
+    // display convention); the appended busy announcement must win, or the
+    // re-attached composer unlocks while the engine keeps running.
+    await useChatStore.getState().loadSession("session-1", [
+      { type: "TurnBegin", payload: { user_input: "question" } },
+      { type: "StepBegin", payload: { n: 1 } },
+      { type: "ContentPart", payload: { type: "text", text: "partial answer" } },
+      { type: "stream_complete", payload: { result: { status: "finished" } } },
+      { type: "StatusUpdate", payload: { turn_active: true } },
+    ]);
+
+    expect(useChatStore.getState().isStreaming).toBe(true);
   });
 
   it("applies deltas buffered before abort without flipping the turn back to streaming", () => {

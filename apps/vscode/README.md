@@ -20,6 +20,8 @@
 
 <div align="center">
 
+**市场地址 / Marketplace:[marketplace.visualstudio.com/items?itemName=GXGLEO.kimicode-vscode-fork](https://marketplace.visualstudio.com/items?itemName=GXGLEO.kimicode-vscode-fork)(缓存看不到最新版本时请以此为准 / Check here if a cached page hides the latest release)**
+
 **最后更新：2026-08-28 | Last updated: 2026-08-28**
 
 **⚠️ 注意：该插件项目由 K3 MAX 自主修改并同步，界面尽可能还原 Web 端界面功能。**
@@ -229,6 +231,8 @@ scripts/              # postinstall (node-pty fix)
 15. 同步官方修复：OAuth 登录被自身 provisioning 写入误取消——自身写入不再终止登录流程（#3294）
 16. 同步官方修复：swarm 独立 [swarm] timeout_ms 配置，不再跟随 subagent 超时（#3198）
 17. 同步官方修复：任务协议携带 run_in_background，前台子代理不再被误报为后台任务（#3239）
+18. 修复：长回合中重附着会话（切窗口/重载面板）后发送按钮不变停止、「处理中」消失——历史回放末尾追加引擎忙闲宣告，加载不再无条件复位流式状态
+19. 修复：输入框右上的待办列表从不显示——webview 匹配的工具名（SetTodoList）与引擎实际名（TodoList）不一致，且 v2 引擎的 TodoList 结果未携带结构化展示数据（已补齐，对齐 v1）
 
 *English:*
 
@@ -249,6 +253,8 @@ scripts/              # postinstall (node-pty fix)
 15. Synced upstream fix: OAuth login no longer cancels itself when its own provisioning writes the provider (#3294)
 16. Synced upstream fix: swarms get an independent [swarm] timeout_ms and no longer follow the subagent timeout (#3198)
 17. Synced upstream fix: the task protocol carries run_in_background, so foreground subagents are no longer misreported as background tasks (#3239)
+18. Fix: after re-attaching to a session mid-turn (window switch / panel reload), the send button now turns into Stop and the "processing" indicator stays — the history replay ends with the engine's busy announcement instead of unconditionally resetting the streaming state
+19. Fix: the todo list pill above the composer never appeared — the webview matched a stale tool name (SetTodoList) instead of the engine's actual TodoList, and the v2 engine's TodoList result carried no structured display payload (added, mirroring v1)
 
 **2026-08-26**：
 

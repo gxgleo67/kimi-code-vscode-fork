@@ -149,6 +149,16 @@ export const sessionHandlers: Record<string, Handler<any, any>> = {
         throw new Error("Session history is unavailable.");
       }
       history = replaySessionToWebviewEvents(resumeState, runtime.id);
+      // A view attaching mid-turn must learn the busy truth from the replay
+      // itself: the replay closes the still-open turn with stream_complete
+      // (history display convention), which would otherwise leave the
+      // re-attached composer unlocked while the engine keeps running. The
+      // trailing announcement re-asserts busyness after that close.
+      history.push({
+        type: "StatusUpdate",
+        payload: { turn_active: runtime.isBusy },
+        _sessionId: runtime.id,
+      });
     } catch (error) {
       await ctx.closeSession();
       throw error;

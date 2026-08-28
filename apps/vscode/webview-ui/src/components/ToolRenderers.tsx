@@ -139,7 +139,7 @@ function ToolIcon({ name }: { name: string }) {
       return <IconFolderSearch className={iconClass} />;
     case "Task":
       return <IconSubtask className={iconClass} />;
-    case "SetTodoList":
+    case "TodoList":
       return <IconListCheck className={iconClass} />;
     default:
       return <IconTerminal2 className={iconClass} />;
@@ -169,7 +169,7 @@ export function TodoStatusIcon({ status }: { status: string }) {
   return <IconSquare className="size-4 text-zinc-300 dark:text-zinc-600" />;
 }
 
-function SetTodoListTool({ result }: ToolRendererProps) {
+function TodoListTool({ result }: ToolRendererProps) {
   const t = useT();
   const todoBlock = getTodoBlock(result?.display);
   if (!todoBlock || !todoBlock.items || todoBlock.items.length === 0) {
@@ -434,7 +434,7 @@ function getToolLabel(call: UIToolCall, t: ReturnType<typeof useT>): string {
       return (args.pattern as string) || "pattern";
     case "Task":
       return (args.description as string) || "subagent task";
-    case "SetTodoList":
+    case "TodoList":
       return t("tools.updateTodos");
     default:
       return "";
@@ -462,8 +462,8 @@ export function ToolCallCard({ call, result, subagentSteps, subagentModel }: Too
       case "Task":
       case "Agent":
         return <TaskTool {...props} />;
-      case "SetTodoList":
-        return <SetTodoListTool {...props} />;
+      case "TodoList":
+        return <TodoListTool {...props} />;
       default:
         return <GenericTool {...props} />;
     }

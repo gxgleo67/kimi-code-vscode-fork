@@ -31,7 +31,7 @@ const FAILED_STATUSES = new Set(["failed", "timed_out", "killed", "lost"]);
 
 type TodoItems = { title: string; status: string }[];
 
-/** Last SetTodoList result wins — it replaces the list rather than appending. */
+/** Last TodoList result wins — it replaces the list rather than appending. */
 function findLastTodoItems(messages: ChatMessage[]): TodoItems | null {
   for (let i = messages.length - 1; i >= 0; i--) {
     const steps = messages[i].steps;
@@ -40,7 +40,7 @@ function findLastTodoItems(messages: ChatMessage[]): TodoItems | null {
       const items = steps[j].items;
       for (let k = items.length - 1; k >= 0; k--) {
         const item = items[k];
-        if (item.type === "tool_use" && item.call.name === "SetTodoList") {
+        if (item.type === "tool_use" && item.call.name === "TodoList") {
           return getTodoBlock(item.result?.display)?.items ?? null;
         }
       }

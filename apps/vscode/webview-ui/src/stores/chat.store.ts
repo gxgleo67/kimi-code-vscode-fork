@@ -583,7 +583,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
             }
           }
         }
-        draft.isStreaming = false;
+        // isStreaming keeps whatever the replay folded to: closed sessions end
+        // on stream_complete (false), while a mid-turn replay ends on the
+        // appended StatusUpdate carrying turn_active (true). Forcing false
+        // here would strand a re-attached view unlocked mid-turn.
         draft.isCompacting = false;
         draft.pendingQuestion = null;
       }),

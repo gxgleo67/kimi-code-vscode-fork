@@ -20,6 +20,7 @@ export interface ProviderConfig {
 
   type?: ProviderType;
   apiKey?: string;
+  apiKeyEnvVar?: string;
   oauth?: OAuthRef;
   env?: Record<string, string>;
   source?: Record<string, unknown>;

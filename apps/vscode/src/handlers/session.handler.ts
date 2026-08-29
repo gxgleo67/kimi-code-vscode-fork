@@ -131,11 +131,16 @@ export const sessionHandlers: Record<string, Handler<any, any>> = {
   },
 
   [Methods.GetLiveSession]: async (_, ctx): Promise<{ sessionId: string | null }> => {
-    return { sessionId: ctx.runtime.getLiveSessionId() };
+    return { sessionId: ctx.runtime.getLiveSessionId(ctx.webviewId) };
   },
 
   [Methods.LoadKimiSessionHistory]: async (params: LoadHistoryParams, ctx) => {
     if (!ctx.workDir || !isSessionId(params.kimiSessionId)) return [];
+    // A session still live in the runtime map (e.g. a busy one kept alive when
+    // its last view detached) replays from a resume snapshot frozen at the
+    // session's first open — everything generated since, including all output
+    // produced while this view was away, would be missing from the replay.
+    const keptAlive = ctx.runtime.getSession(params.kimiSessionId) !== undefined;
     const runtime = await ctx.resumeSession(params.kimiSessionId);
     if (!areSameFsPath(runtime.session.workDir, ctx.workDir)) {
       await ctx.closeSession();
@@ -144,7 +149,22 @@ export const sessionHandlers: Record<string, Handler<any, any>> = {
 
     let history: ReturnType<typeof replaySessionToWebviewEvents>;
     try {
-      const resumeState = runtime.session.getResumeState();
+      let resumeState = runtime.session.getResumeState();
+      if (keptAlive) {
+        // Re-read the state from the engine: resumeSession has no busy check
+        // (unlike reloadSession), its wiring is idempotent, and its replay
+        // fold reads the current wire log. The extra handle is dropped without
+        // closing — closing it would tear down the shared live session.
+        try {
+          const fresh = await ctx.harness.resumeSession({
+            id: runtime.id,
+            includeSubagents: true,
+          });
+          resumeState = fresh.getResumeState() ?? resumeState;
+        } catch (error) {
+          ctx.logError("Unable to refresh the resumed session state; replaying the cached snapshot", error);
+        }
+      }
       if (resumeState?.agents["main"] === undefined) {
         throw new Error("Session history is unavailable.");
       }

@@ -65,6 +65,8 @@ export class KimiRuntime {
   private readonly sessions = new Map<string, SessionRuntime>();
   private readonly sessionByView = new Map<string, string>();
   private readonly viewChains = new Map<string, Promise<void>>();
+  /** Views that must start blank on their first mount (Open in New Tab). */
+  private readonly freshViews = new Set<string>();
   private readonly agentCoreV1: boolean;
   private experimentGate: Promise<void> | undefined;
   private closed = false;
@@ -97,10 +99,25 @@ export class KimiRuntime {
     return this.sessions.get(id);
   }
 
-  /** The most recently opened live session, or null when this host has never
-   *  opened one — the webview uses this to re-attach after an in-place reload
-   *  while starting blank on a fresh extension host. */
-  getLiveSessionId(): string | null {
+  /** Mark a view that must start blank on its first mount instead of
+   *  auto-attaching to the live session (Open in New Tab: a new window must
+   *  never mirror another window's conversation). The mark is consumed by the
+   *  first getLiveSessionId call, so later in-place reloads of the same view
+   *  re-attach normally. */
+  markFreshView(webviewId: string): void {
+    this.freshViews.add(webviewId);
+  }
+
+  /** The session a webview re-attaches to after an in-place reload, or null
+   *  when it should start blank: fresh-marked views, or a fresh extension
+   *  host. Prefers the view's own attached session — with several windows
+   *  open, the map's last entry is not necessarily this view's session. */
+  getLiveSessionId(webviewId?: string): string | null {
+    if (webviewId !== undefined) {
+      if (this.freshViews.delete(webviewId)) return null;
+      const own = this.sessionByView.get(webviewId);
+      if (own !== undefined && this.sessions.has(own)) return own;
+    }
     return [...this.sessions.keys()].at(-1) ?? null;
   }
 
@@ -227,16 +244,20 @@ export class KimiRuntime {
   }
 
   private async detachViewInner(webviewId: string): Promise<void> {
+    this.freshViews.delete(webviewId);
     const id = this.sessionByView.get(webviewId);
     if (id === undefined) return;
     this.sessionByView.delete(webviewId);
     const runtime = this.sessions.get(id);
     if (runtime === undefined) return;
     runtime.unsubscribeView(webviewId);
-    if (runtime.subscribers.length === 0) {
-      this.sessions.delete(id);
-      await runtime.close();
-    }
+    if (runtime.subscribers.length > 0) return;
+    // A busy session outlives its last view: switching conversations must not
+    // cancel a running turn. It stays in the map (re-attaching is idempotent)
+    // and is reaped via the onOrphanSettled hook once its work settles.
+    if (runtime.isBusy) return;
+    this.sessions.delete(id);
+    await runtime.close();
   }
 
   // A view attaches to at most one session, so opens/detaches for one view
@@ -310,9 +331,26 @@ export class KimiRuntime {
       generateSessionTitle: this.agentCoreV1
         ? undefined
         : (id) => this.harness.generateSessionTitle({ id }),
+      onOrphanSettled: (id) => {
+        this.reapOrphan(id);
+      },
     });
     this.sessions.set(session.id, runtime);
     return runtime;
+  }
+
+  /**
+   * Close a session whose work settled while no view was attached. The guards
+   * re-check liveness because a view may have re-attached (or new work may
+   * have started) during the reap delay.
+   */
+  private reapOrphan(id: string): void {
+    const runtime = this.sessions.get(id);
+    if (runtime === undefined || runtime.isBusy || runtime.subscribers.length > 0) return;
+    this.sessions.delete(id);
+    void runtime.close().catch((error: unknown) => {
+      this.log("Failed to close an orphaned session", error);
+    });
   }
 
   private async readMigratedLegacyApproval(

@@ -56,6 +56,7 @@ import {
 } from './inspection';
 import { IModelService, type ModelRecord } from './model';
 import {
+  apiKeyEnvVarValue,
   deriveProviderId,
   effectiveModelConfig,
   nonEmpty,
@@ -643,6 +644,7 @@ function locationFromVertexAIBaseUrl(baseUrl: string | undefined): string | unde
 
 function hasConfiguredApiKey(provider: ProviderConfig): boolean {
   if (nonEmpty(provider.apiKey) !== undefined) return true;
+  if (apiKeyEnvVarValue(provider) !== undefined) return true;
   if (provider.type === undefined) return false;
   return resolveProviderEndpoint(provider.type, provider.env ?? {}).apiKey !== undefined;
 }

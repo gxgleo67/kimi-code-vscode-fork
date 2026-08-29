@@ -16,6 +16,7 @@ export function Header() {
   const [showConfirmNew, setShowConfirmNew] = useState(false);
   const startNewConversation = useChatStore((s) => s.startNewConversation);
   const sessionId = useChatStore((s) => s.sessionId);
+  const sessionTitle = useChatStore((s) => s.sessionTitle);
   const messageCount = useChatStore((s) => s.messages.length);
   const isStreaming = useChatStore((s) => s.isStreaming);
   const t = useT();
@@ -38,11 +39,19 @@ export function Header() {
 
   return (
     <header className="flex items-center justify-between px-3 py-2 border-b border-border shrink-0 @container">
-      <div className="flex items-center gap-2 shrink-0">
+      <div className="flex items-center gap-2 min-w-0">
         <KimiLogo className="size-5 shrink-0" />
-        <span className="text-sm font-semibold whitespace-nowrap">Kimi Code</span>
+        <span className="text-sm font-semibold whitespace-nowrap shrink-0">Kimi Code</span>
+        {sessionTitle && (
+          <span
+            className="text-xs text-muted-foreground truncate min-w-0 @max-[430px]:hidden"
+            title={sessionTitle}
+          >
+            · {sessionTitle}
+          </span>
+        )}
       </div>
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1 shrink-0">
         {sessionId && (
           <Button
             variant="ghost"

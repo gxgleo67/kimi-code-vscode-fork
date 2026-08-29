@@ -224,7 +224,7 @@ export const en = {
   "header.messages": "Messages",
   "header.newTitle": "Start New Conversation?",
   "header.newDesc":
-    "The current conversation is still generating a response. Starting a new one will truncate the output. Are you sure you want to continue?",
+    "The current conversation is still generating a response. It keeps running in the background and you can return to it anytime from History. Continue?",
   "header.newConversation": "New Conversation",
   "session.searchPlaceholder": "Search conversations...",
   "session.noneFound": "No conversations found",
@@ -234,7 +234,7 @@ export const en = {
   "session.deleteDesc": "This will permanently delete this conversation. This action cannot be undone.",
   "session.switchTitle": "Switch Conversation?",
   "session.switchDesc":
-    "The current conversation is still generating a response. Switching will truncate the output. Are you sure you want to continue?",
+    "The current conversation is still generating a response. It keeps running in the background after switching, and you can return to it anytime from History. Continue?",
   "session.switch": "Switch",
   "session.unableToOpen": "Unable to open the conversation: {error}",
   "session.unableToDelete": "Unable to delete the conversation: {error}",

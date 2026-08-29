@@ -44,19 +44,26 @@ export function resolveModelAuthMaterial(
     providerAuthType === undefined
       ? {}
       : explainProviderEndpoint(providerAuthType, args.provider?.env ?? {});
-  const providerApiKey = nonEmpty(args.provider?.apiKey) ?? nonEmpty(providerEndpoint.apiKey);
+  const directApiKey = nonEmpty(args.provider?.apiKey);
+  const envVarRef = apiKeyEnvVarValue(args.provider);
+  const providerApiKey = directApiKey ?? envVarRef ?? nonEmpty(providerEndpoint.apiKey);
   if (providerApiKey !== undefined && args.provider?.oauth !== undefined) {
     throw authConflictError('Provider', args.providerName);
   }
   if (providerApiKey !== undefined) {
     trace?.record(
       'resolved.auth',
-      nonEmpty(args.provider?.apiKey) !== undefined
+      directApiKey !== undefined
         ? { kind: 'config', detail: `provider '${args.providerName}' apiKey` }
-        : {
-            kind: 'env',
-            detail: `${providerEndpoint.apiKeyEnvName ?? '?'} (provider '${args.providerName}' env bag)`,
-          },
+        : envVarRef !== undefined
+          ? {
+              kind: 'env',
+              detail: `${args.provider?.apiKeyEnvVar ?? '?'} (provider '${args.providerName}' apiKeyEnvVar)`,
+            }
+          : {
+              kind: 'env',
+              detail: `${providerEndpoint.apiKeyEnvName ?? '?'} (provider '${args.providerName}' env bag)`,
+            },
     );
     return { apiKey: providerApiKey };
   }
@@ -134,6 +141,11 @@ export function deriveProviderId(baseUrl: string): string {
   } catch {
     return baseUrl;
   }
+}
+
+export function apiKeyEnvVarValue(provider: ProviderConfig | undefined): string | undefined {
+  const name = nonEmpty(provider?.apiKeyEnvVar);
+  return name === undefined ? undefined : nonEmpty(process.env[name]);
 }
 
 export function nonEmpty(value: string | undefined): string | undefined {

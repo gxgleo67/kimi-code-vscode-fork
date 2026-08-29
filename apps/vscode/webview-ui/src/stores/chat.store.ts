@@ -9,6 +9,7 @@ import { localizeErrorMessage } from "@/lib/error-text";
 
 import { useSettingsStore } from "./settings.store";
 import { processEvent } from "./event-handlers";
+import { cleanSystemTags } from "shared/utils";
 import type { SessionContextSnapshot, StatusUpdate, ContentPart, GoalStateInfo, QuestionRequest, ToolResult } from "shared/legacy-sdk";
 import type { UIStreamEvent } from "shared/types";
 
@@ -103,6 +104,8 @@ export interface QueuedItem {
 
 export interface ChatState {
   sessionId: string | null;
+  /** Title of the attached session (LLM-generated or renamed), shown in the header. */
+  sessionTitle: string | null;
   messages: ChatMessage[];
   isStreaming: boolean;
   /** Stop requested, waiting for the engine's terminal event. */
@@ -129,6 +132,7 @@ export interface ChatState {
   /** Alt+Enter send: steers into a busy turn (queue bypassed); a plain send when idle. */
   steerNow: (text: string) => void;
   setHistoryLoading: (loading: boolean) => void;
+  setSessionTitle: (title: string | null) => void;
   processEvent: (event: UIStreamEvent) => void;
   loadSession: (sessionId: string, events: UIStreamEvent[]) => Promise<void>;
   startNewConversation: () => Promise<void>;
@@ -345,6 +349,7 @@ function doSend(state: ChatState, content: string | ContentPart[], model: string
 
 export const useChatStore = create<ChatState>((set, get) => ({
   sessionId: null,
+  sessionTitle: null,
   messages: [],
   isStreaming: false,
   stopping: false,
@@ -441,6 +446,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   setHistoryLoading: (historyLoading) => set({ historyLoading }),
 
+  setSessionTitle: (sessionTitle) => set({ sessionTitle }),
+
   processEvent: (event) => {
     // Pure-text deltas are buffered and applied in a single batch per window;
     // every other event is a control event and flushes the buffer first, so
@@ -531,14 +538,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
     // Switching sessions: apply anything still buffered before the reset.
     flushTextDeltas();
 
-    // Abort any ongoing stream when switching sessions
-    const { isStreaming: wasStreaming } = get();
-    if (wasStreaming) {
-      await bridge.abortChat();
-    }
+    // No abort here: the host keeps the previous session's runtime alive while
+    // its turn is still running, so switching away and back never kills the
+    // task. Events of the session we leave stop reaching this view once the
+    // host re-attaches it to the loaded one.
 
     set({
       sessionId,
+      sessionTitle: null,
       messages: [],
       isStreaming: false,
       stopping: false,
@@ -557,6 +564,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
       goalArmed: false,
       pendingCompactTrigger: null,
     });
+    // Header title: resolve the session's brief asynchronously; only apply it
+    // while this session is still the attached one.
+    void bridge
+      .getAllKimiSessions()
+      .then((sessions) => {
+        if (get().sessionId !== sessionId) return;
+        const brief = sessions.find((s) => s.id === sessionId)?.brief;
+        const title = brief === undefined ? "" : cleanSystemTags(brief).trim();
+        if (title) set({ sessionTitle: title });
+      })
+      .catch(() => undefined);
     useApprovalStore.getState().clearRequests();
     // Session switch: the resumed session's announced model/effort is the
     // truth again — drop any composer pick pending against the old session.
@@ -599,11 +617,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
     compactionPatchPending = false;
     flushTextDeltas();
 
-    // Abort any ongoing stream before starting new conversation
-    const { isStreaming: wasStreaming } = get();
-    if (wasStreaming) {
-      await bridge.abortChat();
-    }
+    // No abort: a running turn survives "new conversation" in the background
+    // (the host keeps the busy session alive) and stays reachable from History.
 
     await bridge.resetSession();
     await bridge.clearTrackedFiles();
@@ -615,6 +630,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     useSettingsStore.getState().clearPendingSync();
     set({
       sessionId: null,
+      sessionTitle: null,
       messages: [],
       isStreaming: false,
       stopping: false,

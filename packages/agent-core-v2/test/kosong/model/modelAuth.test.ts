@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { ConfigErrors } from '#/app/config/errors';
 import '#/kosong/provider/providers/kimi/kimi.contrib';
@@ -90,6 +90,65 @@ describe('resolveModelAuthMaterial', () => {
   it('returns empty material when nothing is configured', () => {
     expect(authMaterial({ model: { model: 'm' }, provider: { type: 'openai' } })).toEqual({});
     expect(authMaterial({ model: { model: 'm' } })).toEqual({});
+  });
+
+  describe('apiKeyEnvVar indirect secret reference', () => {
+    const ENV_NAME = 'KIMI_TEST_PROVIDER_KEY_API_KEY_ENV_VAR';
+
+    afterEach(() => {
+      delete process.env[ENV_NAME];
+    });
+
+    it('resolves the key from process.env through the named variable', () => {
+      process.env[ENV_NAME] = 'env-ref-key';
+      expect(
+        authMaterial({
+          model: { model: 'm' },
+          provider: { type: 'openai', apiKeyEnvVar: ENV_NAME },
+        }),
+      ).toEqual({ apiKey: 'env-ref-key' });
+    });
+
+    it('loses to the inline apiKey and wins over the env bag', () => {
+      process.env[ENV_NAME] = 'env-ref-key';
+      expect(
+        authMaterial({
+          model: { model: 'm' },
+          provider: { type: 'openai', apiKey: 'inline-key', apiKeyEnvVar: ENV_NAME },
+        }),
+      ).toEqual({ apiKey: 'inline-key' });
+      expect(
+        authMaterial({
+          model: { model: 'm' },
+          provider: {
+            type: 'openai',
+            apiKeyEnvVar: ENV_NAME,
+            env: { OPENAI_API_KEY: 'bag-key' },
+          },
+        }),
+      ).toEqual({ apiKey: 'env-ref-key' });
+    });
+
+    it('falls through when the variable is unset, empty, or blank', () => {
+      delete process.env[ENV_NAME];
+      expect(
+        authMaterial({
+          model: { model: 'm' },
+          provider: { type: 'openai', apiKeyEnvVar: ENV_NAME },
+        }),
+      ).toEqual({});
+      process.env[ENV_NAME] = '   ';
+      expect(
+        authMaterial({
+          model: { model: 'm' },
+          provider: {
+            type: 'openai',
+            apiKeyEnvVar: ENV_NAME,
+            env: { OPENAI_API_KEY: 'bag-key' },
+          },
+        }),
+      ).toEqual({ apiKey: 'bag-key' });
+    });
   });
 });
 

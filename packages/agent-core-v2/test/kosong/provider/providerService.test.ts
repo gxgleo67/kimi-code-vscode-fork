@@ -45,6 +45,31 @@ describe('providers TOML transforms', () => {
       oauth: { storage: 'file', key: 'k', oauth_host: 'example.com' },
     });
   });
+
+  it('round-trips the api_key_env_var indirect secret reference', () => {
+    const from = providersFromToml({
+      dpsk: {
+        type: 'openai',
+        base_url: 'https://api.deepseek.com/v1',
+        api_key_env_var: 'KIMIFORK_PROVIDER_KEY_DPSK',
+      },
+    }) as Record<string, Record<string, unknown>>;
+    expect(from['dpsk']).toEqual({
+      type: 'openai',
+      baseUrl: 'https://api.deepseek.com/v1',
+      apiKeyEnvVar: 'KIMIFORK_PROVIDER_KEY_DPSK',
+    });
+
+    const parsed = ProvidersSectionSchema.parse(from);
+    expect(parsed['dpsk']?.apiKeyEnvVar).toBe('KIMIFORK_PROVIDER_KEY_DPSK');
+
+    const back = providersToToml(parsed, undefined) as Record<string, Record<string, unknown>>;
+    expect(back['dpsk']).toEqual({
+      type: 'openai',
+      base_url: 'https://api.deepseek.com/v1',
+      api_key_env_var: 'KIMIFORK_PROVIDER_KEY_DPSK',
+    });
+  });
 });
 
 describe('ProviderService', () => {

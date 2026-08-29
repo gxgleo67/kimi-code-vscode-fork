@@ -46,6 +46,14 @@ function MainContent({ onAuthAction }: { onAuthAction: () => void }) {
       bridge.on(Events.MCPServersChanged, setMCPServers),
       bridge.on(Events.ExtensionConfigChanged, ({ config }: { config: ExtensionConfig }) => setExtensionConfig(config)),
       bridge.on(Events.FocusInput, () => document.querySelector<HTMLTextAreaElement>("textarea")?.focus()),
+      // Live title refreshes for the attached session (LLM-generated title
+      // after the first turn, renames from any view's session list).
+      bridge.on(Events.SessionMetaUpdated, (data: { sessionId: string; title?: string }) => {
+        const title = data.title?.trim();
+        if (!title) return;
+        const state = useChatStore.getState();
+        if (state.sessionId === data.sessionId) state.setSessionTitle(title);
+      }),
       bridge.on(Events.NewConversation, () => {
         void startNewConversation().catch((error: unknown) => {
           toast.error(error instanceof Error ? error.message : String(error));

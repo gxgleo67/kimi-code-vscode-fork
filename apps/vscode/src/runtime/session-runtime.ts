@@ -43,6 +43,12 @@ export interface SessionRuntimeOptions {
    * title. Left undefined on the v1 engine, where the RPC does not exist.
    */
   readonly generateSessionTitle?: (sessionId: string) => Promise<string | undefined>;
+  /**
+   * Fired when work settles while no view is subscribed. The owner uses it
+   * to close orphaned sessions that outlived their last webview; the delay
+   * inside gives a navigating view time to re-attach first.
+   */
+  readonly onOrphanSettled?: (sessionId: string) => void;
 }
 
 interface ActivePrompt {
@@ -54,6 +60,7 @@ interface ActivePrompt {
 
 const ALREADY_GENERATING_MESSAGE = "A response is already being generated for this session.";
 const CANCEL_FALLBACK_TIMEOUT_MS = 5_000;
+const ORPHAN_REAP_DELAY_MS = 60_000;
 
 export interface PromptResult {
   readonly status: "finished" | "cancelled" | "failed";
@@ -96,6 +103,7 @@ export class SessionRuntime {
   private readonly terminalKeys = new Set<string>();
   private suppressedError: SuppressedError | undefined;
   private readonly generateSessionTitle: SessionRuntimeOptions["generateSessionTitle"];
+  private readonly onOrphanSettled: SessionRuntimeOptions["onOrphanSettled"];
   private legacyApproval: LegacyApprovalFlags;
   private activeTurnId: number | undefined;
   private cancelFallbackTimer: ReturnType<typeof setTimeout> | undefined;
@@ -108,6 +116,7 @@ export class SessionRuntime {
     this.log = options.log;
     this.legacyApproval = options.legacyApproval;
     this.generateSessionTitle = options.generateSessionTitle;
+    this.onOrphanSettled = options.onOrphanSettled;
     this.reverseRpc = new ReverseRpcController((event) => this.emitStreamEvent(event));
 
     // Forward every approval request to the user. The engine permission mode
@@ -714,6 +723,16 @@ export class SessionRuntime {
     if (this.hasActiveWork) return;
     for (const resolve of this.activeWorkSettledWaiters) resolve();
     this.activeWorkSettledWaiters.clear();
+    this.scheduleOrphanReap();
+  }
+
+  private scheduleOrphanReap(): void {
+    const onOrphanSettled = this.onOrphanSettled;
+    if (onOrphanSettled === undefined) return;
+    setTimeout(() => {
+      if (this.closed || this.isBusy || this.webviewIds.size > 0) return;
+      onOrphanSettled(this.id);
+    }, ORPHAN_REAP_DELAY_MS);
   }
 
   private ensureOpen(): void {

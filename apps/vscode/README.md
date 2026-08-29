@@ -212,6 +212,28 @@ scripts/              # postinstall (node-pty fix)
 
 ## 🕓 更新记录 | Changelog
 
+**2026-08-29**：
+
+1. 修复绑定自定义供应商的子代理报 apiKey 缺失：v2 引擎补齐 api_key_env_var 密钥间接引用（供应商 schema / 密钥解析 / 设置页已配置判断三处对齐 v1）
+2. 修复长时间无人值守回合后文本乱码、整段重复：步骤遇可重试错误重跑时重发已输出文本且无回滚标记，现引擎宣告重试即丢弃失败残留（含子代理步骤）
+3. 切换会话不再中断进行中的任务：最后一个视图离开时忙碌会话转后台保活，回合结束且 60 秒内无视图重挂才回收
+4. 修复切回后台运行中的会话时、切走期间生成的内容丢失：保活会话回放的是首次打开时冻结的快照，重附着现改为现读 wire 日志、回放最新状态
+5. 头部 Kimi Code 标识右侧显示当前会话标题（加载时解析，LLM 标题/重命名实时刷新，窄窗口自动隐藏）
+6. 头部状态胶囊移除上下文占比（输入区已有上下文圆环），保留重试指示与输入/输出 token 数
+7. 「在新标签页打开」不再镜像其他窗口的会话：新面板落在欢迎页自行挑选历史；原地重载的重附着改为各窗口各回各的会话
+8. 生成中切换/新建对话的确认文案改为说明任务在后台继续运行、可从历史切回，不再声称「将截断输出」
+
+*English:*
+
+1. Fixed subagents on custom providers failing with a missing apiKey: the v2 engine now honors the api_key_env_var key indirection (provider schema, auth resolution, and the settings-page configured check, all aligned with v1)
+2. Fixed garbled, self-duplicating text after long unattended turns: retried steps re-streamed their output with no rollback marker; the failed attempt's remainder is now discarded as soon as a retry is announced (subagent steps included)
+3. Switching conversations no longer interrupts running work: a busy session stays alive in the background after its last view detaches, and is reaped only when no view re-attaches within 60 seconds of it settling
+4. Fixed switching back to a conversation still running in the background losing everything generated while away: a kept-alive session replayed a snapshot frozen at its first open; re-attaching now re-reads the wire log and replays the latest state
+5. The header shows the current conversation's title next to the Kimi Code logo (resolved on session load, refreshed live on LLM titles/renames, auto-hidden in narrow windows)
+6. The header status pill drops the context-usage percentage (the composer row already has the context ring), keeping the retry indicator and input/output token counts
+7. "Open in New Tab" no longer mirrors another window's conversation: new panels start on the welcome screen; reload re-attach now returns each window to its own session
+8. The mid-stream switch/new-conversation confirmation now explains the task keeps running in the background and can be revisited from History, instead of claiming the output would be truncated
+
 **2026-08-28**：
 
 1. 同步官方修复：同一会话并发打开/重附着导致的流式消息重复渲染，视图打开操作串行化后不再出现（#3276）

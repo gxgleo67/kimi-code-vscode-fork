@@ -61,6 +61,10 @@ export class KimiWebviewProvider implements vscode.WebviewViewProvider {
 
   createPanel(): vscode.WebviewPanel {
     const webviewId = `panel_${crypto.randomUUID()}`;
+    // A new tab starts on the home screen: auto-attaching to the live session
+    // would mirror whatever window is currently open. The mark is consumed on
+    // first mount, so in-place reloads of this panel re-attach normally.
+    this.bridgeHandler.runtime.markFreshView(webviewId);
 
     const panel = vscode.window.createWebviewPanel("kimiPanel", "Kimi Code", vscode.ViewColumn.One, {
       enableScripts: true,

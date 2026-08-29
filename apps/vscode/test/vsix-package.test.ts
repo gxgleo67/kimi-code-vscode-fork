@@ -17,6 +17,9 @@ const appRoot = resolve(import.meta.dirname, '..');
 const packageScript = join(appRoot, 'scripts', 'vsix-package.mjs');
 const verifierScript = join(appRoot, 'scripts', 'vsix-verify.mjs');
 const prepareDevScript = join(appRoot, 'scripts', 'prepare-dev.mjs');
+// Packages carry the extension version in their filename (kimi-code-<version>-<target>.vsix)
+// so every build is a unique Marketplace artifact.
+const pkgVersion: string = JSON.parse(await readFile(join(appRoot, 'package.json'), 'utf8')).version;
 const tempDirs: string[] = [];
 
 afterEach(async () => {
@@ -24,19 +27,30 @@ afterEach(async () => {
 });
 
 describe('VSIX package CLI (target planning and validation)', () => {
-  it('plans all six supported targets when no target is supplied', async () => {
+  it('plans the universal target when no target is supplied', async () => {
     const outputDir = await makeTempDir('kimi-package-plan-');
 
     const result = runNode(packageScript, ['--dry-run', '--out-dir', outputDir]);
 
     expect(result.status).toBe(0);
-    expect(result.stdout.match(/Would package /g)).toHaveLength(6);
-    expect(result.stdout).toContain('kimi-code-darwin-x64.vsix');
-    expect(result.stdout).toContain('kimi-code-darwin-arm64.vsix');
-    expect(result.stdout).toContain('kimi-code-linux-x64.vsix');
-    expect(result.stdout).toContain('kimi-code-linux-arm64.vsix');
-    expect(result.stdout).toContain('kimi-code-win32-x64.vsix');
-    expect(result.stdout).toContain('kimi-code-win32-arm64.vsix');
+    expect(result.stdout.match(/Would package /g)).toHaveLength(1);
+    expect(result.stdout).toContain(`kimi-code-${pkgVersion}-universal.vsix`);
+  });
+
+  it('plans the universal and all six per-platform targets for "all"', async () => {
+    const outputDir = await makeTempDir('kimi-package-plan-all-');
+
+    const result = runNode(packageScript, ['all', '--dry-run', '--out-dir', outputDir]);
+
+    expect(result.status).toBe(0);
+    expect(result.stdout.match(/Would package /g)).toHaveLength(7);
+    expect(result.stdout).toContain(`kimi-code-${pkgVersion}-universal.vsix`);
+    expect(result.stdout).toContain(`kimi-code-${pkgVersion}-darwin-x64.vsix`);
+    expect(result.stdout).toContain(`kimi-code-${pkgVersion}-darwin-arm64.vsix`);
+    expect(result.stdout).toContain(`kimi-code-${pkgVersion}-linux-x64.vsix`);
+    expect(result.stdout).toContain(`kimi-code-${pkgVersion}-linux-arm64.vsix`);
+    expect(result.stdout).toContain(`kimi-code-${pkgVersion}-win32-x64.vsix`);
+    expect(result.stdout).toContain(`kimi-code-${pkgVersion}-win32-arm64.vsix`);
   });
 
   it('accepts a Windows ARM target when the output path contains spaces', async () => {
@@ -54,7 +68,7 @@ describe('VSIX package CLI (target planning and validation)', () => {
 
     expect(result.status).toBe(0);
     expect(result.stdout.match(/Would package /g)).toHaveLength(1);
-    expect(result.stdout).toContain('kimi-code-win32-arm64.vsix');
+    expect(result.stdout).toContain(`kimi-code-${pkgVersion}-win32-arm64.vsix`);
   });
 
   it('rejects an unknown target before a build starts', () => {

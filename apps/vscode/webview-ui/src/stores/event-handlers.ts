@@ -95,6 +95,36 @@ function applySubagentSpawned(steps: UIStep[], payload: SubagentSpawned): void {
   }
 }
 
+/**
+ * A retried step re-runs under a new step number and re-streams its text from
+ * scratch; the stream carries no rollback marker (the official CLI discards
+ * the failed attempt's partial output on turn.step.retrying for the same
+ * reason). Drop the failed attempt's step so the re-stream does not append a
+ * second copy on top of the first. Returns the total length of the dropped
+ * text items, so the caller can trim the mirrored message-level content.
+ */
+function discardFailedAttemptStep(steps: UIStep[] | undefined): number {
+  if (!steps || steps.length === 0) return 0;
+  const step = steps.at(-1)!;
+  if (step.items.length === 0) return 0;
+  // A generate error precedes tool execution, so a settled tool result, a
+  // compaction, or a steer marker means the last step is real work history,
+  // not a retryable partial — leave it alone.
+  const hasSettledItems = step.items.some(
+    (item) =>
+      (item.type === "tool_use" && item.result !== undefined) ||
+      item.type === "compaction" ||
+      item.type === "steer",
+  );
+  if (hasSettledItems) return 0;
+  let droppedText = 0;
+  for (const item of step.items) {
+    if (item.type === "text") droppedText += item.content.length;
+  }
+  steps.pop();
+  return droppedText;
+}
+
 function finishAllTextItems(steps: UIStep[]): void {
   for (const step of steps) {
     for (const item of step.items) {
@@ -523,7 +553,13 @@ const eventHandlers: Record<string, EventHandler> = {
     }
 
     if (target.event.type === "StatusUpdate") {
-      const { token_usage } = target.event.payload;
+      const { token_usage, retrying } = target.event.payload;
+
+      // A retried subagent step re-streams from scratch too — drop the failed
+      // attempt's partial subagent steps.
+      if (retrying) {
+        discardFailedAttemptStep(target.steps);
+      }
 
       if (token_usage) {
         addTokenUsage(draft.activeTokenUsage, {
@@ -578,6 +614,16 @@ const eventHandlers: Record<string, EventHandler> = {
 
   StatusUpdate: (draft, payload) => {
     const { context_usage, context_tokens, max_context_tokens, token_usage, plan_mode, swarm_mode, goal, model, thinking_effort, permission, retrying, turn_active } = payload;
+
+    // A step retry restarts the step's stream from scratch: discard the failed
+    // attempt's partial text before the re-stream appends on top of it.
+    if (retrying) {
+      const retryTarget = getLastAssistant(draft);
+      const dropped = discardFailedAttemptStep(retryTarget?.steps);
+      if (dropped > 0 && retryTarget && typeof retryTarget.content === "string") {
+        retryTarget.content = retryTarget.content.slice(0, Math.max(0, retryTarget.content.length - dropped));
+      }
+    }
 
     // Attach-time engine truth: a view created mid-turn (panel re-created
     // while a task runs) starts with isStreaming=false and would let a send

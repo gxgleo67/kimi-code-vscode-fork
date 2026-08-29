@@ -4,6 +4,30 @@
 >
 > *中文:* 本文件只记录本 fork(Kimi Code (Fork))自身的更新,版本号独立编号。官方上游的更新记录请见 [MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code/blob/main/apps/vscode/CHANGELOG.md)。
 
+## 0.9.2(2026-08-29)
+
+1. Fix: subagents bound to a custom provider failed with "AnthropicChatProvider: apiKey is required" — the v2 engine silently dropped the `api_key_env_var` indirection the extension writes (a v1-only feature); the v2 provider schema, auth resolution, and the settings-page "configured" check now honor it.
+2. Fix: garbled, self-repeating text after long unattended turns — a retryable mid-step error re-ran the step under a new number and re-streamed its text with no rollback marker, and the webview kept every copy; the failed attempt's partial step is now discarded as soon as the engine announces a retry (main agent and subagent steps alike).
+3. Switching conversations no longer cancels a running turn: a busy session survives its last view detaching and keeps working in the background; it is reaped only after its work settles with no view re-attaching within 60 seconds.
+4. Fix: switching back to a conversation that kept running in the background no longer loses everything generated while you were away — a kept-alive session replayed from a resume snapshot frozen at its first open; re-attaching now re-reads the wire log and replays the latest state.
+5. The header now shows the current conversation's title next to the Kimi Code logo — resolved when a session loads and refreshed live when the LLM-generated title lands or the session is renamed.
+6. The header status pill drops the context-usage percentage (the composer status row below already shows the context ring); it keeps the retry indicator and input/output token counts, and the session-details dialog still shows the context figure.
+7. "Open in New Tab" no longer mirrors the conversation another window is showing: a newly created panel starts on the welcome screen (pick a history session or start fresh); the exemption is consumed on first mount, so later in-place reloads of that panel re-attach to its own session as before.
+8. Reload re-attach now prefers the view's own attached session instead of the most recently opened one — with several windows open, each window reliably returns to its own conversation.
+9. The mid-stream switch/new-conversation confirmation no longer claims the output will be truncated; it now says the task keeps running in the background and can be revisited from History.
+
+*中文:*
+
+1. 修复:绑定自定义供应商模型的子代理报 "AnthropicChatProvider: apiKey is required"——扩展写入配置的 api_key_env_var 间接引用(v1 特性)被 v2 引擎静默丢弃;v2 供应商 schema、密钥解析与设置页「已配置」判断现已支持该字段
+2. 修复:无人值守长回合后文本乱码、整段自我重复——步骤中途遇可重试错误会以新步骤号重跑并重发已输出文本且没有回滚标记,webview 每份都保留;现引擎宣告重试时即丢弃失败 attempt 的残留步骤(主代理与子代理一致)
+3. 切换会话不再中断进行中的回合:最后一个视图离开时忙碌的会话转后台继续运行,回合结束且 60 秒内无视图重挂才回收
+4. 修复:切回后台继续运行的会话时,切走期间生成的内容全部丢失——保活的会话回放的是首次打开时冻结的快照;重附着现在现读 wire 日志、回放最新状态
+5. 头部在 Kimi Code 标识右侧显示当前会话标题——加载会话时解析,LLM 标题生成或重命名后实时刷新
+6. 头部状态胶囊移除上下文占比(下方输入区已有上下文圆环),保留重试指示与输入/输出 token 数;会话详情弹窗仍显示上下文数值
+7. 「在新标签页打开」不再镜像其他窗口正在显示的会话:新建面板落在欢迎页(自行挑选历史会话或直接开新任务);免附着标记只在首次挂载生效,该面板之后原地重载仍正常重附着到自己的会话
+8. 原地重载的重附着改为优先回到视图自己挂着的会话(原来取最近打开的会话),多窗口并行时各回各的对话
+9. 生成中切换/新建对话的确认文案不再声称「将截断输出」,改为说明任务会在后台继续运行、可随时从历史记录切回
+
 ## 0.9.1(2026-08-28)
 
 1. The marketplace description and this changelog now list English before Chinese.

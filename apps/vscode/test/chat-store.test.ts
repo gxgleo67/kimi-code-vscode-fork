@@ -11,6 +11,7 @@ const boundary = vi.hoisted(() => ({
   steerChat: vi.fn(),
   abortChat: vi.fn(),
   trackFiles: vi.fn(),
+  getAllKimiSessions: vi.fn(),
   toastInfo: vi.fn(),
   toastError: vi.fn(),
   toastWarning: vi.fn(),
@@ -22,6 +23,7 @@ vi.mock("@/services", () => ({
     steerChat: boundary.steerChat,
     abortChat: boundary.abortChat,
     trackFiles: boundary.trackFiles,
+    getAllKimiSessions: boundary.getAllKimiSessions,
   },
 }));
 vi.mock("@/components/ui/sonner", () => ({
@@ -41,12 +43,15 @@ beforeEach(() => {
   boundary.abortChat.mockReset();
   boundary.abortChat.mockResolvedValue({ aborted: true });
   boundary.trackFiles.mockReset();
+  boundary.getAllKimiSessions.mockReset();
+  boundary.getAllKimiSessions.mockResolvedValue([]);
   boundary.toastInfo.mockReset();
   boundary.toastError.mockReset();
   boundary.toastWarning.mockReset();
   useSettingsStore.getState().initModels(MODELS, "plain", false);
   useChatStore.setState({
     sessionId: null,
+    sessionTitle: null,
     messages: [],
     isStreaming: false,
     stopping: false,
@@ -335,6 +340,26 @@ describe("Webview streaming text batching", () => {
     expect(useChatStore.getState().isStreaming).toBe(false);
   });
 
+  it("resolves the header title from the session brief when loading a session", async () => {
+    boundary.getAllKimiSessions.mockResolvedValue([{ id: "session-1", brief: "Fix the login flow" }]);
+
+    await useChatStore.getState().loadSession("session-1", [
+      { type: "StatusUpdate", payload: { turn_active: false } },
+    ]);
+
+    // The brief lookup is async: wait for it to land.
+    await vi.waitFor(() => {
+      expect(useChatStore.getState().sessionTitle).toBe("Fix the login flow");
+    });
+
+    // Loading a session with no brief resets the title synchronously.
+    boundary.getAllKimiSessions.mockResolvedValue([]);
+    await useChatStore.getState().loadSession("session-2", [
+      { type: "StatusUpdate", payload: { turn_active: false } },
+    ]);
+    expect(useChatStore.getState().sessionTitle).toBeNull();
+  });
+
   it("keeps streaming when re-attaching to a session whose turn is still running", async () => {
     // The replay closes the still-open turn with stream_complete (history
     // display convention); the appended busy announcement must win, or the
@@ -371,6 +396,80 @@ describe("Webview streaming text batching", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("discards the failed attempt's partial text when a step retries", () => {
+    useChatStore.getState().sendMessage("do the thing");
+    beginTurn();
+    useChatStore.getState().processEvent({ type: "ContentPart", payload: { type: "text", text: "partial ans" } });
+
+    // Provider fails retryably mid-stream; the engine will re-run the step and
+    // re-stream its text from scratch under a new step number.
+    useChatStore.getState().processEvent({
+      type: "StatusUpdate",
+      payload: { retrying: { next_attempt: 2, max_attempts: 5, delay_ms: 1000, message: "overloaded" } },
+    });
+
+    const duringRetry = useChatStore.getState().messages.at(-1);
+    expect(duringRetry?.content).toBe("");
+    expect(duringRetry?.steps).toHaveLength(0);
+    expect(useChatStore.getState().lastStatus?.retrying).toMatchObject({ next_attempt: 2 });
+
+    // The retried step re-streams the same text: no duplication.
+    useChatStore.getState().processEvent({ type: "StepBegin", payload: { n: 2 } });
+    useChatStore.getState().processEvent({ type: "ContentPart", payload: { type: "text", text: "partial ans" } });
+    useChatStore.getState().processEvent({ type: "ContentPart", payload: { type: "text", text: "wer" } });
+    useChatStore.getState().processEvent({ type: "stream_complete", result: { status: "finished" } });
+
+    const last = useChatStore.getState().messages.at(-1);
+    expect(last?.content).toBe("partial answer");
+    expect(last?.steps).toHaveLength(1);
+    expect(last?.steps?.at(-1)?.items).toEqual([{ type: "text", content: "partial answer", finished: true }]);
+  });
+
+  it("keeps the last step when a retry arrives after executed work", () => {
+    useChatStore.getState().sendMessage("do the thing");
+    beginTurn();
+    useChatStore.getState().processEvent({ type: "ToolCall", payload: { id: "call-1", function: { name: "Read", arguments: "{}" } } });
+    useChatStore.getState().processEvent({
+      type: "ToolResult",
+      payload: { tool_call_id: "call-1", return_value: { is_error: false, output: "ok", message: "" } },
+    });
+
+    useChatStore.getState().processEvent({
+      type: "StatusUpdate",
+      payload: { retrying: { next_attempt: 2, max_attempts: 5, delay_ms: 1000, message: "overloaded" } },
+    });
+
+    const items = useChatStore.getState().messages.at(-1)?.steps?.at(-1)?.items ?? [];
+    expect(items.map((item) => item.type)).toEqual(["tool_use"]);
+  });
+
+  it("discards a retried subagent step's partial text", () => {
+    useChatStore.getState().sendMessage("do the thing");
+    beginTurn();
+    useChatStore.getState().processEvent({ type: "ToolCall", payload: { id: "call-1", function: { name: "Agent", arguments: "{}" } } });
+    useChatStore.getState().processEvent({
+      type: "SubagentEvent",
+      payload: { parent_tool_call_id: "call-1", event: { type: "StepBegin", payload: { n: 1 } } },
+    });
+    useChatStore.getState().processEvent({
+      type: "SubagentEvent",
+      payload: { parent_tool_call_id: "call-1", event: { type: "ContentPart", payload: { type: "text", text: "sub partial" } } },
+    });
+
+    useChatStore.getState().processEvent({
+      type: "SubagentEvent",
+      payload: { parent_tool_call_id: "call-1", event: { type: "StatusUpdate", payload: { retrying: { next_attempt: 2, max_attempts: 5, delay_ms: 1000, message: "overloaded" } } } },
+    });
+
+    const subagentSteps = useChatStore.getState().messages.at(-1)?.steps?.at(-1)?.items.at(-1);
+    expect(subagentSteps?.type).toBe("tool_use");
+    // The failed attempt's step is dropped; only the SubagentEvent handler's
+    // pre-created empty step remains.
+    expect(subagentSteps?.type === "tool_use" ? subagentSteps.subagent_steps : undefined).toEqual([
+      { n: 1, items: [] },
+    ]);
   });
 });
 

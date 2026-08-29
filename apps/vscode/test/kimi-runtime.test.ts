@@ -21,7 +21,7 @@ import type {
   SessionSummary,
   ThinkingEffort,
 } from "@moonshot-ai/kimi-code-sdk";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Events } from "../shared/bridge";
 import { KimiRuntime, type OpenSessionOptions } from "../src/runtime/kimi-runtime";
@@ -677,6 +677,100 @@ describe("Kimi runtime (owns shared SDK sessions for Webviews)", () => {
 
     expect(boundary.closeCount()).toBe(1);
     expect(runtime.getSession(opened.id)).toBeUndefined();
+  });
+
+  describe("orphaned sessions (busy detach)", () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("keeps a busy session alive when its last Webview detaches, reaping it once it settles", async () => {
+      const { runtime, sdk } = createRuntime();
+      const opened = await runtime.openSession(openOptions());
+      const boundary = sdk.sessions.get(opened.id)!;
+
+      let releaseTurn!: () => void;
+      boundary.setPromptImpl(
+        () =>
+          new Promise<void>((resolve) => {
+            releaseTurn = resolve;
+          }),
+      );
+      const turn = opened.prompt("long task");
+      boundary.emit({ type: "turn.started", agentId: "main", sessionId: opened.id, turnId: "t1" } as unknown as Event);
+      expect(opened.isBusy).toBe(true);
+
+      // Detaching mid-turn must not cancel the work: the session stays wrapped.
+      await runtime.detachView("view-1");
+      expect(boundary.closeCount()).toBe(0);
+      expect(runtime.getSession(opened.id)).toBeDefined();
+
+      boundary.emit({ type: "turn.ended", agentId: "main", sessionId: opened.id, turnId: "t1", reason: "completed" } as unknown as Event);
+      releaseTurn();
+      await expect(turn).resolves.toEqual({ status: "finished" });
+
+      // Settling with no views schedules the orphan reap; it fires after the delay.
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(boundary.closeCount()).toBe(1);
+      expect(runtime.getSession(opened.id)).toBeUndefined();
+    });
+
+    it("keeps an orphaned session alive when a view re-attaches inside the reap window", async () => {
+      const { runtime, sdk } = createRuntime();
+      const opened = await runtime.openSession(openOptions());
+      const boundary = sdk.sessions.get(opened.id)!;
+
+      let releaseTurn!: () => void;
+      boundary.setPromptImpl(
+        () =>
+          new Promise<void>((resolve) => {
+            releaseTurn = resolve;
+          }),
+      );
+      const turn = opened.prompt("long task");
+      boundary.emit({ type: "turn.started", agentId: "main", sessionId: opened.id, turnId: "t1" } as unknown as Event);
+
+      await runtime.detachView("view-1");
+      boundary.emit({ type: "turn.ended", agentId: "main", sessionId: opened.id, turnId: "t1", reason: "completed" } as unknown as Event);
+      releaseTurn();
+      await expect(turn).resolves.toEqual({ status: "finished" });
+
+      await runtime.attachResumedSession("view-2", boundary.session);
+      await vi.advanceTimersByTimeAsync(60_000);
+
+      expect(boundary.closeCount()).toBe(0);
+      expect(runtime.getSessionForView("view-2")?.id).toBe(opened.id);
+    });
+  });
+
+  it("keeps a fresh-marked view blank on first mount, then re-attaches normally", async () => {
+    const { runtime } = createRuntime();
+    const opened = await runtime.openSession(openOptions());
+
+    runtime.markFreshView("panel-1");
+    // First mount: blank instead of mirroring the live session.
+    expect(runtime.getLiveSessionId("panel-1")).toBeNull();
+    // The mark is consumed: a later in-place reload re-attaches to the live session.
+    expect(runtime.getLiveSessionId("panel-1")).toBe(opened.id);
+    // Unmarked views are unaffected.
+    expect(runtime.getLiveSessionId("view-2")).toBe(opened.id);
+  });
+
+  it("resolves the live session per view when several windows are open", async () => {
+    const { runtime } = createRuntime();
+    const first = await runtime.openSession(openOptions({ webviewId: "view-1" }));
+    const second = await runtime.openSession(openOptions({ webviewId: "view-2" }));
+
+    expect(first.id).not.toBe(second.id);
+    // Each view re-attaches to its own session after an in-place reload,
+    // even though the other session is the map's last entry.
+    expect(runtime.getLiveSessionId("view-1")).toBe(first.id);
+    expect(runtime.getLiveSessionId("view-2")).toBe(second.id);
+    expect(runtime.getLiveSessionId()).toBe(second.id);
   });
 
   it("reattaches the same resumed session without replacing its handlers", async () => {

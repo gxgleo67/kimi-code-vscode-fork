@@ -507,6 +507,51 @@ describe("Webview RPC boundary (validates requests before host dispatch)", () =>
 
     expect(result).toEqual({ id: "rpc-1", result: { sessionId: null } });
   });
+
+  it("re-reads the resume state when the session is still live in the runtime", async () => {
+    // Regression: a busy session kept alive in the runtime map (switching away
+    // no longer closes it) used to replay from the resume snapshot taken at
+    // its first open, so everything generated while the view was away was
+    // missing when the user switched back.
+    const stale = createResumedSession("session-1", root);
+    await bridge.runtime.attachResumedSession("view-2", stale as never);
+
+    const fresh = createResumedSession("session-1", root);
+    const state = fresh.getResumeState();
+    (state.agents.main.replay as unknown[]).push({
+      type: "message",
+      time: 3,
+      message: {
+        role: "user",
+        content: [{ type: "text", text: "generated while away" }],
+        origin: undefined,
+      },
+    });
+    fresh.getResumeState = () => state;
+    host.harness.resumeSession.mockResolvedValueOnce(fresh as never);
+
+    const result = await bridge.handle(
+      {
+        id: "rpc-1",
+        method: Methods.LoadKimiSessionHistory,
+        params: { kimiSessionId: "session-1" },
+      },
+      "view-1",
+    );
+
+    expect(host.harness.resumeSession).toHaveBeenCalledWith({
+      id: "session-1",
+      includeSubagents: true,
+    });
+    expect(result).toEqual({
+      id: "rpc-1",
+      result: expect.arrayContaining([
+        expect.objectContaining({ type: "TurnBegin", _sessionId: "session-1" }),
+      ]),
+    });
+    // The extra handle must not be closed: it shares the live session.
+    expect(fresh.close).not.toHaveBeenCalled();
+  });
 });
 
 describe("Webview config saves (thinking effort persistence parity with the TUI)", () => {

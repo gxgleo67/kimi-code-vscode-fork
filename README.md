@@ -377,7 +377,7 @@ scripts/              # postinstall (node-pty fix)
 1. AI 自动生成会话摘要标题（已手动命名不覆盖）
 2. 模式开关拆分为 计划 / 目标 / Swarm 三个并排按钮，说明悬浮显示；目标激活可暂停 / 继续 / 取消
 3. 附件曲别针点击直接打开文件选择器，不再向输入框写入 @
-4. 上下文圆环点击直接压缩上下文；可选设置：上下文超 256K 自动压缩
+4. 上下文圆环点击直接压缩上下文
 5. 上下文查看器打开自动刷新；状态行胶囊按本对话使用情况显示
 6. 打开历史对话显示加载动画并直达最新消息
 7. 开关控件统一：开 = 蓝色，关 = 灰色
@@ -387,7 +387,7 @@ scripts/              # postinstall (node-pty fix)
 1. AI-generated session summary titles (manually renamed titles are not overwritten)
 2. Mode switches split into three side-by-side buttons — Plan / Goal / Swarm — with hover descriptions; an active goal can be paused / resumed / cancelled
 3. The attachment paperclip opens the file picker directly instead of typing `@` into the input
-4. Clicking the context ring compacts context directly; optional setting: auto-compact when context exceeds 256K
+4. Clicking the context ring compacts context directly
 5. The context viewer auto-refreshes while open; status-row capsules reflect the current conversation's usage
 6. Opening a history conversation shows a loading animation and jumps straight to the newest message
 7. Toggle controls unified: blue when on, gray when off

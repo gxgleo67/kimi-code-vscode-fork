@@ -4,23 +4,17 @@
 >
 > *中文:* 本文件只记录本 fork(Kimi Code (Fork))自身的更新,版本号独立编号。官方上游的更新记录请见 [MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code/blob/main/apps/vscode/CHANGELOG.md)。
 
-## 0.9.4(2026-08-31)
-
-1. Removed the fork's UI-level auto-compact toggle (a fixed 256K-token threshold firing /compact after a turn ended) — compaction is now left entirely to the engine's own auto-compaction (85% of the current model's context window, triggered mid-turn), matching upstream behavior; manual /compact is unaffected.
-
-*中文:*
-
-1. 移除界面层的「自动压缩上下文」开关(原为回合结束后按固定 256K 阈值自动补发 /compact)——压缩完全交给引擎自身的自动压缩(按当前模型上下文窗口 85%、回合进行中触发),与官方行为对齐;手动 /compact 不受影响
-
 ## 0.9.3(2026-08-31)
 
 1. Queued messages show their images/videos as numbered chips (Image 1 / Video 1) in light blue, with a hover thumbnail preview — replacing the bare "+ media" marker.
 2. Queue rows are roomier: larger message text, and the actions (steer / edit / move up / delete) now live in a dedicated right-side zone separated by a divider, always visible at 32px instead of hover-only 20px icons; the edit row grows to match.
+3. Removed the fork's UI-level auto-compact toggle (a fixed 256K-token threshold firing /compact after a turn ended) — compaction is now left entirely to the engine's own auto-compaction (85% of the current model's context window, triggered mid-turn), matching upstream behavior; manual /compact is unaffected.
 
 *中文:*
 
 1. 队列消息中的图片/视频显示为淡蓝色编号标签(图片 1/视频 1),悬停弹出缩略图预览——取代原来的「+ 媒体」文字标记
 2. 队列行排布加宽:消息文字调大,操作按钮(插队/修改/上移/删除)独立到竖线分隔的右侧区域,常显 32px 大按钮(原为悬停才出现的 20px 小图标);编辑行同步放大
+3. 移除界面层的「自动压缩上下文」开关(原为回合结束后按固定 256K 阈值自动补发 /compact)——压缩完全交给引擎自身的自动压缩(按当前模型上下文窗口 85%、回合进行中触发),与官方行为对齐;手动 /compact 不受影响
 
 ## 0.9.2(2026-08-29)
 

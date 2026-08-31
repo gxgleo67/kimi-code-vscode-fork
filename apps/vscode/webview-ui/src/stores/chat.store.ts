@@ -213,45 +213,12 @@ function clearAllInlineErrors(draft: ChatState): void {
 }
 
 /**
- * Fixed 256K threshold for the opt-in auto-compact: models with a 256K context
- * (e.g. K3-256k) overflow past this and start losing context.
- */
-const AUTO_COMPACT_THRESHOLD_TOKENS = 256 * 1024;
-/**
- * Context size that triggered the last auto-compact. An equal reading never
- * re-fires, so a compaction that fails to shrink the context can't loop.
- */
-let lastAutoCompactTokens = 0;
-
-/**
  * True while a live goal occupies the session (running or paused): a direct
  * prompt then is rejected by the engine with "already being generated", so it
  * must be queued the same as a streaming/stopping/compacting turn.
  */
 function isGoalBusy(goal: GoalStateInfo | null): boolean {
   return goal !== null && (goal.status === "active" || goal.status === "paused");
-}
-
-/**
- * Opt-in (kimifork.autoCompactContext): when a turn ends with the context
- * above 256K tokens, send /compact as a normal follow-up turn. Skipped while a
- * goal is live (compaction would swallow the goal's next continuation turn)
- * and while the goal composer is armed (sendMessage would consume the arm).
- */
-function maybeAutoCompact(get: () => ChatState): void {
-  const { extensionConfig } = useSettingsStore.getState();
-  if (!extensionConfig.autoCompactContext) return;
-  const state = get();
-  if (state.isStreaming || state.stopping) return;
-  if (state.goal !== null && (state.goal.status === "active" || state.goal.status === "paused")) return;
-  if (state.goalArmed) return;
-  const tokens = state.lastStatus?.context_tokens;
-  if (tokens === undefined || tokens === null || tokens <= AUTO_COMPACT_THRESHOLD_TOKENS) return;
-  if (tokens === lastAutoCompactTokens) return;
-  lastAutoCompactTokens = tokens;
-  useChatStore.setState({ pendingCompactTrigger: "auto" });
-  toast.info(t("toast.autoCompactStarted"));
-  state.sendMessage("/compact");
 }
 
 /**
@@ -305,8 +272,9 @@ function doSend(state: ChatState, content: string | ContentPart[], model: string
   const { sessionId, planMode } = state;
   const { thinkingEffort, permissionMode } = useSettingsStore.getState();
 
-  // A user-typed /compact is manual; maybeAutoCompact marks its own send as
-  // auto beforehand, and an engine-initiated compaction leaves the flag null.
+  // A user-typed /compact is manual; an engine-initiated compaction (including
+  // the engine's own auto-compaction) leaves the flag null, which the display
+  // falls back to "auto".
   if (content === "/compact" && useChatStore.getState().pendingCompactTrigger === null) {
     useChatStore.setState({ pendingCompactTrigger: "manual" });
   }
@@ -523,7 +491,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
           compactionPatchPending = false;
           void patchCompactionItem(get, set);
         }
-        maybeAutoCompact(get);
       }
       const { queue, isStreaming: stillStreaming } = get();
       if (!stillStreaming && queue.length > 0) {

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { IconSettings, IconServer, IconLogout, IconLogin, IconLoader2, IconRefresh, IconFileText, IconFolder, IconCheck, IconLanguage, IconRecycle, IconViewportNarrow } from "@tabler/icons-react";
+import { IconSettings, IconServer, IconLogout, IconLogin, IconLoader2, IconRefresh, IconFileText, IconFolder, IconCheck, IconLanguage, IconViewportNarrow } from "@tabler/icons-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -83,14 +83,6 @@ export function ActionMenu({ className, onAuthAction }: ActionMenuProps) {
   // The popover stays open so the toggle feels like a setting, not a command.
   // A failed write rolls the flip back loudly — a silently dropped save looked
   // exactly like "the setting is lost on reload".
-  const handleToggleAutoCompact = (enabled: boolean) => {
-    useSettingsStore.getState().setExtensionConfig({ ...extensionConfig, autoCompactContext: enabled });
-    void bridge.setAutoCompactContext(enabled).catch((error: unknown) => {
-      useSettingsStore.getState().setExtensionConfig({ ...useSettingsStore.getState().extensionConfig, autoCompactContext: !enabled });
-      toast.error(t("toast.saveSettingFailed", { error: error instanceof Error ? error.message : String(error) }));
-    });
-  };
-
   const handleToggleCompactComposer = (enabled: boolean) => {
     useSettingsStore.getState().setExtensionConfig({ ...extensionConfig, compactComposer: enabled });
     void bridge.setCompactComposer(enabled).catch((error: unknown) => {
@@ -170,19 +162,6 @@ export function ActionMenu({ className, onAuthAction }: ActionMenuProps) {
         <Separator className="my-px" />
 
         <div className="py-1">
-          <div className="flex items-center gap-2 px-2.5 py-1.5 text-xs">
-            <IconRecycle className="size-4 shrink-0 text-muted-foreground" />
-            <span className="flex-1">
-              {t("menu.autoCompact")}
-              <span className="block text-[10px] text-muted-foreground leading-snug">{t("menu.autoCompactDesc")}</span>
-            </span>
-            <Switch
-              size="sm"
-              checked={extensionConfig.autoCompactContext}
-              onCheckedChange={handleToggleAutoCompact}
-              aria-label={t("menu.autoCompact")}
-            />
-          </div>
           <div className="flex items-center gap-2 px-2.5 py-1.5 text-xs">
             <IconViewportNarrow className="size-4 shrink-0 text-muted-foreground" />
             <span className="flex-1">

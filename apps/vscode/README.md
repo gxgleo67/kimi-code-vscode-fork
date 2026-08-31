@@ -66,10 +66,6 @@
 
 ### 🧠 上下文 | Context
 
-**自动压缩上下文**：设置菜单开关（语言设置下方，默认关闭），任务结束后上下文超过 256K 时自动执行 `/compact`，防止 K3-256k 等 256K 模型上下文超限丢失。
-
-**Auto context compaction**: a settings toggle (below the language setting, off by default); when a task finishes with context over 256K, `/compact` runs automatically to prevent overflow on 256K-context models such as K3-256k.
-
 **压缩后界面同步**：`/compact` 完成后对话列表与引擎真实上下文同步——压缩记录显示为 Claude Code 风格的单行标记（手动/自动 + 释放 token 数），点击可展开压缩摘要；上下文查看器打开时自动刷新。
 
 **Post-compaction UI sync**: after `/compact`, the chat list matches the engine's real context — the compaction entry renders as a Claude Code–style single-line marker (manual/auto + tokens freed) that expands to the compaction summary; the context viewer refreshes automatically while open.
@@ -222,6 +218,8 @@ scripts/              # postinstall (node-pty fix)
 6. 头部状态胶囊移除上下文占比（输入区已有上下文圆环），保留重试指示与输入/输出 token 数
 7. 「在新标签页打开」不再镜像其他窗口的会话：新面板落在欢迎页自行挑选历史；原地重载的重附着改为各窗口各回各的会话
 8. 生成中切换/新建对话的确认文案改为说明任务在后台继续运行、可从历史切回，不再声称「将截断输出」
+9. 队列消息的图片/视频显示为编号标签（图片 1/视频 1，悬停出缩略图）；队列行文字与操作按钮放大，按钮独立到右侧竖线分隔的常显区域
+10. 移除界面层「自动压缩上下文」开关：压缩交由引擎按当前模型窗口 85% 自动处理（与官方一致），手动 /compact 不受影响
 
 *English:*
 
@@ -233,6 +231,8 @@ scripts/              # postinstall (node-pty fix)
 6. The header status pill drops the context-usage percentage (the composer row already has the context ring), keeping the retry indicator and input/output token counts
 7. "Open in New Tab" no longer mirrors another window's conversation: new panels start on the welcome screen; reload re-attach now returns each window to its own session
 8. The mid-stream switch/new-conversation confirmation now explains the task keeps running in the background and can be revisited from History, instead of claiming the output would be truncated
+9. Queued images/videos show as numbered chips (Image 1 / Video 1, hover for a thumbnail); queue rows use larger text, and the actions (steer / edit / move up / delete) live in a dedicated right-side zone with bigger, always-visible buttons
+10. Removed the UI-level auto-compact toggle: compaction is left to the engine's own auto-compaction (85% of the current model's context window), matching upstream; manual /compact is unaffected
 
 **2026-08-28**：
 

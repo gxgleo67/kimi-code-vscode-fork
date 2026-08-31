@@ -50,8 +50,6 @@ export const en = {
   "menu.signIn": "Sign in",
   "menu.signInFailed": "Sign-in failed. Check the logs for details.",
   "menu.language": "Language / 语言",
-  "menu.autoCompact": "Auto-compact context",
-  "menu.autoCompactDesc": "After a task ends, run /compact automatically when the context exceeds 256K — prevents context overflow on 256K models (e.g. K3-256k). Default off.",
   "menu.compactComposer": "Compact composer",
   "menu.compactComposerDesc": "Show the composer's permission/mode buttons as icons to save space; the model name and thinking effort always stay fully visible. Default off.",
 
@@ -181,8 +179,12 @@ export const en = {
   "usage.compactWhileArmed": "A goal is being set — finish or cancel it before compacting.",
 
   // ── QueuedMessagesPanel / BottomToolbar ─────────────────────────────────
-  "queue.media": "(media)",
-  "queue.plusMedia": "+ media",
+  "queue.imageN": "Image {n}",
+  "queue.videoN": "Video {n}",
+  "queue.steer": "Steer",
+  "queue.edit": "Edit",
+  "queue.moveUp": "Move up",
+  "queue.delete": "Delete",
   "queue.insertNow": "Insert now (steer)",
   "queue.queuedCount": "{count} Queued",
   "changes.changedCount": "{count} Changed",
@@ -460,7 +462,6 @@ export const en = {
 
   // ── Toasts (stores, media upload) ───────────────────────────────────────
   "toast.noRunningTask": "No running task to stop.",
-  "toast.autoCompactStarted": "Context exceeded 256K after the last task — running /compact automatically.",
   "toast.saveModelSettingsFailed": "Failed to save model settings: {error}",
   "toast.saveSettingFailed": "Failed to save setting: {error}",
   "toast.processMediaFailed": "Failed to process media file",

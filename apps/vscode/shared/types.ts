@@ -41,12 +41,6 @@ export interface ExtensionConfig {
   language: "en" | "zh";
   defaultThinkingEffort: string;
   /**
-   * Auto-run /compact when a turn ends with the context above 256K tokens, so
-   * long sessions on 256K-context models (e.g. K3-256k) don't overflow and
-   * lose context. Default off — compacting costs tokens, so the user decides.
-   */
-  autoCompactContext: boolean;
-  /**
    * Compact composer: show the permission/mode buttons under the composer as
    * icons regardless of width, saving space in narrow sidebars. The model
    * name and thinking effort are never compacted or truncated — they always

@@ -47,8 +47,6 @@ export const zh: Record<TranslationKey, string> = {
   "menu.signIn": "登录",
   "menu.signInFailed": "登录失败,详情请查看日志。",
   "menu.language": "Language / 语言",
-  "menu.autoCompact": "自动压缩上下文",
-  "menu.autoCompactDesc": "任务结束后，若上下文超过 256K 自动执行 /compact，防止 K3-256k 等 256K 模型上下文超限丢失（默认关闭）",
   "menu.compactComposer": "精简模式",
   "menu.compactComposerDesc": "输入框的权限/模式按钮以图标形式精简显示；模型名称与思考强度始终完整显示（默认关闭）",
 
@@ -174,8 +172,12 @@ export const zh: Record<TranslationKey, string> = {
   "usage.compactWhileArmed": "正在设置目标,请先完成或取消目标再压缩。",
 
   // ── 排队消息面板 / 底部工具栏 ───────────────────────────────────────────
-  "queue.media": "(媒体)",
-  "queue.plusMedia": "+ 媒体",
+  "queue.imageN": "图片 {n}",
+  "queue.videoN": "视频 {n}",
+  "queue.steer": "插队",
+  "queue.edit": "修改",
+  "queue.moveUp": "上移",
+  "queue.delete": "删除",
   "queue.insertNow": "立即插入(插队)",
   "queue.queuedCount": "{count} 条排队中",
   "changes.changedCount": "{count} 个变更",
@@ -444,7 +446,6 @@ export const zh: Record<TranslationKey, string> = {
 
   // ── Toast(store、媒体上传) ──────────────────────────────────────────────
   "toast.noRunningTask": "没有正在运行的任务。",
-  "toast.autoCompactStarted": "任务结束后上下文已超过 256K，正在自动执行 /compact 压缩。",
   "toast.saveModelSettingsFailed": "保存模型设置失败:{error}",
   "toast.saveSettingFailed": "设置保存失败:{error}",
   "toast.processMediaFailed": "媒体文件处理失败",

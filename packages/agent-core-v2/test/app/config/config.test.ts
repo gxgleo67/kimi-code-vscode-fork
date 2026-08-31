@@ -396,6 +396,7 @@ describe('Agent config', () => {
 
     expect(await ctx.untilTurnEnd()).toMatchInlineSnapshot(`
       [emit] agent.activity.updated      { "time": "<time>", "lifecycle": "ready", "lastTurn": { "turnId": 0, "reason": "completed", "at": "<time>" }, "background": [] }
+      [wire] prompt.completed            { "promptId": "<msg-1>", "finishedAt": "<time>", "reason": "completed", "time": "<time>" }
       [emit] prompt.completed            { "time": "<time>", "promptId": "<msg-1>", "finishedAt": "<time>", "reason": "completed" }
       [wire] prompt.accepted             { "promptId": "<msg-2>", "content": [ { "type": "text", "text": "Start a fresh turn" } ], "time": "<time>" }
       [emit] prompt.accepted             { "time": "<time>", "promptId": "<msg-2>", "content": [ { "type": "text", "text": "Start a fresh turn" } ] }

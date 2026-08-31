@@ -172,6 +172,7 @@ export class SessionSwarmService implements ISessionSwarmService {
       swarmIndex: options.swarmIndex,
       runInBackground: options.runInBackground,
       model: binding.model,
+      modelSource: binding.modelSource,
     });
     const lease = this.runtimeResolver.acquire(callerRuntime, ['process']);
     let promptText: string;

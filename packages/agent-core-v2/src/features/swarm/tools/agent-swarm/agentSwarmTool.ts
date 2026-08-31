@@ -23,6 +23,7 @@ import {
   exposesSubagentModelChoice,
   resolveSubagentBinding,
   stripSubagentModelParameter,
+  type SubagentModelSource,
 } from '#/session/subagent/configSection';
 import {
   AgentSwarmToolInputSchema,
@@ -138,7 +139,7 @@ export class AgentSwarmTool implements IAgentSwarmTool {
     toolCallId: string,
   ): Promise<string> {
     const profileName = normalizeOptionalString(args.subagent_type) ?? DEFAULT_SUBAGENT_TYPE;
-    let binding: { model: string; thinking?: string } | undefined;
+    let binding: { model: string; thinking?: string; modelSource?: SubagentModelSource } | undefined;
     if ((args.items?.length ?? 0) > 0) {
       await this.catalog.ready;
       const own = this.profile.data();
@@ -163,7 +164,7 @@ export class AgentSwarmTool implements IAgentSwarmTool {
           { modelAlias: own.modelAlias, thinkingLevel: own.thinkingLevel },
           args.model,
         );
-        binding = { model: resolved.model, thinking: resolved.thinking };
+        binding = { model: resolved.model, thinking: resolved.thinking, modelSource: resolved.modelSource };
       }
     }
     const timeoutMs = resolveSwarmTimeoutMs(this.config);

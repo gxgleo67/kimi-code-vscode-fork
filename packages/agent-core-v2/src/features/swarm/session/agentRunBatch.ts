@@ -5,6 +5,7 @@ import * as retry from 'retry';
 import { isUserCancellation } from '#/_base/utils/abort';
 import { setClampedTimeout } from '#/_base/utils/timer';
 import { BugIndicatingError, Error2, ErrorCodes } from '#/errors';
+import type { SubagentModelSource } from '#/session/subagent/configSection';
 import type { SessionSwarmRunResult, SessionSwarmTask } from './sessionSwarm';
 
 export interface AgentRunAttemptOptions {
@@ -22,7 +23,7 @@ export interface AgentRunAttemptOptions {
 export interface AgentSpawnAttemptOptions extends AgentRunAttemptOptions {
   readonly profileName: string;
   readonly swarmItem?: string;
-  readonly binding?: { readonly model: string; readonly thinking?: string };
+  readonly binding?: { readonly model: string; readonly thinking?: string; readonly modelSource?: SubagentModelSource };
 }
 
 export type AgentRunAttemptHandle = {

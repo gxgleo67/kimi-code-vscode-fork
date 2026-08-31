@@ -1075,8 +1075,8 @@ describe('AgentSwarmTool', () => {
     expect(host.swarmService.run).toHaveBeenCalledWith(
       expect.objectContaining({
         tasks: [
-          expect.objectContaining({ binding: { model: 'provider/fast', thinking: undefined } }),
-          expect.objectContaining({ binding: { model: 'provider/fast', thinking: undefined } }),
+          expect.objectContaining({ binding: { model: 'provider/fast', thinking: undefined, modelSource: 'secondary_pool' } }),
+          expect.objectContaining({ binding: { model: 'provider/fast', thinking: undefined, modelSource: 'secondary_pool' } }),
         ],
       }),
     );
@@ -1099,8 +1099,8 @@ describe('AgentSwarmTool', () => {
     expect(host.swarmService.run).toHaveBeenCalledWith(
       expect.objectContaining({
         tasks: [
-          expect.objectContaining({ binding: { model: 'main-model', thinking: 'high' } }),
-          expect.objectContaining({ binding: { model: 'main-model', thinking: 'high' } }),
+          expect.objectContaining({ binding: { model: 'main-model', thinking: 'high', modelSource: 'primary_override' } }),
+          expect.objectContaining({ binding: { model: 'main-model', thinking: 'high', modelSource: 'primary_override' } }),
         ],
       }),
     );

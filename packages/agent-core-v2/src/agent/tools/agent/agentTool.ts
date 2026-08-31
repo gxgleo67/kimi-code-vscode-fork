@@ -62,6 +62,7 @@ import {
   resolveSubagentThinking,
   resolveSubagentTimeoutMs,
   stripSubagentModelParameter,
+  type SubagentModelSource,
   wrapSubagentModelError,
 } from '#/session/subagent/configSection';
 import {
@@ -239,6 +240,7 @@ export class SubagentTool implements ISubagentTool {
     let agentId: string;
     let profileName: string;
     let displayModel: string | undefined;
+    let displayModelSource: SubagentModelSource | undefined;
     let promptText = args.prompt;
     if (isResume) {
       const target = this.lifecycle.get(resumeAgentId);
@@ -310,6 +312,7 @@ export class SubagentTool implements ISubagentTool {
         process: runtime.process!,
         log: this.log,
       });
+      displayModelSource = binding.modelSource;
     }
 
     const run = await this.subagents.run(
@@ -331,6 +334,7 @@ export class SubagentTool implements ISubagentTool {
       profileName,
       parentToolCallId: toolCallId,
       model: displayModel,
+      modelSource: displayModelSource,
       thinkingEffort: this.lifecycle
         .get(agentId)
         ?.accessor.get(IAgentProfileService)
@@ -453,6 +457,7 @@ export class SubagentTool implements ISubagentTool {
           description: args.description,
           runInBackground,
           model: handle.model,
+          modelSource: handle.modelSource,
           taskId,
         });
         void requester.accessor

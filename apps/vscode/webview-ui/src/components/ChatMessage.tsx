@@ -1,5 +1,5 @@
 import { useState, Fragment, memo } from "react";
-import { IconLoader3, IconGitFork } from "@tabler/icons-react";
+import { IconLoader3, IconGitFork, IconPencil, IconTrash } from "@tabler/icons-react";
 import { cn, formatMessageTime } from "@/lib/utils";
 import { Content } from "@/lib/content";
 import { Markdown } from "./Markdown";
@@ -14,8 +14,9 @@ import { PlanCard } from "./PlanCard";
 import { KimiLogo } from "./KimiLogo";
 import { StreamingConfirmDialog } from "./StreamingConfirmDialog";
 import { Button } from "@/components/ui/button";
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { toast } from "@/components/ui/sonner";
-import { useChatStore } from "@/stores";
+import { useChatStore, useSettingsStore } from "@/stores";
 import { bridge } from "@/services";
 import { useT } from "@/i18n";
 import type { ChatMessage as ChatMessageType, UIStep, UIStepItem } from "@/stores/chat.store";
@@ -25,6 +26,10 @@ interface ChatMessageProps {
   message: ChatMessageType;
   /** 0-indexed turn number for this message */
   turnIndex?: number;
+  /** Turn index a user bubble opens; drives the rollback (delete/edit) menu. */
+  userTurnIndex?: number;
+  /** Total visible turns in the transcript; undo count = totalTurns - userTurnIndex. */
+  totalTurns?: number;
   isStreaming?: boolean;
 }
 
@@ -218,27 +223,103 @@ function ForkButton({ turnIndex, className }: ForkButtonProps) {
   );
 }
 
-function UserMessage({ message }: { message: ChatMessageType }) {
+function UserMessage({ message, userTurnIndex, totalTurns }: { message: ChatMessageType; userTurnIndex?: number; totalTurns?: number }) {
+  const t = useT();
   const [previewMedia, setPreviewMedia] = useState<string | null>(null);
+  const [pendingAction, setPendingAction] = useState<"edit" | "delete" | null>(null);
+  const [isWorking, setIsWorking] = useState(false);
+  const sessionId = useChatStore((s) => s.sessionId);
+  const isStreaming = useChatStore((s) => s.isStreaming);
+  const loadSession = useChatStore((s) => s.loadSession);
+  const setHistoryLoading = useChatStore((s) => s.setHistoryLoading);
   const displayContent = Content.getText(message.content);
   const images = Content.getImages(message.content);
   const videos = Content.getVideos(message.content);
 
+  const rollbackable = userTurnIndex !== undefined && totalTurns !== undefined && userTurnIndex >= 0 && totalTurns > userTurnIndex;
+  const rollbackCount = rollbackable ? totalTurns - userTurnIndex : 0;
+
+  // Delete and edit share one engine operation: undo every turn from this
+  // message on. Undo only appends a rollback marker — the records stay in the
+  // session log but stop feeding the context. Edit additionally refills the
+  // composer so the user resends a corrected version.
+  const doRollback = async (action: "edit" | "delete") => {
+    if (!sessionId || !rollbackable) return;
+    setIsWorking(true);
+    setHistoryLoading(true);
+    try {
+      const result = await bridge.undoTurns(sessionId, rollbackCount);
+      if (!result.ok) {
+        toast.error(t("chat.rollbackFailed", { error: result.message }));
+        return;
+      }
+      const events = await bridge.loadSessionHistory(sessionId);
+      await loadSession(sessionId, events);
+      if (action === "edit") {
+        // loadSession clears pendingInput, so refill afterwards: InputArea's
+        // restore effect then drops the original text back into the composer.
+        const { currentModel } = useSettingsStore.getState();
+        useChatStore.setState({ pendingInput: { content: message.content, model: currentModel } });
+      }
+    } catch (error) {
+      toast.error(t("chat.rollbackFailed", { error: error instanceof Error ? error.message : String(error) }));
+    } finally {
+      setHistoryLoading(false);
+      setIsWorking(false);
+      setPendingAction(null);
+    }
+  };
+
+  const bubble = (
+    <div className={cn("max-w-[85%] px-3.5 py-1.5 rounded-2xl rounded-br-md", "bg-zinc-100 dark:bg-zinc-800", "text-foreground")}>
+      {displayContent && (
+        // FIX: removed whitespace-pre-wrap — it conflicted with ReactMarkdown's
+        // block-level elements (<p>, <ol>, <li>), doubling vertical spacing.
+        // ReactMarkdown already handles paragraph breaks from \n\n.
+        <div className="text-xs leading-relaxed wrap-break-word">
+          <Markdown content={displayContent} enableEnrichment enableLocalImageRender={false} />
+        </div>
+      )}
+      <MessageMedia images={images} videos={videos} onPreview={setPreviewMedia} />
+    </div>
+  );
+
   return (
     <div className="px-3 pt-3 pb-1 flex justify-end items-end gap-2">
       <span className="shrink-0 mb-1.5 text-[10px] text-muted-foreground/60">{formatMessageTime(message.timestamp)}</span>
-      <div className={cn("max-w-[85%] px-3.5 py-1.5 rounded-2xl rounded-br-md", "bg-zinc-100 dark:bg-zinc-800", "text-foreground")}>
-        {displayContent && (
-          // FIX: removed whitespace-pre-wrap — it conflicted with ReactMarkdown's
-          // block-level elements (<p>, <ol>, <li>), doubling vertical spacing.
-          // ReactMarkdown already handles paragraph breaks from \n\n.
-          <div className="text-xs leading-relaxed wrap-break-word">
-            <Markdown content={displayContent} enableEnrichment enableLocalImageRender={false} />
-          </div>
-        )}
-        <MessageMedia images={images} videos={videos} onPreview={setPreviewMedia} />
-      </div>
+      {rollbackable ? (
+        <ContextMenu>
+          <ContextMenuTrigger asChild disabled={isWorking}>{bubble}</ContextMenuTrigger>
+          <ContextMenuContent>
+            <ContextMenuItem onSelect={() => setPendingAction("edit")}>
+              <IconPencil />
+              {t("chat.editMessage")}
+            </ContextMenuItem>
+            <ContextMenuItem variant="destructive" onSelect={() => setPendingAction("delete")}>
+              <IconTrash />
+              {t("chat.deleteMessage")}
+            </ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenu>
+      ) : (
+        bubble
+      )}
       <MediaPreviewModal src={previewMedia} onClose={() => setPreviewMedia(null)} />
+      <StreamingConfirmDialog
+        open={pendingAction !== null}
+        onOpenChange={(open) => { if (!open) setPendingAction(null); }}
+        title={pendingAction === "edit" ? t("chat.editRollbackTitle") : t("chat.deleteRollbackTitle")}
+        description={
+          isStreaming
+            ? t(pendingAction === "edit" ? "chat.editRollbackDescStreaming" : "chat.deleteRollbackDescStreaming")
+            : t(pendingAction === "edit" ? "chat.editRollbackDesc" : "chat.deleteRollbackDesc")
+        }
+        confirmLabel={t(pendingAction === "edit" ? "chat.editMessage" : "chat.deleteMessage")}
+        onConfirm={() => { if (pendingAction !== null) void doRollback(pendingAction); }}
+        confirmLoading={isWorking}
+        confirmDisabled={isWorking}
+        cancelDisabled={isWorking}
+      />
     </div>
   );
 }
@@ -343,9 +424,9 @@ function hasMessageContent(message: ChatMessageType): boolean {
   return message.steps?.some((s) => s.items.length > 0) ?? false;
 }
 
-export const ChatMessage = memo(function ChatMessage({ message, turnIndex, isStreaming }: ChatMessageProps) {
+export const ChatMessage = memo(function ChatMessage({ message, turnIndex, userTurnIndex, totalTurns, isStreaming }: ChatMessageProps) {
   if (message.role === "user") {
-    return <UserMessage message={message} />;
+    return <UserMessage message={message} userTurnIndex={userTurnIndex} totalTurns={totalTurns} />;
   }
   return <AssistantMessage message={message} turnIndex={turnIndex} isStreaming={isStreaming} />;
 });

@@ -51,3 +51,32 @@ function countSteers(message: ForkTurnMessage): number {
     ) ?? 0
   );
 }
+
+export interface UserTurnInfo {
+  /** Turn index each user bubble starts; undefined for non-user or host-only messages. */
+  readonly indexes: (number | undefined)[];
+  /** Total visible turns in the transcript — the undo count for turn k is total - k. */
+  readonly total: number;
+}
+
+/**
+ * User-message counterpart of {@link getForkTurnIndexes}: the zero-based turn
+ * each forkable user bubble opens, counted with the same anchors (user prompts
+ * plus steers) so the result maps 1:1 onto the engine's conversation-undo
+ * count.
+ */
+export function getUserTurnInfo(messages: readonly ForkTurnMessage[]): UserTurnInfo {
+  let visibleTurns = 0;
+  const indexes = messages.map((message) => {
+    if (message.role === "user") {
+      if (message.forkable === false) return undefined;
+      visibleTurns += 1;
+      return visibleTurns - 1;
+    }
+    if (message.role === "assistant") {
+      visibleTurns += countSteers(message);
+    }
+    return undefined;
+  });
+  return { indexes, total: visibleTurns };
+}

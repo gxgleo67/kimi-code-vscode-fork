@@ -85,4 +85,22 @@ export interface LoginStatus {
   loggedIn: boolean;
 }
 
+export interface ManagedAccountInfo {
+  /** Provider id: "managed:kimi-code" (primary) or "managed:kimi-code-<N>". */
+  provider: string;
+  /** 1 = primary account (credential shared with the CLI), 2+ = added accounts. */
+  slot: number;
+  loggedIn: boolean;
+  nickname?: string;
+  email?: string;
+  avatar?: string;
+}
+
+export interface AccountAuthResult {
+  success: boolean;
+  error?: string;
+  /** Updated model catalog after an account add/remove, for the picker. */
+  config?: import("./legacy-sdk").KimiConfig;
+}
+
 export type { QuestionRequest, QuestionItem, QuestionOption, QuestionResponse } from "./legacy-sdk";

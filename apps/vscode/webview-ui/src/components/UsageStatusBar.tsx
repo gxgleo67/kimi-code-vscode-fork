@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { bridge } from "@/services";
-import { getModelById, MANAGED_KIMI_CODE_PROVIDER, useChatStore, useSettingsStore } from "@/stores";
+import { getModelById, isManagedKimiProvider, useChatStore, useSettingsStore } from "@/stores";
 import { useT } from "@/i18n";
 import {
   formatTokenCount,
@@ -240,16 +240,21 @@ export function UsageStatusBar() {
   const models = useSettingsStore((state) => state.models);
   const isLoggedIn = useSettingsStore((state) => state.isLoggedIn);
 
-  const isManagedProvider = getModelById(models, currentModel)?.provider === MANAGED_KIMI_CODE_PROVIDER;
+  const managedProvider = (() => {
+    const provider = getModelById(models, currentModel)?.provider;
+    return isManagedKimiProvider(provider) ? provider! : undefined;
+  })();
 
   const [usage, setUsage] = useState<ManagedUsageView | null>(null);
   const [usageError, setUsageError] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
   // Poll the managed usage endpoint while a managed model is selected;
-  // re-runs when the provider or login state changes.
+  // re-runs when the provider or login state changes. With several managed
+  // accounts configured, the quota follows the account the current model
+  // belongs to.
   useEffect(() => {
-    if (!isManagedProvider) {
+    if (managedProvider === undefined) {
       setUsage(null);
       setUsageError(null);
       return;
@@ -257,7 +262,7 @@ export function UsageStatusBar() {
     let cancelled = false;
     const refresh = () => {
       bridge
-        .getManagedUsage()
+        .getManagedUsage(managedProvider)
         .then((result) => {
           if (cancelled) return;
           if (result.ok) {
@@ -278,7 +283,7 @@ export function UsageStatusBar() {
       cancelled = true;
       clearInterval(timer);
     };
-  }, [isManagedProvider, isLoggedIn]);
+  }, [managedProvider, isLoggedIn]);
 
   // Minute tick so the "resets in Xh Xm" countdowns stay honest between polls.
   useEffect(() => {
@@ -297,7 +302,7 @@ export function UsageStatusBar() {
       : undefined;
 
   let quota: { fiveHour: QuotaWindowState; weekly: QuotaWindowState } | null = null;
-  if (isManagedProvider) {
+  if (managedProvider !== undefined) {
     if (usageError === null && usage === null) {
       // First fetch still in flight: show both rings as grey placeholders.
       quota = { fiveHour: { ratio: null }, weekly: { ratio: null } };

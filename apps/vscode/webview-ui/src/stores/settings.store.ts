@@ -2,11 +2,19 @@ import { create } from "zustand";
 import { bridge } from "@/services";
 import { toast } from "@/components/ui/sonner";
 import { t } from "@/i18n";
-import type { ExtensionConfig, PermissionMode } from "shared/types";
+import type { ExtensionConfig, ManagedAccountInfo, PermissionMode } from "shared/types";
 import type { KimiConfig, MCPServerConfig, ModelConfig, SecondaryModelSelection, ThinkingMode, SlashCommandInfo } from "shared/legacy-sdk";
 
 let settingsSaveRevision = 0;
 export const MANAGED_KIMI_CODE_PROVIDER = "managed:kimi-code";
+
+const EXTRA_MANAGED_PROVIDER_PATTERN = /^managed:kimi-code-\d+$/;
+
+/** Primary + every additional managed account provider ("managed:kimi-code-N"). */
+export function isManagedKimiProvider(provider: string | undefined): boolean {
+  return provider === MANAGED_KIMI_CODE_PROVIDER
+    || (provider !== undefined && EXTRA_MANAGED_PROVIDER_PATTERN.test(provider));
+}
 
 function saveConfigWithRollback(
   config: Parameters<typeof bridge.saveConfig>[0],
@@ -52,6 +60,8 @@ export function getModelThinkingMode(model: ModelConfig): ThinkingMode {
 
 export function providerDisplayName(provider: string): string {
   if (provider === MANAGED_KIMI_CODE_PROVIDER) return "Kimi Code";
+  const account = EXTRA_MANAGED_PROVIDER_PATTERN.exec(provider);
+  if (account !== null) return `Kimi Code ${provider.slice("managed:kimi-code-".length)}`;
   if (provider.startsWith("managed:")) return provider.slice("managed:".length);
   return provider;
 }
@@ -88,7 +98,7 @@ export function requiresManagedProviderLogin(
 ): boolean {
   if (loggedIn) return false;
   const activeModel = getModelById(models, defaultModel ?? "") ?? models[0];
-  return activeModel?.provider === MANAGED_KIMI_CODE_PROVIDER;
+  return isManagedKimiProvider(activeModel?.provider);
 }
 
 function defaultEffortForModel(model: ModelConfig, defaultThinking: boolean, configuredEffort?: string): string {
@@ -214,6 +224,9 @@ interface SettingsState {
   wireSlashCommands: SlashCommandInfo[];
   slashCommands: SlashCommandInfo[];
   isLoggedIn: boolean;
+  /** Managed Kimi Code accounts (primary + added), loaded on demand by the accounts modal. */
+  accounts: ManagedAccountInfo[];
+  accountsModalOpen: boolean;
 
   setCurrentModel: (model: string) => void;
   setThinkingEffort: (effort: string) => void;
@@ -235,6 +248,8 @@ interface SettingsState {
   syncModelsConfig: (config: KimiConfig) => void;
   setWireSlashCommands: (commands: SlashCommandInfo[]) => void;
   setIsLoggedIn: (loggedIn: boolean) => void;
+  setAccounts: (accounts: ManagedAccountInfo[]) => void;
+  setAccountsModalOpen: (open: boolean) => void;
   /** Drop pending composer picks (session switch — engine truth wins again). */
   clearPendingSync: () => void;
   getCurrentThinkingMode: () => ThinkingMode;
@@ -258,6 +273,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   wireSlashCommands: [],
   slashCommands: [],
   isLoggedIn: false,
+  accounts: [],
+  accountsModalOpen: false,
   pendingModelSync: null,
   pendingEffortSync: null,
 
@@ -464,6 +481,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
 
   setIsLoggedIn: (isLoggedIn) => set({ isLoggedIn }),
+
+  setAccounts: (accounts) => set({ accounts }),
+
+  setAccountsModalOpen: (accountsModalOpen) => set({ accountsModalOpen }),
 
   clearPendingSync: () => set({ pendingModelSync: null, pendingEffortSync: null }),
 

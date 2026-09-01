@@ -19,6 +19,9 @@ export const Methods = {
   Login: "login",
   Logout: "logout",
   GetManagedUsage: "getManagedUsage",
+  GetAccounts: "getAccounts",
+  LoginAccount: "loginAccount",
+  LogoutAccount: "logoutAccount",
   SaveConfig: "saveConfig",
   GetExtensionConfig: "getExtensionConfig",
   SetLanguage: "setLanguage",
@@ -62,6 +65,7 @@ export const Methods = {
   DeleteKimiSession: "deleteKimiSession",
   RenameKimiSession: "renameKimiSession",
   ForkKimiSession: "forkKimiSession",
+  UndoKimiTurns: "undoKimiTurns",
   GetProjectFiles: "getProjectFiles",
   PickMedia: "pickMedia",
   OpenFile: "openFile",
@@ -152,7 +156,7 @@ function validateParams(method: RpcMethod, params: unknown): boolean {
     case Methods.CheckLoginStatus:
     case Methods.Login:
     case Methods.Logout:
-    case Methods.GetManagedUsage:
+    case Methods.GetAccounts:
     case Methods.GetExtensionConfig:
     case Methods.OpenSettings:
     case Methods.OpenFolder:
@@ -175,6 +179,12 @@ function validateParams(method: RpcMethod, params: unknown): boolean {
 
     case Methods.AddInputHistory:
       return hasString(params, "text");
+    case Methods.GetManagedUsage:
+      return params === undefined
+        || (isPlainObject(params) && isOptionalType(params["provider"], "string"));
+    case Methods.LoginAccount:
+    case Methods.LogoutAccount:
+      return isPlainObject(params) && isNonEmptyString(params["provider"]);
     case Methods.SetLanguage:
       return isPlainObject(params) && (params["language"] === "en" || params["language"] === "zh");
     case Methods.SetCompactComposer:
@@ -256,6 +266,11 @@ function validateParams(method: RpcMethod, params: unknown): boolean {
         && isNonEmptyString(params["sessionId"])
         && Number.isInteger(params["turnIndex"])
         && (params["turnIndex"] as number) >= 0;
+    case Methods.UndoKimiTurns:
+      return isPlainObject(params)
+        && isNonEmptyString(params["sessionId"])
+        && Number.isInteger(params["count"])
+        && (params["count"] as number) >= 1;
     case Methods.PickMedia:
       return isPlainObject(params)
         && (params["maxCount"] === undefined

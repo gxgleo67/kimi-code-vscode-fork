@@ -49,6 +49,22 @@ export const en = {
   "menu.signOut": "Sign out",
   "menu.signIn": "Sign in",
   "menu.signInFailed": "Sign-in failed. Check the logs for details.",
+  "menu.manageAccounts": "Manage accounts",
+
+  // ── Account management ───────────────────────────────────────────────────
+  "accounts.title": "Accounts",
+  "accounts.primary": "Account 1 (default, shared with the CLI)",
+  "accounts.accountN": "Account {slot}",
+  "accounts.loggedIn": "Signed in",
+  "accounts.notLoggedIn": "Not signed in",
+  "accounts.login": "Sign in",
+  "accounts.relogin": "Sign in again",
+  "accounts.logout": "Sign out",
+  "accounts.add": "Add account",
+  "accounts.waiting": "Waiting for browser authorization…",
+  "accounts.hint": "Each account gets its own model group (Kimi Code / Kimi Code N); a session uses the account of the group its model belongs to. Multiple windows can run on different accounts at the same time.",
+  "accounts.loginFailed": "Account sign-in failed",
+  "accounts.logoutFailed": "Account sign-out failed",
   "menu.language": "Language / 语言",
   "menu.compactComposer": "Compact composer",
   "menu.compactComposerDesc": "Show the composer's permission/mode buttons as icons to save space; the model name and thinking effort always stay fully visible. Default off.",
@@ -265,6 +281,19 @@ export const en = {
     "This will create a new conversation branching from this point. All messages after this turn will be removed in the forked conversation. Continue?",
   "chat.fork": "Fork",
   "chat.forkFailed": "Failed to fork conversation: {error}",
+  "chat.editMessage": "Edit",
+  "chat.deleteMessage": "Delete",
+  "chat.editRollbackTitle": "Edit this message",
+  "chat.editRollbackDesc":
+    "The conversation rolls back to just before this message and the original text goes back into the input box — edit and resend it to regenerate. Rolled-back messages stay in the session log but no longer feed the context. Continue?",
+  "chat.editRollbackDescStreaming":
+    "A response is still being generated. Generation stops, the conversation rolls back to just before this message, and the original text goes back into the input box. Continue?",
+  "chat.deleteRollbackTitle": "Delete this message",
+  "chat.deleteRollbackDesc":
+    "The conversation rolls back to just before this message: this message and everything after it stay in the session log but no longer feed the context. Continue?",
+  "chat.deleteRollbackDescStreaming":
+    "A response is still being generated. Generation stops and the conversation rolls back to just before this message: this message and everything after it stay in the session log but no longer feed the context. Continue?",
+  "chat.rollbackFailed": "Operation failed: {error}",
 
   // ── CompactionCard ──────────────────────────────────────────────────────
   "compaction.compacting": "Compacting context...",

@@ -212,11 +212,15 @@ scripts/              # postinstall (node-pty fix)
 
 1. 队列消息的图片/视频显示为编号标签（图片 1/视频 1，悬停出缩略图）；队列行文字与操作按钮放大，按钮独立到右侧竖线分隔的常显区域
 2. 移除界面层「自动压缩上下文」开关：压缩交由引擎按当前模型窗口 85% 自动处理（与官方一致），手动 /compact 不受影响
+3. 右键自己发送的消息可修改或删除：通过引擎会话 undo 回滚到该消息之前，记录仍保留在日志中但不再参与上下文；修改会把原文填回输入框重新发送（豆包式），生成中执行会先停止生成
+4. 支持同时登录多个 Kimi Code 官方账号并在「账号管理」中切换/退出；输入框下方额度条跟随当前模型所属账号显示其 5 小时/7 天额度与重置时间
 
 *English:*
 
 1. Queued images/videos show as numbered chips (Image 1 / Video 1, hover for a thumbnail); queue rows use larger text, and the actions (steer / edit / move up / delete) live in a dedicated right-side zone with bigger, always-visible buttons
 2. Removed the UI-level auto-compact toggle: compaction is left to the engine's own auto-compaction (85% of the current model's context window), matching upstream; manual /compact is unaffected
+3. Right-click your own message to edit or delete it: the conversation rolls back to just before that message via the engine's conversation undo — records stay in the session log but stop feeding the context; edit refills the input box for a corrected resend (Doubao-style), and acting mid-stream stops the generation first
+4. Multiple official Kimi Code accounts can stay signed in and be switched/logged out from Account Management; the usage bar below the composer follows the account owning the current model, with its 5-hour/7-day quota and reset times
 
 **2026-08-29**：
 

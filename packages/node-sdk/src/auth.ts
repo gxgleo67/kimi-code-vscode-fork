@@ -9,11 +9,13 @@ import {
 import {
   applyManagedKimiCodeConfig,
   applyManagedKimiCodeLogoutConfig,
+  fetchManagedKimiCodeModels,
   KIMI_CODE_PROVIDER_NAME,
   KimiOAuthToolkit,
   resolveKimiCodeLoginAuth,
   resolveKimiCodeRuntimeAuth,
   type AuthManagedUsageResult,
+  type AuthManagedUserInfoResult,
   type AuthStatus,
   type BearerTokenProvider,
   type FetchCompleteFeedbackUploadResult,
@@ -21,6 +23,7 @@ import {
   type FetchSubmitFeedbackResult,
   type KimiHostIdentity,
   type KimiOAuthLoginOptions,
+  type ManagedKimiCodeModelInfo,
   type ManagedKimiConfigShape,
   type OAuthRefreshOutcome,
 } from '@moonshot-ai/kimi-code-oauth';
@@ -71,13 +74,14 @@ export type KimiAuthCreateFeedbackUploadUrlResult =
   | KimiAuthCreateFeedbackUploadUrlOk
   | FetchFeedbackUploadError;
 
-export type KimiAuthLoginOptions = Omit<KimiOAuthLoginOptions, 'provisionConfig'>;
+export type KimiAuthLoginOptions = KimiOAuthLoginOptions;
 
 export interface KimiAuthLoginResult {
   readonly providerName: string;
   readonly ok: true;
-  readonly defaultModel: string;
-  readonly defaultThinking: boolean;
+  /** Present only when the login provisioned model config (the default). */
+  readonly defaultModel?: string;
+  readonly defaultThinking?: boolean;
   readonly configPath?: string | undefined;
 }
 
@@ -133,14 +137,15 @@ export class KimiAuthFacade {
       requestedBaseUrl: options.baseUrl,
       requestedOAuthHost: options.oauthHost,
     });
+    const shouldProvision = options.provisionConfig ?? true;
     const result = await this.toolkit.login(providerName, {
       ...options,
       baseUrl: loginAuth.baseUrl,
       oauthHost: loginAuth.oauthHost,
       oauthRef: options.oauthRef ?? loginAuth.oauthRef,
-      provisionConfig: true,
+      provisionConfig: shouldProvision,
     });
-    if (result.provision === undefined) {
+    if (shouldProvision && result.provision === undefined) {
       throw new Error('Kimi auth login did not provision model config.');
     }
     const updated = readConfigFile(this.options.configPath);
@@ -148,9 +153,9 @@ export class KimiAuthFacade {
     return {
       providerName: result.providerName,
       ok: true,
-      defaultModel: result.provision.defaultModel,
-      defaultThinking: result.provision.defaultThinking,
-      configPath: result.provision.configPath,
+      defaultModel: result.provision?.defaultModel,
+      defaultThinking: result.provision?.defaultThinking,
+      configPath: result.provision?.configPath,
     };
   }
 
@@ -173,6 +178,25 @@ export class KimiAuthFacade {
       oauthRef: auth.oauthRef,
       baseUrl: auth.baseUrl,
     });
+  }
+
+  async getManagedUserInfo(providerName?: string | undefined): Promise<AuthManagedUserInfoResult> {
+    const auth = this.resolveRuntimeManagedAuth(providerName);
+    return this.toolkit.getManagedUserInfo(providerName, {
+      oauthRef: auth.oauthRef,
+      baseUrl: auth.baseUrl,
+    });
+  }
+
+  /**
+   * List the models a managed account's token can see, without writing any
+   * config — the caller decides which provider/aliases to provision them into
+   * (additional managed accounts live in their own provider entries).
+   */
+  async listManagedModels(providerName?: string | undefined): Promise<ManagedKimiCodeModelInfo[]> {
+    const auth = this.resolveRuntimeManagedAuth(providerName);
+    const accessToken = await this.toolkit.ensureFresh(providerName, { oauthRef: auth.oauthRef });
+    return fetchManagedKimiCodeModels({ accessToken, baseUrl: auth.baseUrl });
   }
 
   async submitFeedback(
@@ -299,6 +323,15 @@ export class KimiAuthFacade {
     readonly baseUrl?: string | undefined;
   } {
     const auth = this.resolveManagedAuth(providerName);
+    // The runtime-auth forcing (env/scoped ref recomputation) exists for the
+    // primary managed provider only; additional managed accounts must use
+    // their configured oauth ref verbatim, or their usage/user-info queries
+    // would silently read the primary account's credential slot.
+    if ((providerName ?? KIMI_CODE_PROVIDER_NAME) !== KIMI_CODE_PROVIDER_NAME) {
+      const oauthRef =
+        auth.oauthRef ?? resolveKimiCodeRuntimeAuth({ configuredBaseUrl: auth.baseUrl }).oauthRef;
+      return { oauthRef, baseUrl: auth.baseUrl };
+    }
     return resolveKimiCodeRuntimeAuth({
       configuredBaseUrl: auth.baseUrl,
       configuredOAuthRef: auth.oauthRef,
@@ -309,7 +342,11 @@ export class KimiAuthFacade {
     providerName: string | undefined,
     oauthRef?: OAuthRef | undefined,
   ): OAuthRef | undefined {
-    if ((providerName ?? KIMI_CODE_PROVIDER_NAME) !== KIMI_CODE_PROVIDER_NAME) return oauthRef;
+    if ((providerName ?? KIMI_CODE_PROVIDER_NAME) !== KIMI_CODE_PROVIDER_NAME) {
+      // Additional managed accounts: an explicit ref wins, otherwise fall back
+      // to the provider's configured ref — never the primary account's slot.
+      return oauthRef ?? this.resolveManagedAuth(providerName).oauthRef;
+    }
     const auth = this.resolveManagedAuth(providerName);
     return resolveKimiCodeRuntimeAuth({
       configuredBaseUrl: auth.baseUrl,

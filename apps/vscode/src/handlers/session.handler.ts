@@ -1,6 +1,6 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
-import type { SessionSummary } from "@moonshot-ai/kimi-code-sdk";
+import { isKimiError, type SessionSummary } from "@moonshot-ai/kimi-code-sdk";
 
 import { Events, Methods } from "../../shared/bridge";
 import type { SessionInfo } from "../../shared/legacy-sdk";
@@ -32,6 +32,15 @@ interface ForkSessionParams {
   sessionId: string;
   turnIndex: number;
 }
+
+interface UndoTurnsParams {
+  sessionId: string;
+  count: number;
+}
+
+export type UndoTurnsResult =
+  | { ok: true }
+  | { ok: false; code: string; message: string };
 
 export const sessionHandlers: Record<string, Handler<any, any>> = {
   [Methods.GetKimiSessions]: async (_, ctx): Promise<SessionInfo[]> => {
@@ -303,6 +312,37 @@ export const sessionHandlers: Record<string, Handler<any, any>> = {
     return active === undefined
       ? forkSettledSession()
       : active.runExclusiveAfterCancelling(forkSettledSession);
+  },
+
+  // Message delete/edit both resolve to the engine's conversation undo: the
+  // undo appends a rolled-back marker instead of rewriting the wire log, so
+  // the records stay on disk but stop feeding the context ("备注掉,不读不用").
+  [Methods.UndoKimiTurns]: async (params: UndoTurnsParams, ctx): Promise<UndoTurnsResult> => {
+    if (
+      !ctx.workspaceRoot ||
+      !isSessionId(params.sessionId) ||
+      !Number.isInteger(params.count) ||
+      params.count < 1
+    ) {
+      return { ok: false, code: "invalid", message: "Invalid undo request." };
+    }
+    const active = ctx.runtime.getSession(params.sessionId);
+    const workDir = active?.summary?.workDir;
+    if (active === undefined || workDir === undefined || !isInsideOrEqual(ctx.workspaceRoot, workDir)) {
+      return { ok: false, code: "not_open", message: "The session is not open in this window." };
+    }
+    try {
+      // Cancels and settles any in-flight turn first (same discipline as
+      // fork), then undoes against a quiesced engine.
+      await active.runExclusiveAfterCancelling(() => active.session.undoHistory(params.count));
+      return { ok: true };
+    } catch (error) {
+      return {
+        ok: false,
+        code: isKimiError(error) ? error.code : "internal",
+        message: error instanceof Error ? error.message : String(error),
+      };
+    }
   },
 };
 

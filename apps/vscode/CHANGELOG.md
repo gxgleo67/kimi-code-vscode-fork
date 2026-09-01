@@ -4,6 +4,16 @@
 >
 > *中文:* 本文件只记录本 fork(Kimi Code (Fork))自身的更新,版本号独立编号。官方上游的更新记录请见 [MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code/blob/main/apps/vscode/CHANGELOG.md)。
 
+## 0.9.4(2026-08-31)
+
+1. Right-click any of your own messages to edit or delete it. Both actions roll the conversation back to just before that message through the engine's conversation undo — the records stay in the session log but stop feeding the context. Edit additionally refills the input box with the original text so you can adjust and resend (Doubao-style); deleting or editing while a response is streaming stops the generation first.
+2. Multiple official Kimi Code accounts can now be signed in at the same time: open Account Management from the composer menu to add accounts (full OAuth device flow inside VS Code), switch the active account per model pick, or log any of them out. The usage bar below the composer follows the account that owns the current model, showing its own 5-hour/7-day quota and reset times.
+
+*中文:*
+
+1. 右键点击自己发送的消息可修改或删除:两种操作都通过引擎的会话 undo 把对话回滚到该消息之前——记录仍保留在会话日志中,但不再参与上下文。修改会把原文填回输入框,改完重新发送即重新生成(豆包式);生成进行中执行删除/修改会先停止当前生成
+2. 支持同时登录多个 Kimi Code 官方账号:从输入框菜单打开「账号管理」即可添加账号(VS Code 内完成 OAuth 设备码流程)、按模型切换当前账号或单独退出任一账号;输入框下方的额度条跟随当前模型所属账号,显示该账号的 5 小时/7 天额度与重置时间
+
 ## 0.9.3(2026-08-31)
 
 1. Queued messages show their images/videos as numbered chips (Image 1 / Video 1) in light blue, with a hover thumbnail preview — replacing the bare "+ media" marker.

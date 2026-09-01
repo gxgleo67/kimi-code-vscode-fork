@@ -158,5 +158,13 @@ export type {
   KimiAuthSubmitFeedbackInput,
 } from '#/auth';
 
+export { kimiCodeBaseUrl } from '@moonshot-ai/kimi-code-oauth';
+
+export type {
+  AuthManagedUserInfoResult,
+  ManagedKimiCodeModelInfo,
+  ManagedUserInfo,
+} from '@moonshot-ai/kimi-code-oauth';
+
 export * from '#/events';
 export type * from '#/types';

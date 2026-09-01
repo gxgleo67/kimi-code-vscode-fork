@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { IconSettings, IconServer, IconLogout, IconLogin, IconLoader2, IconRefresh, IconFileText, IconFolder, IconCheck, IconLanguage, IconViewportNarrow } from "@tabler/icons-react";
+import { IconSettings, IconServer, IconLogout, IconLogin, IconLoader2, IconRefresh, IconFileText, IconFolder, IconCheck, IconLanguage, IconViewportNarrow, IconUsers } from "@tabler/icons-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -46,8 +46,13 @@ function MenuItem({ onClick, disabled, danger, children }: { onClick: () => void
 export function ActionMenu({ className, onAuthAction }: ActionMenuProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { setMCPModalOpen, isLoggedIn, setIsLoggedIn, extensionConfig } = useSettingsStore();
+  const { setMCPModalOpen, setAccountsModalOpen, isLoggedIn, setIsLoggedIn, extensionConfig } = useSettingsStore();
   const t = useT();
+
+  const handleOpenAccounts = () => {
+    setAccountsModalOpen(true);
+    setOpen(false);
+  };
 
   const handleOpenSettings = () => {
     void bridge.openSettings();
@@ -193,6 +198,10 @@ export function ActionMenu({ className, onAuthAction }: ActionMenuProps) {
         <Separator className="my-px" />
 
         <MenuSection title={t("menu.account")}>
+          <MenuItem onClick={handleOpenAccounts}>
+            <IconUsers className="size-4 text-muted-foreground" />
+            <span className="flex-1">{t("menu.manageAccounts")}</span>
+          </MenuItem>
           <MenuItem
             onClick={() => {
               void handleAuthAction();

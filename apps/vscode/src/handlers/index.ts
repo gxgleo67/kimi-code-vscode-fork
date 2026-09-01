@@ -1,5 +1,6 @@
 import { configHandlers } from "./config.handler";
 import { customProviderHandlers } from "./custom-provider.handler";
+import { accountHandlers } from "./accounts.handler";
 import { mcpHandlers } from "./mcp.handler";
 import { sessionHandlers } from "./session.handler";
 import { chatHandlers } from "./chat.handler";
@@ -14,6 +15,7 @@ export const handlers: Record<string, Handler<any, any>> = {
   ...workspaceHandlers,
   ...configHandlers,
   ...customProviderHandlers,
+  ...accountHandlers,
   ...mcpHandlers,
   ...sessionHandlers,
   ...chatHandlers,

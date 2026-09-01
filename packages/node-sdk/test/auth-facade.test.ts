@@ -568,6 +568,113 @@ oauth = { storage = "file", key = "oauth/kimi-code" }
     expect(text).not.toContain('moonshot_search');
   });
 
+  it('logs in an additional managed account without provisioning config', async () => {
+    const storage = new FileTokenStorage(join(homeDir, 'credentials'));
+    await storage.save('kimi-code-2', { ...freshToken(), accessToken: 'acct2-access-token' });
+    await writeFile(
+      join(homeDir, 'config.toml'),
+      `
+[providers."managed:kimi-code"]
+type = "kimi"
+api_key = ""
+oauth = { storage = "file", key = "oauth/kimi-code" }
+`,
+    );
+    const fetchMock = vi.fn<FetchMock>();
+    vi.stubGlobal('fetch', fetchMock);
+    const harness = createKimiHarness({ homeDir, identity: TEST_IDENTITY });
+
+    await expect(
+      harness.auth.login('managed:kimi-code-2', {
+        oauthRef: { key: 'oauth/kimi-code-2' },
+        provisionConfig: false,
+      }),
+    ).resolves.toEqual({ providerName: 'managed:kimi-code-2', ok: true });
+
+    // No provisioning: no /models fetch, and config.toml is untouched.
+    expect(fetchMock).not.toHaveBeenCalled();
+    const config = await harness.getConfig({ reload: true });
+    expect(config.providers['managed:kimi-code-2']).toBeUndefined();
+    expect(config.providers[KIMI_CODE_PROVIDER_NAME]).toMatchObject({
+      oauth: { storage: 'file', key: 'oauth/kimi-code' },
+    });
+  });
+
+  it('resolves additional managed accounts from their configured oauth ref verbatim', async () => {
+    const storage = new FileTokenStorage(join(homeDir, 'credentials'));
+    await storage.save('kimi-code', { ...freshToken(), accessToken: 'primary-access-token' });
+    await storage.save('kimi-code-2', { ...freshToken(), accessToken: 'acct2-access-token' });
+    await writeFile(
+      join(homeDir, 'config.toml'),
+      `
+[providers."managed:kimi-code"]
+type = "kimi"
+api_key = ""
+oauth = { storage = "file", key = "oauth/kimi-code" }
+
+[providers."managed:kimi-code-2"]
+type = "kimi"
+api_key = ""
+oauth = { storage = "file", key = "oauth/kimi-code-2" }
+`,
+    );
+    const seenAuths: string[] = [];
+    const fetchMock = vi.fn<FetchMock>(async (_input, init) => {
+      seenAuths.push(new Headers(init?.headers).get('authorization') ?? '');
+      return new Response(
+        JSON.stringify({ usage: { used: 1, limit: 10, name: 'Weekly limit' } }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const harness = createKimiHarness({ homeDir, identity: TEST_IDENTITY });
+
+    // Status reads the account's own credential slot.
+    await expect(harness.auth.status('managed:kimi-code-2')).resolves.toEqual({
+      providers: [{ providerName: 'managed:kimi-code-2', hasToken: true }],
+    });
+    // Usage queries must not be forced back onto the primary credential.
+    const usage = await harness.auth.getManagedUsage('managed:kimi-code-2');
+    expect(usage).toMatchObject({ kind: 'ok' });
+    expect(seenAuths).toEqual(['Bearer acct2-access-token']);
+    // The primary account still resolves to its own slot.
+    await expect(harness.auth.getCachedAccessToken()).resolves.toBe('primary-access-token');
+    await expect(
+      harness.auth.getCachedAccessToken('managed:kimi-code-2'),
+    ).resolves.toBe('acct2-access-token');
+  });
+
+  it('lists managed models for an additional account with its own token', async () => {
+    const storage = new FileTokenStorage(join(homeDir, 'credentials'));
+    await storage.save('kimi-code-2', { ...freshToken(), accessToken: 'acct2-access-token' });
+    await writeFile(
+      join(homeDir, 'config.toml'),
+      `
+[providers."managed:kimi-code-2"]
+type = "kimi"
+base_url = "https://api.acct2.example.test/coding/v1"
+api_key = ""
+oauth = { storage = "file", key = "oauth/kimi-code-2" }
+`,
+    );
+    const fetchMock = vi.fn<FetchMock>(async (input, init) => {
+      expect(fetchInputUrl(input)).toBe('https://api.acct2.example.test/coding/v1/models');
+      expect(new Headers(init?.headers).get('authorization')).toBe('Bearer acct2-access-token');
+      return new Response(
+        JSON.stringify({
+          data: [{ id: 'kimi-for-coding', context_length: 262144, supports_reasoning: true }],
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const harness = createKimiHarness({ homeDir, identity: TEST_IDENTITY });
+
+    await expect(harness.auth.listManagedModels('managed:kimi-code-2')).resolves.toEqual([
+      expect.objectContaining({ id: 'kimi-for-coding', contextLength: 262144 }),
+    ]);
+  });
+
   it('removes the configured scoped OAuth token on logout without touching the production token', async () => {
     const oauthKey = resolveKimiCodeOAuthKey({
       oauthHost: 'https://auth.dev.example.test',

@@ -210,11 +210,11 @@ function appendSections(text: string, sections: string[]): string {
 }
 
 /** Minimal TOML basic-string escaping; newlines are rejected by callers. */
-function tomlString(value: string): string {
+export function tomlString(value: string): string {
   return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }
 
-async function writeConfigToml(configPath: string, text: string): Promise<void> {
+export async function writeConfigToml(configPath: string, text: string): Promise<void> {
   await createKimiConfigRpc().validateConfigToml({ text, filePath: configPath });
   const tempPath = `${configPath}.tmp-${process.pid}`;
   try {

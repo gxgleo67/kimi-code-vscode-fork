@@ -411,6 +411,90 @@ describe("Webview RPC boundary (validates requests before host dispatch)", () =>
     expect(host.harness.forkSession).toHaveBeenCalledOnce();
   });
 
+  it("undoes turns through the active session cancellation boundary", async () => {
+    const undoHistory = vi.fn(async () => undefined);
+    const runExclusiveAfterCancelling = vi.fn(async <T>(action: () => Promise<T>) => action());
+    vi.spyOn(bridge.runtime, "getSession").mockReturnValue({
+      summary: { id: "session-1", workDir: root },
+      session: { undoHistory },
+      runExclusiveAfterCancelling,
+    } as never);
+
+    const result = await bridge.handle(
+      {
+        id: "rpc-1",
+        method: Methods.UndoKimiTurns,
+        params: { sessionId: "session-1", count: 2 },
+      },
+      "view-1",
+    );
+
+    expect(result).toEqual({ id: "rpc-1", result: { ok: true } });
+    expect(runExclusiveAfterCancelling).toHaveBeenCalledOnce();
+    expect(undoHistory).toHaveBeenCalledWith(2);
+  });
+
+  it("rejects undo for a session that is not open", async () => {
+    vi.spyOn(bridge.runtime, "getSession").mockReturnValue(undefined as never);
+
+    const result = await bridge.handle(
+      {
+        id: "rpc-1",
+        method: Methods.UndoKimiTurns,
+        params: { sessionId: "session-1", count: 1 },
+      },
+      "view-1",
+    );
+
+    expect(result).toEqual({
+      id: "rpc-1",
+      result: { ok: false, code: "not_open", message: "The session is not open in this window." },
+    });
+  });
+
+  it("surfaces the engine error code when undo is unavailable", async () => {
+    const undoHistory = vi.fn(async () => {
+      throw new Error("Cannot undo while a turn is active or queued. Wait for it to finish, then retry.");
+    });
+    const runExclusiveAfterCancelling = vi.fn(async <T>(action: () => Promise<T>) => action());
+    vi.spyOn(bridge.runtime, "getSession").mockReturnValue({
+      summary: { id: "session-1", workDir: root },
+      session: { undoHistory },
+      runExclusiveAfterCancelling,
+    } as never);
+
+    const result = await bridge.handle(
+      {
+        id: "rpc-1",
+        method: Methods.UndoKimiTurns,
+        params: { sessionId: "session-1", count: 1 },
+      },
+      "view-1",
+    );
+
+    expect(result).toEqual({
+      id: "rpc-1",
+      result: {
+        ok: false,
+        code: "internal",
+        message: "Cannot undo while a turn is active or queued. Wait for it to finish, then retry.",
+      },
+    });
+  });
+
+  it("rejects undo requests with a non-positive count at validation", async () => {
+    const result = await bridge.handle(
+      {
+        id: "rpc-1",
+        method: Methods.UndoKimiTurns,
+        params: { sessionId: "session-1", count: 0 },
+      },
+      "view-1",
+    );
+
+    expect(result).toMatchObject({ id: "rpc-1", error: expect.stringContaining("Invalid") });
+  });
+
   it("closes and removes a fork when its baseline cannot be materialized", async () => {
     const source = { id: "session-1", workDir: root, updatedAt: 123 };
     const target = { id: "session-2", workDir: root, updatedAt: 124 };

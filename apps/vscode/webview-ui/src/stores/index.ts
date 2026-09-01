@@ -12,6 +12,7 @@ export {
   groupModelsByProvider,
   isImageModel,
   isMainModel,
+  isManagedKimiProvider,
   isVideoModel,
   providerDisplayName,
   requiresManagedProviderLogin,

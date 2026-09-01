@@ -7,7 +7,7 @@ import { WelcomeScreen } from "./WelcomeScreen";
 import { useChatStore } from "@/stores";
 import { useT } from "@/i18n";
 import { cn } from "@/lib/utils";
-import { getForkTurnIndexes } from "shared/fork-turn-index";
+import { getForkTurnIndexes, getUserTurnInfo } from "shared/fork-turn-index";
 
 // Long histories mount in windows: rendering every message (with markdown) at
 // once is the other half of the open-a-long-conversation stall.
@@ -51,6 +51,7 @@ function MessageList() {
   }, [sessionId, scrollToBottom]);
   // Precompute all turn indexes in one O(n) pass instead of an O(n) rescan per message.
   const turnIndexes = useMemo(() => getForkTurnIndexes(messages), [messages]);
+  const userTurns = useMemo(() => getUserTurnInfo(messages), [messages]);
 
   // The window anchors to the tail so live-streaming messages stay in view.
   const start = Math.max(0, messages.length - visibleCount);
@@ -72,6 +73,8 @@ function MessageList() {
             key={message.id}
             message={message}
             turnIndex={turnIndexes[start + idx]}
+            userTurnIndex={userTurns.indexes[start + idx]}
+            totalTurns={userTurns.total}
             isStreaming={isStreaming && start + idx === messages.length - 1 && message.role === "assistant"}
           />
         ))}

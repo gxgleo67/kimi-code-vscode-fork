@@ -23,6 +23,8 @@ import type {
   PermissionMode,
   WorkspaceStatus,
   LoginStatus,
+  ManagedAccountInfo,
+  AccountAuthResult,
   UIStreamEvent,
 } from "shared/types";
 
@@ -149,8 +151,20 @@ class Bridge {
     return this.call<LoginResult>(Methods.Logout);
   }
 
-  getManagedUsage() {
-    return this.call<ManagedUsageResult>(Methods.GetManagedUsage);
+  getManagedUsage(provider?: string) {
+    return this.call<ManagedUsageResult>(Methods.GetManagedUsage, provider === undefined ? undefined : { provider });
+  }
+
+  getAccounts() {
+    return this.call<ManagedAccountInfo[]>(Methods.GetAccounts);
+  }
+
+  loginAccount(provider: string) {
+    return this.call<AccountAuthResult>(Methods.LoginAccount, { provider }, OAUTH_REQUEST_TIMEOUT_MS);
+  }
+
+  logoutAccount(provider: string) {
+    return this.call<AccountAuthResult>(Methods.LogoutAccount, { provider });
   }
 
   saveConfig(sessionConfig: SessionConfig) {
@@ -287,6 +301,13 @@ class Bridge {
 
   forkSession(sessionId: string, turnIndex: number) {
     return this.call<{ sessionId: string } | null>(Methods.ForkKimiSession, { sessionId, turnIndex });
+  }
+
+  undoTurns(sessionId: string, count: number) {
+    return this.call<{ ok: true } | { ok: false; code: string; message: string }>(
+      Methods.UndoKimiTurns,
+      { sessionId, count },
+    );
   }
 
   pickMedia(maxCount: number, includeVideo = true) {

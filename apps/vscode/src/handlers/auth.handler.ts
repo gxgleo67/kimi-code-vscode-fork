@@ -52,9 +52,9 @@ export const authHandlers: Record<string, Handler<any, any>> = {
     }
   },
 
-  [Methods.GetManagedUsage]: async (_, ctx): Promise<ManagedUsageResult> => {
+  [Methods.GetManagedUsage]: async (params: { provider?: string } | undefined, ctx): Promise<ManagedUsageResult> => {
     try {
-      const result = await ctx.harness.auth.getManagedUsage();
+      const result = await ctx.harness.auth.getManagedUsage(params?.provider);
       if (result.kind === "ok") {
         return { ok: true, usage: toManagedUsageView(result.summary, result.limits) };
       }

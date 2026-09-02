@@ -217,6 +217,10 @@ scripts/              # postinstall (node-pty fix)
 5. 第三方模型接口（如 DeepSeek）并入账号管理：自定义供应商表单和列表从子代理模型对话框抽成共享区块，两个入口管理同一份供应商
 6. 菜单布局：「账号管理」移到「精简模式」下方并以分隔线划分，底部账号行只保留登录/退出
 7. 一键切换账号：点设置菜单里的账号行即把当前窗口的会话切到该账号（会话级，不动全局默认模型），✓ 标记本窗口正在使用的账号——不同窗口可以同时各用各的账号；点未登录的账号则打开管理弹窗先登录
+8. 同步官方上游：会话中断恢复后队列消息不再卡死——prompt 决议事件持久化到会话日志（官方 PR #3371）
+9. 同步官方上游：危险 bash 命令（如 `rm -rf`、磁盘/格式化操作）在所有权限模式下都需批准，YOLO 也不例外；auto 模式直接拒绝，可通过配置关闭（官方 PR #3290）
+10. 同步官方上游：子代理次模型池从实验特性毕业、默认启用，并上报每个子代理绑定的模型及来源（官方 PR #3334）
+11. 同步官方上游：步骤重试与中断事件持久化到会话 wire 日志，恢复的会话保留每步的重试/中断历史（官方 PR #3428；0.9.2 的实时重试丢弃修复不受影响）
 
 感谢 [@firehot](https://github.com/firehot) 在 PR [#1](https://github.com/gxgleo67/kimi-code-vscode-fork/pull/1) 中提供的 ACP 适配思路，本轮的多账号能力受此启发。
 
@@ -229,6 +233,10 @@ scripts/              # postinstall (node-pty fix)
 5. Third-party provider access (e.g. DeepSeek) now lives inside Account Management too: the custom provider form and list were extracted from the subagent model dialog into a shared section, both entries managing the same providers
 6. Menu layout: Account Management moved below Compact Mode with dividers; the bottom account row keeps only sign-in/out
 7. One-click account switching: clicking an account row in the settings menu switches this window's session to that account (session-level — the global default model is untouched), with a check marking the account this window is using; different windows can run on different accounts at the same time, and clicking a signed-out account opens the management dialog to log in first
+8. Synced from official upstream: queued prompts no longer get stuck after an interrupted session resumes — prompt resolution events are persisted to the session log (upstream PR #3371)
+9. Synced from official upstream: dangerous bash commands (e.g. `rm -rf`, disk/format operations) now require approval in every permission mode including YOLO — auto mode denies them outright; the guard can be turned off via config (upstream PR #3290)
+10. Synced from official upstream: the subagent secondary-model pool graduated out of experimental and is enabled by default, reporting each spawned subagent's bound model and how it was chosen (upstream PR #3334)
+11. Synced from official upstream: step retry and interrupt events are persisted to the session wire log, preserving per-step retry/interrupt history across resumes (upstream PR #3428; the 0.9.2 realtime retry-discard fix is unaffected)
 
 Thanks [@firehot](https://github.com/firehot) for the ACP adaptation proposal in PR [#1](https://github.com/gxgleo67/kimi-code-vscode-fork/pull/1) — it inspired this round's multi-account work.
 

@@ -13,6 +13,10 @@
 5. Menu layout: Account Management moved below Compact Mode, separated by dividers; the bottom account row keeps only sign-in/out.
 6. Right-click any of your own messages to edit or delete it. Both actions roll the conversation back to just before that message through the engine's conversation undo — the records stay in the session log but stop feeding the context. Edit refills the input box with the original text so you can adjust and resend (Doubao-style); deleting or editing while a response is streaming stops the generation first. The menu also keeps a "Copy message" entry, restoring the copy action the custom menu had displaced.
 7. One-click account switching: clicking an account row in the settings menu switches this window's session to that account (session-level — the global default model is untouched), with a check marking the account this window is using. Different windows can now run on different accounts at the same time; clicking a signed-out account opens the management dialog to log in first.
+8. Synced from official upstream: queued prompts no longer get stuck after an interrupted session resumes — the prompt resolution events are now persisted to the session log, so a restored queue knows which entries were already settled (upstream PR #3371).
+9. Synced from official upstream: dangerous bash commands (e.g. `rm -rf`, disk/format operations) now require approval in every permission mode, including YOLO — auto mode denies them outright, and non-interactive hosts skip the guard; it can be turned off via config (upstream PR #3290).
+10. Synced from official upstream: the subagent secondary-model pool graduated out of experimental and is enabled by default — subagents resolve their model from `[secondary_model]` without any flag, and the bound model plus how it was chosen (forced / primary override / inherited / pool pick) is reported with each spawned subagent (upstream PR #3334).
+11. Synced from official upstream: step retry and interrupt events are now persisted to the session wire log, so a resumed session preserves the retry/interrupt history of every step (upstream PR #3428; the fork's realtime retry-discard fix from 0.9.2 is unaffected and keeps working).
 
 Thanks [@firehot](https://github.com/firehot) for the ACP adaptation proposal in PR [#1](https://github.com/gxgleo67/kimi-code-vscode-fork/pull/1) — it inspired the multi-account work in this release.
 
@@ -25,6 +29,10 @@ Thanks [@firehot](https://github.com/firehot) for the ACP adaptation proposal in
 5. 菜单布局调整:「账号管理」移到「精简模式」下方并以分隔线划分,底部账号行只保留登录/退出
 6. 右键点击自己发送的消息可修改或删除:两种操作都通过引擎的会话 undo 把对话回滚到该消息之前——记录仍保留在会话日志中,但不再参与上下文。修改会把原文填回输入框,改完重新发送即重新生成(豆包式);生成进行中执行删除/修改会先停止当前生成。菜单同时保留「复制消息」入口,找回被自定义菜单顶掉的复制操作
 7. 一键切换账号:点设置菜单里的账号行即把当前窗口的会话切到该账号(会话级,不动全局默认模型),✓ 标记本窗口正在使用的账号——不同窗口现在可以同时各用各的账号;点未登录的账号则打开管理弹窗先登录
+8. 同步官方上游:会话中断恢复后队列消息不再卡死——prompt 决议事件现已持久化到会话日志,恢复后的队列知道哪些条目已了结(官方 PR #3371)
+9. 同步官方上游:危险 bash 命令(如 `rm -rf`、磁盘/格式化操作)在所有权限模式下都需批准,YOLO 模式也不例外——auto 模式直接拒绝,非交互宿主跳过守卫;可通过配置关闭(官方 PR #3290)
+10. 同步官方上游:子代理次模型池从实验特性毕业、默认启用——子代理无需开关即从 `[secondary_model]` 解析模型,每个派生的子代理都会上报绑定的模型及其来源(强制/主模型指定/继承/池选)(官方 PR #3334)
+11. 同步官方上游:步骤重试与中断事件现已持久化到会话 wire 日志,恢复的会话保留每个步骤的重试/中断历史(官方 PR #3428;0.9.2 的实时重试丢弃修复不受影响,继续生效)
 
 感谢 [@firehot](https://github.com/firehot) 在 PR [#1](https://github.com/gxgleo67/kimi-code-vscode-fork/pull/1) 中提供的 ACP 适配思路,本版本的多账号能力受此启发。
 

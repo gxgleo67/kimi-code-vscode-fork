@@ -22,6 +22,9 @@ export const Methods = {
   GetAccounts: "getAccounts",
   LoginAccount: "loginAccount",
   LogoutAccount: "logoutAccount",
+  RenameAccount: "renameAccount",
+  SetDefaultAccount: "setDefaultAccount",
+  SwitchAccount: "switchAccount",
   SaveConfig: "saveConfig",
   GetExtensionConfig: "getExtensionConfig",
   SetLanguage: "setLanguage",
@@ -184,6 +187,14 @@ function validateParams(method: RpcMethod, params: unknown): boolean {
         || (isPlainObject(params) && isOptionalType(params["provider"], "string"));
     case Methods.LoginAccount:
     case Methods.LogoutAccount:
+      return isPlainObject(params) && isNonEmptyString(params["provider"]);
+    case Methods.RenameAccount:
+      return isPlainObject(params)
+        && isNonEmptyString(params["provider"])
+        && typeof params["name"] === "string";
+    case Methods.SetDefaultAccount:
+      return isPlainObject(params) && isNonEmptyString(params["provider"]);
+    case Methods.SwitchAccount:
       return isPlainObject(params) && isNonEmptyString(params["provider"]);
     case Methods.SetLanguage:
       return isPlainObject(params) && (params["language"] === "en" || params["language"] === "zh");

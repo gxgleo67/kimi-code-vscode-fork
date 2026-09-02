@@ -18,6 +18,7 @@ export interface HandlerContext {
   workspaceRoot: string | null;
   workspaceRootUri: vscode.Uri | null;
   workspaceState: vscode.Memento;
+  globalState: vscode.Memento;
   secrets: vscode.SecretStorage;
   requireWorkDir: () => string;
   requireWorkDirUri: () => vscode.Uri;

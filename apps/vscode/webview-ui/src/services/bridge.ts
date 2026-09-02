@@ -25,6 +25,7 @@ import type {
   LoginStatus,
   ManagedAccountInfo,
   AccountAuthResult,
+  AccountSwitchResult,
   UIStreamEvent,
 } from "shared/types";
 
@@ -165,6 +166,18 @@ class Bridge {
 
   logoutAccount(provider: string) {
     return this.call<AccountAuthResult>(Methods.LogoutAccount, { provider });
+  }
+
+  renameAccount(provider: string, name: string) {
+    return this.call<AccountAuthResult>(Methods.RenameAccount, { provider, name });
+  }
+
+  setDefaultAccount(provider: string) {
+    return this.call<AccountAuthResult>(Methods.SetDefaultAccount, { provider });
+  }
+
+  switchAccount(provider: string) {
+    return this.call<AccountSwitchResult>(Methods.SwitchAccount, { provider });
   }
 
   saveConfig(sessionConfig: SessionConfig) {

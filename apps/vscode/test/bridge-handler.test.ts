@@ -106,6 +106,7 @@ beforeEach(async () => {
   bridge = new BridgeHandler(
     vi.fn(),
     workspaceState as unknown as vscode.Memento,
+    { get: vi.fn((_key: string, fallback?: unknown) => fallback), update: vi.fn() } as unknown as vscode.Memento,
     { get: vi.fn(), store: vi.fn(), delete: vi.fn(), keys: vi.fn(async () => []), onDidChange: vi.fn() } as unknown as vscode.SecretStorage,
     join(root, "global-storage"),
     vi.fn(),
@@ -126,6 +127,7 @@ describe("Engine startup", () => {
     new BridgeHandler(
       vi.fn(),
       workspaceState as unknown as vscode.Memento,
+      { get: vi.fn(), update: vi.fn() } as unknown as vscode.Memento,
       { get: vi.fn(), store: vi.fn(), delete: vi.fn(), keys: vi.fn(async () => []), onDidChange: vi.fn() } as unknown as vscode.SecretStorage,
       join(root, "global-storage-2"),
       vi.fn(),

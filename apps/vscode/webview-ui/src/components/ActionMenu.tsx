@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { IconSettings, IconServer, IconLogout, IconLogin, IconLoader2, IconRefresh, IconFileText, IconFolder, IconCheck, IconLanguage, IconViewportNarrow, IconUsers } from "@tabler/icons-react";
+import { useEffect, useState } from "react";
+import { IconSettings, IconServer, IconLogout, IconLogin, IconLoader2, IconRefresh, IconFileText, IconFolder, IconCheck, IconLanguage, IconViewportNarrow, IconUsers, IconChevronRight } from "@tabler/icons-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -9,6 +9,7 @@ import { bridge } from "@/services";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import { useT } from "@/i18n";
+import { formatUsagePercent, usageRatio, type ManagedUsageView } from "shared/managed-usage";
 
 interface ActionMenuProps {
   className?: string;
@@ -46,12 +47,79 @@ function MenuItem({ onClick, disabled, danger, children }: { onClick: () => void
 export function ActionMenu({ className, onAuthAction }: ActionMenuProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { setMCPModalOpen, setAccountsModalOpen, isLoggedIn, setIsLoggedIn, extensionConfig } = useSettingsStore();
+  const { setMCPModalOpen, setAccountsModalOpen, isLoggedIn, setIsLoggedIn, extensionConfig, accounts, setAccounts, models, currentModel } = useSettingsStore();
   const t = useT();
+  /** provider → usage; undefined = not fetched, null = in flight, "error" = failed. */
+  const [usageByProvider, setUsageByProvider] = useState<Record<string, ManagedUsageView | "error" | null>>({});
+  const [switchingProvider, setSwitchingProvider] = useState<string | null>(null);
+  /** The account serving this window's current session (from the composer's model). */
+  const currentProvider = models.find((model) => model.id === currentModel)?.provider;
+
+  // Load the account list (and each account's quota) every time the menu
+  // opens, so the inline second-level rows stay honest.
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    setUsageByProvider({});
+    void bridge
+      .getAccounts()
+      .then((list) => {
+        if (cancelled) return;
+        setAccounts(list);
+        for (const account of list) {
+          if (!account.loggedIn) continue;
+          setUsageByProvider((prev) => ({ ...prev, [account.provider]: null }));
+          bridge
+            .getManagedUsage(account.provider)
+            .then((result) => {
+              if (cancelled) return;
+              setUsageByProvider((prev) => ({ ...prev, [account.provider]: result.ok ? result.usage : "error" }));
+            })
+            .catch(() => {
+              if (cancelled) return;
+              setUsageByProvider((prev) => ({ ...prev, [account.provider]: "error" }));
+            });
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [open, setAccounts]);
 
   const handleOpenAccounts = () => {
     setAccountsModalOpen(true);
     setOpen(false);
+  };
+
+  // Quick account switch: session-level only (the global default model stays
+  // with the starred account), so each window can run on its own account.
+  // A signed-out account opens the management dialog instead — there is
+  // nothing to switch to until it logs in.
+  const handleSwitchAccount = (account: (typeof accounts)[number]) => {
+    if (!account.loggedIn) {
+      handleOpenAccounts();
+      return;
+    }
+    if (account.provider === currentProvider || switchingProvider !== null) return;
+    setSwitchingProvider(account.provider);
+    void bridge
+      .switchAccount(account.provider)
+      .then((result) => {
+        if (!result.success || result.model === undefined) {
+          toast.error(t("accounts.switchFailed", { error: result.error ?? "unknown" }));
+          return;
+        }
+        // Same gate as updateModel: status announcements still carry the old
+        // model until the pick lands on the engine session.
+        useSettingsStore.setState({ currentModel: result.model, pendingModelSync: result.model });
+        toast.success(t("accounts.switched", { name: account.displayName ?? account.nickname ?? t("accounts.accountN", { slot: account.slot }) }));
+        setOpen(false);
+      })
+      .catch((error: unknown) => {
+        toast.error(t("accounts.switchFailed", { error: error instanceof Error ? error.message : String(error) }));
+      })
+      .finally(() => setSwitchingProvider(null));
   };
 
   const handleOpenSettings = () => {
@@ -184,6 +252,38 @@ export function ActionMenu({ className, onAuthAction }: ActionMenuProps) {
 
         <Separator className="my-px" />
 
+        <MenuSection title={t("menu.manageAccounts")}>
+          {accounts.map((account) => {
+            const usage = usageByProvider[account.provider];
+            const brief = account.loggedIn && usage !== undefined && usage !== null && usage !== "error"
+              ? [
+                  usage.fiveHour !== undefined ? `5h ${formatUsagePercent(usageRatio(usage.fiveHour.used, usage.fiveHour.limit))}%` : undefined,
+                  usage.summary !== undefined ? `7d ${formatUsagePercent(usageRatio(usage.summary.used, usage.summary.limit))}%` : undefined,
+                ].filter((v) => v !== undefined).join(" · ")
+              : undefined;
+            return (
+              <MenuItem key={account.provider} onClick={() => handleSwitchAccount(account)}>
+                <span className={cn("size-1.5 rounded-full shrink-0 ml-2", account.loggedIn ? "bg-green-500" : "bg-muted-foreground/40")} />
+                <span className="flex-1 truncate">
+                  {account.displayName ?? account.nickname ?? t("accounts.accountN", { slot: account.slot })}
+                </span>
+                {brief !== undefined && <span className="text-xs text-muted-foreground shrink-0">{brief}</span>}
+                {account.isDefault === true && <span className="text-[9px] text-blue-500 shrink-0">{t("accounts.defaultBadge")}</span>}
+                {switchingProvider === account.provider
+                  ? <IconLoader2 className="size-3.5 animate-spin text-muted-foreground shrink-0" />
+                  : account.provider === currentProvider && <IconCheck className="size-3.5 text-blue-500 shrink-0" />}
+              </MenuItem>
+            );
+          })}
+          <MenuItem onClick={handleOpenAccounts}>
+            <IconUsers className="size-4 text-muted-foreground" />
+            <span className="flex-1">{t("accounts.manage")}</span>
+            <IconChevronRight className="size-3.5 text-muted-foreground" />
+          </MenuItem>
+        </MenuSection>
+
+        <Separator className="my-px" />
+
         <MenuSection title={t("menu.support")} subtitle={extensionConfig.version ? `v${extensionConfig.version}` : undefined}>
           <MenuItem onClick={handleShowLogs}>
             <IconFileText className="size-4 text-muted-foreground" />
@@ -198,10 +298,6 @@ export function ActionMenu({ className, onAuthAction }: ActionMenuProps) {
         <Separator className="my-px" />
 
         <MenuSection title={t("menu.account")}>
-          <MenuItem onClick={handleOpenAccounts}>
-            <IconUsers className="size-4 text-muted-foreground" />
-            <span className="flex-1">{t("menu.manageAccounts")}</span>
-          </MenuItem>
           <MenuItem
             onClick={() => {
               void handleAuthAction();

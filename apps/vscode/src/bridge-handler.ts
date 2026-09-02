@@ -32,6 +32,7 @@ export class BridgeHandler {
   constructor(
     private readonly broadcast: BroadcastFn,
     private readonly workspaceState: vscode.Memento,
+    private readonly globalState: vscode.Memento,
     private readonly secrets: vscode.SecretStorage,
     globalStoragePath: string,
     private readonly reloadWebview: ReloadWebviewFn,
@@ -154,6 +155,7 @@ export class BridgeHandler {
       workspaceRoot: this.workspaceRoot,
       workspaceRootUri: this.workspaceRootUri,
       workspaceState: this.workspaceState,
+      globalState: this.globalState,
       secrets: this.secrets,
       requireWorkDir: () => this.requireWorkDir(webviewId),
       requireWorkDirUri: () => this.requireWorkDirUri(webviewId),

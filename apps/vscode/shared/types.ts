@@ -91,6 +91,10 @@ export interface ManagedAccountInfo {
   /** 1 = primary account (credential shared with the CLI), 2+ = added accounts. */
   slot: number;
   loggedIn: boolean;
+  /** User-chosen label (extension-side), wins over the OAuth profile nickname. */
+  displayName?: string;
+  /** True when the config default model belongs to this account. */
+  isDefault?: boolean;
   nickname?: string;
   email?: string;
   avatar?: string;
@@ -101,6 +105,13 @@ export interface AccountAuthResult {
   error?: string;
   /** Updated model catalog after an account add/remove, for the picker. */
   config?: import("./legacy-sdk").KimiConfig;
+}
+
+export interface AccountSwitchResult {
+  success: boolean;
+  error?: string;
+  /** The session model alias the switch applied (the account's first alias). */
+  model?: string;
 }
 
 export type { QuestionRequest, QuestionItem, QuestionOption, QuestionResponse } from "./legacy-sdk";

@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 import { kimiCodeBaseUrl } from "@moonshot-ai/kimi-code-sdk";
 
 import { Events, Methods } from "../../shared/bridge";
-import type { AccountAuthResult, ManagedAccountInfo } from "../../shared/types";
+import type { AccountAuthResult, AccountSwitchResult, ManagedAccountInfo } from "../../shared/types";
 import {
   accountAliasIds,
   accountEntryForSlot,
@@ -28,16 +28,50 @@ import type { Handler, HandlerContext } from "./types";
 
 const ACCOUNT_PROVIDER_ID = /^managed:kimi-code-(\d+)$/;
 
+/** Display names are extension-side decoration, stored globally in globalState. */
+const ACCOUNT_NAMES_KEY = "kimi.accountDisplayNames";
+
 function entryFromProviderId(provider: string): ManagedAccountEntry {
   const match = ACCOUNT_PROVIDER_ID.exec(provider);
   if (match === null) throw new Error(`Unknown managed account provider: ${provider}`);
   return accountEntryForSlot(Number(match[1]));
 }
 
+interface AccountConfigView {
+  readonly providers?: Record<string, unknown> | undefined;
+  readonly models?: Record<string, { readonly provider?: string | undefined }> | undefined;
+  readonly defaultModel?: string | undefined;
+}
+
+function accountProviderIds(config: AccountConfigView): string[] {
+  return Object.keys(config.providers ?? {});
+}
+
+function isKnownAccountProvider(config: AccountConfigView, provider: string): boolean {
+  return provider === PRIMARY_MANAGED_PROVIDER
+    || (ACCOUNT_PROVIDER_ID.test(provider) && accountProviderIds(config).includes(provider));
+}
+
+/** Sorted alias ids belonging to an account (works for the primary too). */
+function aliasesForProvider(
+  config: { models?: Record<string, { provider?: string | undefined }> | undefined },
+  provider: string,
+): string[] {
+  return Object.entries(config.models ?? {})
+    .filter(([, model]) => model.provider === provider)
+    .map(([id]) => id)
+    .sort();
+}
+
+function readDisplayNames(ctx: HandlerContext): Record<string, string> {
+  return ctx.globalState.get<Record<string, string>>(ACCOUNT_NAMES_KEY) ?? {};
+}
+
 async function describeAccount(
   ctx: HandlerContext,
   provider: string,
   slot: number,
+  config: AccountConfigView,
 ): Promise<ManagedAccountInfo> {
   const status = await ctx.harness.auth.status(provider).catch(() => undefined);
   const info: ManagedAccountInfo = {
@@ -45,6 +79,12 @@ async function describeAccount(
     slot,
     loggedIn: status?.providers.some((p) => p.hasToken) ?? false,
   };
+  const name = readDisplayNames(ctx)[provider]?.trim();
+  if (name !== undefined && name.length > 0) info.displayName = name;
+  const defaultModel = config.defaultModel;
+  if (defaultModel !== undefined && aliasesForProvider(config, provider).includes(defaultModel)) {
+    info.isDefault = true;
+  }
   if (!info.loggedIn) return info;
   // Profile is a best-effort decoration for the account card; the endpoint
   // failing must not hide the account.
@@ -59,9 +99,9 @@ async function describeAccount(
 
 const getAccounts: Handler<void, ManagedAccountInfo[]> = async (_, ctx) => {
   const config = await ctx.harness.getConfig({ reload: true });
-  const accounts = [await describeAccount(ctx, PRIMARY_MANAGED_PROVIDER, 1)];
+  const accounts = [await describeAccount(ctx, PRIMARY_MANAGED_PROVIDER, 1, config)];
   for (const entry of listExtraAccounts(config)) {
-    accounts.push(await describeAccount(ctx, entry.provider, entry.slot));
+    accounts.push(await describeAccount(ctx, entry.provider, entry.slot, config));
   }
   return accounts;
 };
@@ -148,8 +188,79 @@ const logoutAccount: Handler<{ provider: string }, AccountAuthResult> = async (p
   }
 };
 
+const renameAccount: Handler<{ provider: string; name: string }, AccountAuthResult> = async (params, ctx) => {
+  const config = await ctx.harness.getConfig({ reload: true });
+  if (!isKnownAccountProvider(config, params.provider)) {
+    return { success: false, error: `Unknown managed account provider: ${params.provider}` };
+  }
+  const names = { ...readDisplayNames(ctx) };
+  const name = params.name.trim();
+  if (name.length === 0) {
+    delete names[params.provider];
+  } else {
+    names[params.provider] = name;
+  }
+  await ctx.globalState.update(ACCOUNT_NAMES_KEY, names);
+  return { success: true };
+};
+
+/** Point the config default model at the account, so new sessions start on it. */
+const setDefaultAccount: Handler<{ provider: string }, AccountAuthResult> = async (params, ctx) => {
+  try {
+    const config = await ctx.harness.getConfig({ reload: true });
+    if (!isKnownAccountProvider(config, params.provider)) {
+      throw new Error(`Unknown managed account provider: ${params.provider}`);
+    }
+    const aliases = aliasesForProvider(config, params.provider);
+    if (aliases.length === 0) {
+      throw new Error("This account has no available models.");
+    }
+    const current = config.defaultModel;
+    const target = current !== undefined && aliases.includes(current) ? current : aliases[0]!;
+    if (current !== target) {
+      await ctx.harness.setConfig({ defaultModel: target });
+    }
+    const reloaded = await ctx.harness.getConfig({ reload: true });
+    return { success: true, config: toWebviewConfig(reloaded) };
+  } catch (error) {
+    return reportAuthError(ctx, "Set default account failed", error);
+  }
+};
+
+/**
+ * Switch THIS window's live session to the account, session-level only —
+ * the global default model is untouched, so other windows keep their own
+ * account. With no live session the returned alias rides along with the
+ * first prompt (the composer applies its pick before the turn starts).
+ */
+const switchAccount: Handler<{ provider: string }, AccountSwitchResult> = async (params, ctx) => {
+  try {
+    const config = await ctx.harness.getConfig({ reload: true });
+    if (!isKnownAccountProvider(config, params.provider)) {
+      throw new Error(`Unknown managed account provider: ${params.provider}`);
+    }
+    const aliases = aliasesForProvider(config, params.provider);
+    if (aliases.length === 0) {
+      throw new Error("This account has no available models.");
+    }
+    const target = aliases[0]!;
+    const runtime = ctx.getSession();
+    if (runtime !== undefined) {
+      const status = await runtime.session.getStatus();
+      if (status.model !== target) await runtime.session.setModel(target);
+    }
+    return { success: true, model: target };
+  } catch (error) {
+    ctx.logError("Switch account failed", error);
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
+  }
+};
+
 export const accountHandlers: Record<string, Handler<any, any>> = {
   [Methods.GetAccounts]: getAccounts,
   [Methods.LoginAccount]: loginAccount,
   [Methods.LogoutAccount]: logoutAccount,
+  [Methods.RenameAccount]: renameAccount,
+  [Methods.SetDefaultAccount]: setDefaultAccount,
+  [Methods.SwitchAccount]: switchAccount,
 };

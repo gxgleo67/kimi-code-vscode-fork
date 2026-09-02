@@ -486,6 +486,7 @@ function createBridge(): BridgeHandler {
   const bridge = new BridgeHandler(
     vi.fn(),
     { get: vi.fn(), update: vi.fn() } as unknown as vscode.Memento,
+    { get: vi.fn(), update: vi.fn() } as unknown as vscode.Memento,
     { get: vi.fn(), store: vi.fn(), delete: vi.fn(), keys: vi.fn(async () => []), onDidChange: vi.fn() } as unknown as vscode.SecretStorage,
     join(root, "global-storage"),
     vi.fn(),

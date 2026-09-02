@@ -1,5 +1,5 @@
 import { useState, Fragment, memo } from "react";
-import { IconLoader3, IconGitFork, IconPencil, IconTrash } from "@tabler/icons-react";
+import { IconLoader3, IconGitFork, IconPencil, IconTrash, IconCopy, IconCheck } from "@tabler/icons-react";
 import { cn, formatMessageTime } from "@/lib/utils";
 import { Content } from "@/lib/content";
 import { Markdown } from "./Markdown";
@@ -14,7 +14,7 @@ import { PlanCard } from "./PlanCard";
 import { KimiLogo } from "./KimiLogo";
 import { StreamingConfirmDialog } from "./StreamingConfirmDialog";
 import { Button } from "@/components/ui/button";
-import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from "@/components/ui/context-menu";
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { toast } from "@/components/ui/sonner";
 import { useChatStore, useSettingsStore } from "@/stores";
 import { bridge } from "@/services";
@@ -228,6 +228,7 @@ function UserMessage({ message, userTurnIndex, totalTurns }: { message: ChatMess
   const [previewMedia, setPreviewMedia] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState<"edit" | "delete" | null>(null);
   const [isWorking, setIsWorking] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
   const sessionId = useChatStore((s) => s.sessionId);
   const isStreaming = useChatStore((s) => s.isStreaming);
   const loadSession = useChatStore((s) => s.loadSession);
@@ -238,6 +239,19 @@ function UserMessage({ message, userTurnIndex, totalTurns }: { message: ChatMess
 
   const rollbackable = userTurnIndex !== undefined && totalTurns !== undefined && userTurnIndex >= 0 && totalTurns > userTurnIndex;
   const rollbackCount = rollbackable ? totalTurns - userTurnIndex : 0;
+
+  // The custom context menu replaced the webview's native right-click menu on
+  // the bubble, so the copy entry has to live here too.
+  const handleCopy = async () => {
+    if (!displayContent) return;
+    try {
+      await navigator.clipboard.writeText(displayContent);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy:", err);
+    }
+  };
 
   // Delete and edit share one engine operation: undo every turn from this
   // message on. Undo only appends a rollback marker — the records stay in the
@@ -291,6 +305,11 @@ function UserMessage({ message, userTurnIndex, totalTurns }: { message: ChatMess
         <ContextMenu>
           <ContextMenuTrigger asChild disabled={isWorking}>{bubble}</ContextMenuTrigger>
           <ContextMenuContent>
+            <ContextMenuItem onSelect={() => { void handleCopy(); }} disabled={!displayContent}>
+              {isCopied ? <IconCheck /> : <IconCopy />}
+              {t("copy.message")}
+            </ContextMenuItem>
+            <ContextMenuSeparator />
             <ContextMenuItem onSelect={() => setPendingAction("edit")}>
               <IconPencil />
               {t("chat.editMessage")}

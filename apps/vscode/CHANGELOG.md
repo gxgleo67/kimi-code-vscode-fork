@@ -4,15 +4,29 @@
 >
 > *中文:* 本文件只记录本 fork(Kimi Code (Fork))自身的更新,版本号独立编号。官方上游的更新记录请见 [MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code/blob/main/apps/vscode/CHANGELOG.md)。
 
-## 0.9.4(2026-08-31)
+## 0.9.4(2026-09-02)
 
-1. Right-click any of your own messages to edit or delete it. Both actions roll the conversation back to just before that message through the engine's conversation undo — the records stay in the session log but stop feeding the context. Edit additionally refills the input box with the original text so you can adjust and resend (Doubao-style); deleting or editing while a response is streaming stops the generation first.
-2. Multiple official Kimi Code accounts can now be signed in at the same time: open Account Management from the composer menu to add accounts (full OAuth device flow inside VS Code), switch the active account per model pick, or log any of them out. The usage bar below the composer follows the account that owns the current model, showing its own 5-hour/7-day quota and reset times.
+1. Multiple official Kimi Code accounts can now be signed in at the same time: open Account Management from the composer menu to add accounts (full OAuth device flow inside VS Code), switch the active account per model pick, or log any of them out. The usage bar below the composer follows the account that owns the current model, showing its own 5-hour/7-day quota and reset times.
+2. Account polish: account cards fall back to the Kimi logo when the profile avatar is missing or fails to load; each account gets an editable display name (pencil icon) and a star to mark it as the default account, which points the config's default model at that account so new sessions start on it.
+3. Per-account quota at a glance: the settings menu lists every signed-in account as a secondary row under Account Management with its name and 5-hour/7-day usage, and the Account Management dialog shows the same usage line per account.
+4. Third-party provider access (e.g. DeepSeek) now lives inside Account Management too — the custom provider form and list were extracted from the subagent model dialog into a shared section, so both entries manage the same providers.
+5. Menu layout: Account Management moved below Compact Mode, separated by dividers; the bottom account row keeps only sign-in/out.
+6. Right-click any of your own messages to edit or delete it. Both actions roll the conversation back to just before that message through the engine's conversation undo — the records stay in the session log but stop feeding the context. Edit refills the input box with the original text so you can adjust and resend (Doubao-style); deleting or editing while a response is streaming stops the generation first. The menu also keeps a "Copy message" entry, restoring the copy action the custom menu had displaced.
+7. One-click account switching: clicking an account row in the settings menu switches this window's session to that account (session-level — the global default model is untouched), with a check marking the account this window is using. Different windows can now run on different accounts at the same time; clicking a signed-out account opens the management dialog to log in first.
+
+Thanks [@firehot](https://github.com/firehot) for the ACP adaptation proposal in PR [#1](https://github.com/gxgleo67/kimi-code-vscode-fork/pull/1) — it inspired the multi-account work in this release.
 
 *中文:*
 
-1. 右键点击自己发送的消息可修改或删除:两种操作都通过引擎的会话 undo 把对话回滚到该消息之前——记录仍保留在会话日志中,但不再参与上下文。修改会把原文填回输入框,改完重新发送即重新生成(豆包式);生成进行中执行删除/修改会先停止当前生成
-2. 支持同时登录多个 Kimi Code 官方账号:从输入框菜单打开「账号管理」即可添加账号(VS Code 内完成 OAuth 设备码流程)、按模型切换当前账号或单独退出任一账号;输入框下方的额度条跟随当前模型所属账号,显示该账号的 5 小时/7 天额度与重置时间
+1. 支持同时登录多个 Kimi Code 官方账号:从输入框菜单打开「账号管理」即可添加账号(VS Code 内完成 OAuth 设备码流程)、按模型切换当前账号或单独退出任一账号;输入框下方的额度条跟随当前模型所属账号,显示该账号的 5 小时/7 天额度与重置时间
+2. 账号体验完善:头像缺失或加载失败时回落到 Kimi 默认头像;每个账号支持编辑显示名(铅笔图标),并可加星标设为默认账号——默认账号会把配置的默认模型指向它,新会话直接从该账号启动
+3. 每账号额度一目了然:设置菜单在「账号管理」下以二级行列出每个已登录账号的名字和 5 小时/7 天用量,账号管理弹窗内同样逐账号显示额度
+4. 第三方模型接口(如 DeepSeek)并入账号管理——自定义供应商表单和列表从子代理模型对话框抽成共享区块,两个入口管理同一份供应商
+5. 菜单布局调整:「账号管理」移到「精简模式」下方并以分隔线划分,底部账号行只保留登录/退出
+6. 右键点击自己发送的消息可修改或删除:两种操作都通过引擎的会话 undo 把对话回滚到该消息之前——记录仍保留在会话日志中,但不再参与上下文。修改会把原文填回输入框,改完重新发送即重新生成(豆包式);生成进行中执行删除/修改会先停止当前生成。菜单同时保留「复制消息」入口,找回被自定义菜单顶掉的复制操作
+7. 一键切换账号:点设置菜单里的账号行即把当前窗口的会话切到该账号(会话级,不动全局默认模型),✓ 标记本窗口正在使用的账号——不同窗口现在可以同时各用各的账号;点未登录的账号则打开管理弹窗先登录
+
+感谢 [@firehot](https://github.com/firehot) 在 PR [#1](https://github.com/gxgleo67/kimi-code-vscode-fork/pull/1) 中提供的 ACP 适配思路,本版本的多账号能力受此启发。
 
 ## 0.9.3(2026-08-31)
 

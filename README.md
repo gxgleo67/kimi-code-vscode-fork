@@ -208,19 +208,39 @@ scripts/              # postinstall (node-pty fix)
 
 ## 🕓 更新记录 | Changelog
 
+**2026-09-02**：
+
+1. 右键自己发送的消息可修改或删除：通过引擎会话 undo 回滚到该消息之前，记录仍保留在日志中但不再参与上下文；修改会把原文填回输入框重新发送（豆包式），生成中执行会先停止生成；菜单同时保留「复制消息」入口
+2. 支持同时登录多个 Kimi Code 官方账号：「账号管理」内添加账号（VS Code 内完成 OAuth 设备码流程）、按模型切换当前账号或单独退出任一账号；输入框下方额度条跟随当前模型所属账号，显示其 5 小时/7 天额度与重置时间
+3. 账号体验完善：头像缺失或加载失败时回落到 Kimi 默认头像；账号卡支持编辑显示名（铅笔图标），可加星标设为默认账号——新会话直接从该账号启动
+4. 设置菜单在「账号管理」下以二级行直接列出每个已登录账号的名字和 5 小时/7 天用量；账号管理弹窗内同样逐账号显示额度
+5. 第三方模型接口（如 DeepSeek）并入账号管理：自定义供应商表单和列表从子代理模型对话框抽成共享区块，两个入口管理同一份供应商
+6. 菜单布局：「账号管理」移到「精简模式」下方并以分隔线划分，底部账号行只保留登录/退出
+7. 一键切换账号：点设置菜单里的账号行即把当前窗口的会话切到该账号（会话级，不动全局默认模型），✓ 标记本窗口正在使用的账号——不同窗口可以同时各用各的账号；点未登录的账号则打开管理弹窗先登录
+
+感谢 [@firehot](https://github.com/firehot) 在 PR [#1](https://github.com/gxgleo67/kimi-code-vscode-fork/pull/1) 中提供的 ACP 适配思路，本轮的多账号能力受此启发。
+
+*English:*
+
+1. Right-click your own message to edit or delete it: the conversation rolls back to just before that message via the engine's conversation undo — records stay in the session log but stop feeding the context; edit refills the input box for a corrected resend (Doubao-style), acting mid-stream stops the generation first, and the menu keeps a "Copy message" entry
+2. Multiple official Kimi Code accounts can stay signed in at once: add accounts in Account Management (full OAuth device flow inside VS Code), switch the active account per model pick, or log any of them out; the usage bar below the composer follows the account owning the current model, with its 5-hour/7-day quota and reset times
+3. Account polish: avatars fall back to the Kimi logo when missing or broken; each account gets an editable display name (pencil icon) and a star to mark it as default — new sessions start on the default account
+4. The settings menu lists every signed-in account as a secondary row under Account Management with its name and 5-hour/7-day usage; the Account Management dialog shows the same per-account usage line
+5. Third-party provider access (e.g. DeepSeek) now lives inside Account Management too: the custom provider form and list were extracted from the subagent model dialog into a shared section, both entries managing the same providers
+6. Menu layout: Account Management moved below Compact Mode with dividers; the bottom account row keeps only sign-in/out
+7. One-click account switching: clicking an account row in the settings menu switches this window's session to that account (session-level — the global default model is untouched), with a check marking the account this window is using; different windows can run on different accounts at the same time, and clicking a signed-out account opens the management dialog to log in first
+
+Thanks [@firehot](https://github.com/firehot) for the ACP adaptation proposal in PR [#1](https://github.com/gxgleo67/kimi-code-vscode-fork/pull/1) — it inspired this round's multi-account work.
+
 **2026-08-31**：
 
 1. 队列消息的图片/视频显示为编号标签（图片 1/视频 1，悬停出缩略图）；队列行文字与操作按钮放大，按钮独立到右侧竖线分隔的常显区域
 2. 移除界面层「自动压缩上下文」开关：压缩交由引擎按当前模型窗口 85% 自动处理（与官方一致），手动 /compact 不受影响
-3. 右键自己发送的消息可修改或删除：通过引擎会话 undo 回滚到该消息之前，记录仍保留在日志中但不再参与上下文；修改会把原文填回输入框重新发送（豆包式），生成中执行会先停止生成
-4. 支持同时登录多个 Kimi Code 官方账号并在「账号管理」中切换/退出；输入框下方额度条跟随当前模型所属账号显示其 5 小时/7 天额度与重置时间
 
 *English:*
 
 1. Queued images/videos show as numbered chips (Image 1 / Video 1, hover for a thumbnail); queue rows use larger text, and the actions (steer / edit / move up / delete) live in a dedicated right-side zone with bigger, always-visible buttons
 2. Removed the UI-level auto-compact toggle: compaction is left to the engine's own auto-compaction (85% of the current model's context window), matching upstream; manual /compact is unaffected
-3. Right-click your own message to edit or delete it: the conversation rolls back to just before that message via the engine's conversation undo — records stay in the session log but stop feeding the context; edit refills the input box for a corrected resend (Doubao-style), and acting mid-stream stops the generation first
-4. Multiple official Kimi Code accounts can stay signed in and be switched/logged out from Account Management; the usage bar below the composer follows the account owning the current model, with its 5-hour/7-day quota and reset times
 
 **2026-08-29**：
 

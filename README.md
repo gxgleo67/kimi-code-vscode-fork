@@ -222,6 +222,8 @@ scripts/              # postinstall (node-pty fix)
 10. 同步官方上游：子代理次模型池从实验特性毕业、默认启用，并上报每个子代理绑定的模型及来源（官方 PR #3334）
 11. 同步官方上游：步骤重试与中断事件持久化到会话 wire 日志，恢复的会话保留每步的重试/中断历史（官方 PR #3428；0.9.2 的实时重试丢弃修复不受影响）
 
+> ⚠ 暂未同步（留待后续版本）：官方 PR #3459——强制停止（重复熔断/步骤上限）后追加纯文本交接步骤，让子代理向主代理汇报停止原因和恢复提示；依赖官方子代理生命周期的 DI 重构，将单独安排移植。
+
 感谢 [@firehot](https://github.com/firehot) 在 PR [#1](https://github.com/gxgleo67/kimi-code-vscode-fork/pull/1) 中提供的 ACP 适配思路，本轮的多账号能力受此启发。
 
 *English:*
@@ -237,6 +239,8 @@ scripts/              # postinstall (node-pty fix)
 9. Synced from official upstream: dangerous bash commands (e.g. `rm -rf`, disk/format operations) now require approval in every permission mode including YOLO — auto mode denies them outright; the guard can be turned off via config (upstream PR #3290)
 10. Synced from official upstream: the subagent secondary-model pool graduated out of experimental and is enabled by default, reporting each spawned subagent's bound model and how it was chosen (upstream PR #3334)
 11. Synced from official upstream: step retry and interrupt events are persisted to the session wire log, preserving per-step retry/interrupt history across resumes (upstream PR #3428; the 0.9.2 realtime retry-discard fix is unaffected)
+
+> ⚠ Not yet synced (planned for a later release): upstream PR #3459 — a text-only handoff step after forced stops (repeat-breaker / step cap) so subagents report their stop reason and a resume hint to the parent agent; it depends on an upstream DI rework of the subagent lifecycle and will be ported in its own round.
 
 Thanks [@firehot](https://github.com/firehot) for the ACP adaptation proposal in PR [#1](https://github.com/gxgleo67/kimi-code-vscode-fork/pull/1) — it inspired this round's multi-account work.
 

@@ -4,13 +4,24 @@
 >
 > *中文:* 本文件只记录本 fork(Kimi Code (Fork))自身的更新,版本号独立编号。官方上游的更新记录请见 [MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code/blob/main/apps/vscode/CHANGELOG.md)。
 
+## 0.9.6(2026-09-02)
+
+1. Account Management dialog: the quota line now shows each window's reset countdown and exact reset timestamp on an always-visible line below it (no hover needed).
+2. Settings menu account rows: the text quota ("5h 45% · 7d 12%") is replaced by the same concentric ring indicator as the composer status bar (outer ring = 5h, inner ring = 7d, same color rules); hovering the rings shows percent used and reset countdowns.
+3. Settings menu account rows: the "default" badge and the current-account check moved to right after the account name, so the quota rings stay right-aligned across rows.
+
+*中文:*
+
+1. 账号管理弹窗:额度行下方新增一行常显的重置信息——各窗口的重置倒计时 + 精确重置时间(无需悬停)
+2. 设置菜单账号行:文字额度(「5h 45% · 7d 12%」)改为与输入框状态栏一致的同心圆环(外环 5 小时、内环 7 天,颜色规则相同);悬停圆环显示已用百分比与重置倒计时
+3. 设置菜单账号行:「默认」标签与当前账号对号移到账号名称后面,额度圆环保持右对齐
+
 ## 0.9.5(2026-09-02)
 
 1. Synced from official upstream: queued prompts no longer get stuck after an interrupted session resumes — the prompt resolution events are now persisted to the session log, so a restored queue knows which entries were already settled (upstream PR #3371).
 2. Synced from official upstream: dangerous bash commands (e.g. `rm -rf`, disk/format operations) now require approval in every permission mode, including YOLO — auto mode denies them outright, and non-interactive hosts skip the guard; it can be turned off via config (upstream PR #3290).
 3. Synced from official upstream: the subagent secondary-model pool graduated out of experimental and is enabled by default — subagents resolve their model from `[secondary_model]` without any flag, and the bound model plus how it was chosen (forced / primary override / inherited / pool pick) is reported with each spawned subagent (upstream PR #3334).
 4. Synced from official upstream: step retry and interrupt events are now persisted to the session wire log, so a resumed session preserves the retry/interrupt history of every step (upstream PR #3428; the fork's realtime retry-discard fix from 0.9.2 is unaffected and keeps working).
-5. Account Management: the quota line now shows each window's reset countdown and exact reset timestamp inline below it (no hover needed); in the settings menu, per-account rows replace the text quota with the same concentric ring indicator as the composer status bar — hover the rings for the full details.
 
 **⚠ Not yet synced from upstream (planned for a later release):** PR #3459 — a text-only handoff step after forced stops (repeat-breaker / step cap) so subagents report their stop reason and a resume hint to the parent agent. It depends on an upstream DI rework of the subagent lifecycle that this fork has not adopted yet; porting it is scheduled as its own round.
 
@@ -20,7 +31,6 @@
 2. 同步官方上游:危险 bash 命令(如 `rm -rf`、磁盘/格式化操作)在所有权限模式下都需批准,YOLO 模式也不例外——auto 模式直接拒绝,非交互宿主跳过守卫;可通过配置关闭(官方 PR #3290)
 3. 同步官方上游:子代理次模型池从实验特性毕业、默认启用——子代理无需开关即从 `[secondary_model]` 解析模型,每个派生的子代理都会上报绑定的模型及其来源(强制/主模型指定/继承/池选)(官方 PR #3334)
 4. 同步官方上游:步骤重试与中断事件现已持久化到会话 wire 日志,恢复的会话保留每个步骤的重试/中断历史(官方 PR #3428;0.9.2 的实时重试丢弃修复不受影响,继续生效)
-5. 账号管理:额度行下方直接常显各窗口的重置倒计时与精确重置时间(无需悬停);设置菜单的账号行改用与输入框状态栏一致的同心圆环显示额度,悬停圆环查看详情
 
 **⚠ 暂未同步的官方更新(留待后续版本):** PR #3459——强制停止(重复熔断/步骤上限)后追加一个纯文本交接步骤,让子代理向主代理汇报停止原因和恢复提示。它依赖官方对子代理生命周期的 DI 重构,本 fork 尚未采用,将单独安排一轮移植。
 

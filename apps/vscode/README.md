@@ -208,13 +208,24 @@ scripts/              # postinstall (node-pty fix)
 
 ## 🕓 更新记录 | Changelog
 
+**2026-09-02（0.9.6 · 账号额度展示）**：
+
+1. 账号管理弹窗：额度行下方常显各窗口的重置倒计时 + 精确重置时间，无需悬停
+2. 设置菜单账号行：文字额度改为与输入框状态栏一致的同心圆环（外环 5 小时、内环 7 天），悬停显示已用百分比与重置倒计时
+3. 设置菜单账号行：「默认」标签与当前账号对号移到账号名称后面，额度圆环保持右对齐
+
+*English:*
+
+1. Account Management dialog: each window's reset countdown and exact timestamp now sit on an always-visible line below the quota line
+2. Settings menu account rows: the text quota is replaced by the same concentric ring indicator as the composer status bar (outer = 5h, inner = 7d); hover for percent used and reset countdowns
+3. Settings menu account rows: the default badge and current-account check moved right after the account name, keeping the quota rings right-aligned
+
 **2026-09-02（0.9.5 · 官方上游同步）**：
 
 1. 会话中断恢复后队列消息不再卡死——prompt 决议事件持久化到会话日志（官方 PR #3371）
 2. 危险 bash 命令（如 `rm -rf`、磁盘/格式化操作）在所有权限模式下都需批准，YOLO 也不例外；auto 模式直接拒绝，可通过配置关闭（官方 PR #3290）
 3. 子代理次模型池从实验特性毕业、默认启用，并上报每个子代理绑定的模型及来源（官方 PR #3334）
 4. 步骤重试与中断事件持久化到会话 wire 日志，恢复的会话保留每步的重试/中断历史（官方 PR #3428；0.9.2 的实时重试丢弃修复不受影响）
-5. 账号管理：额度行下方常显各窗口的重置倒计时与精确重置时间；设置菜单的账号行改用与输入框状态栏一致的同心圆环显示额度，悬停圆环查看详情
 
 > ⚠ 暂未同步（留待后续版本）：官方 PR #3459——强制停止（重复熔断/步骤上限）后追加纯文本交接步骤，让子代理向主代理汇报停止原因和恢复提示；依赖官方子代理生命周期的 DI 重构，将单独安排移植。
 
@@ -224,7 +235,6 @@ scripts/              # postinstall (node-pty fix)
 2. Dangerous bash commands (e.g. `rm -rf`, disk/format operations) now require approval in every permission mode including YOLO — auto mode denies them outright; the guard can be turned off via config (upstream PR #3290)
 3. The subagent secondary-model pool graduated out of experimental and is enabled by default, reporting each spawned subagent's bound model and how it was chosen (upstream PR #3334)
 4. Step retry and interrupt events are persisted to the session wire log, preserving per-step retry/interrupt history across resumes (upstream PR #3428; the 0.9.2 realtime retry-discard fix is unaffected)
-5. Account Management: the quota line shows each window's reset countdown and exact timestamp inline below it; settings-menu account rows use the same concentric ring indicator as the composer status bar, with full details on hover
 
 > ⚠ Not yet synced (planned for a later release): upstream PR #3459 — a text-only handoff step after forced stops so subagents report their stop reason and a resume hint to the parent agent; it depends on an upstream DI rework of the subagent lifecycle and will be ported in its own round.
 

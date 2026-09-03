@@ -22,7 +22,7 @@
 
 **市场地址 / Marketplace:[marketplace.visualstudio.com/items?itemName=GXGLEO.kimicode-vscode-fork](https://marketplace.visualstudio.com/items?itemName=GXGLEO.kimicode-vscode-fork)(缓存看不到最新版本时请以此为准 / Check here if a cached page hides the latest release)**
 
-**最后更新：2026-08-28 | Last updated: 2026-08-28**
+**最后更新：2026-09-02 | Last updated: 2026-09-02**
 
 **⚠️ 注意：该插件项目由 K3 MAX 自主修改并同步，界面尽可能还原 Web 端界面功能。**
 

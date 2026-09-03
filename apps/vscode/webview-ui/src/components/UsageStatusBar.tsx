@@ -114,15 +114,14 @@ function ContextRing({ ratio, label, detail }: ContextRingProps) {
   );
 }
 
-interface QuotaWindowState {
+export interface QuotaWindowState {
   /** null renders the grey placeholder state (loading / fetch failed). */
   readonly ratio: number | null;
   readonly resetAt?: string;
   readonly error?: string;
 }
 
-function quotaWindowState(
-  window: ManagedUsageWindowView | undefined,
+export function quotaWindowState(  window: ManagedUsageWindowView | undefined,
   usageError: string | null,
 ): QuotaWindowState | null {
   if (usageError !== null) return { ratio: null, error: usageError };
@@ -181,7 +180,7 @@ function QuotaTooltipSection({ label, state, now }: { label: string; state: Quot
  * outer ring tracks the 5h window (muted below 70%, yellow → red above), the
  * inner ring tracks the weekly window (blue → red over the full range).
  */
-function QuotaRings({ fiveHour, weekly, now }: { fiveHour: QuotaWindowState; weekly: QuotaWindowState; now: number }) {
+export function QuotaRings({ fiveHour, weekly, now }: { fiveHour: QuotaWindowState; weekly: QuotaWindowState; now: number }) {
   const t = useT();
   const size = 18;
   const strokeWidth = 2;

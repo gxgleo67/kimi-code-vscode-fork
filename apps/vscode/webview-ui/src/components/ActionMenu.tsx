@@ -9,7 +9,8 @@ import { bridge } from "@/services";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import { useT } from "@/i18n";
-import { formatUsagePercent, usageRatio, type ManagedUsageView } from "shared/managed-usage";
+import { type ManagedUsageView } from "shared/managed-usage";
+import { QuotaRings, quotaWindowState } from "./UsageStatusBar";
 
 interface ActionMenuProps {
   className?: string;
@@ -52,6 +53,8 @@ export function ActionMenu({ className, onAuthAction }: ActionMenuProps) {
   /** provider → usage; undefined = not fetched, null = in flight, "error" = failed. */
   const [usageByProvider, setUsageByProvider] = useState<Record<string, ManagedUsageView | "error" | null>>({});
   const [switchingProvider, setSwitchingProvider] = useState<string | null>(null);
+  /** Snapshot for the quota tooltips' reset countdowns; refreshed per open. */
+  const [now, setNow] = useState(() => Date.now());
   /** The account serving this window's current session (from the composer's model). */
   const currentProvider = models.find((model) => model.id === currentModel)?.provider;
 
@@ -60,6 +63,7 @@ export function ActionMenu({ className, onAuthAction }: ActionMenuProps) {
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
+    setNow(Date.now());
     setUsageByProvider({});
     void bridge
       .getAccounts()
@@ -255,11 +259,11 @@ export function ActionMenu({ className, onAuthAction }: ActionMenuProps) {
         <MenuSection title={t("menu.manageAccounts")}>
           {accounts.map((account) => {
             const usage = usageByProvider[account.provider];
-            const brief = account.loggedIn && usage !== undefined && usage !== null && usage !== "error"
-              ? [
-                  usage.fiveHour !== undefined ? `5h ${formatUsagePercent(usageRatio(usage.fiveHour.used, usage.fiveHour.limit))}%` : undefined,
-                  usage.summary !== undefined ? `7d ${formatUsagePercent(usageRatio(usage.summary.used, usage.summary.limit))}%` : undefined,
-                ].filter((v) => v !== undefined).join(" · ")
+            const quota = account.loggedIn && usage !== undefined && usage !== null && usage !== "error"
+              ? {
+                  fiveHour: quotaWindowState(usage.fiveHour, null) ?? { ratio: null },
+                  weekly: quotaWindowState(usage.summary, null) ?? { ratio: null },
+                }
               : undefined;
             return (
               <MenuItem key={account.provider} onClick={() => handleSwitchAccount(account)}>
@@ -267,7 +271,11 @@ export function ActionMenu({ className, onAuthAction }: ActionMenuProps) {
                 <span className="flex-1 truncate">
                   {account.displayName ?? account.nickname ?? t("accounts.accountN", { slot: account.slot })}
                 </span>
-                {brief !== undefined && <span className="text-xs text-muted-foreground shrink-0">{brief}</span>}
+                {quota !== undefined && (
+                  <span onClick={(e) => e.stopPropagation()} className="shrink-0 flex items-center">
+                    <QuotaRings fiveHour={quota.fiveHour} weekly={quota.weekly} now={now} />
+                  </span>
+                )}
                 {account.isDefault === true && <span className="text-[9px] text-blue-500 shrink-0">{t("accounts.defaultBadge")}</span>}
                 {switchingProvider === account.provider
                   ? <IconLoader2 className="size-3.5 animate-spin text-muted-foreground shrink-0" />

@@ -4,7 +4,6 @@ import { IconLoader2, IconUserCircle, IconPlus, IconX, IconPencil, IconCheck, Ic
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useSettingsStore } from "@/stores";
 import { bridge } from "@/services";
 import { formatDateTime } from "@/lib/utils";
@@ -12,7 +11,7 @@ import { useT } from "@/i18n";
 import { KimiLogo } from "./KimiLogo";
 import { CustomProviderSection } from "./CustomProviderSection";
 import { resetCountdown } from "./UsageStatusBar";
-import { formatUsagePercent, usageRatio, type ManagedUsageView, type ManagedUsageWindowView } from "shared/managed-usage";
+import { formatUsagePercent, usageRatio, type ManagedUsageView } from "shared/managed-usage";
 import type { ManagedAccountInfo } from "shared/types";
 
 interface AccountsModalProps {
@@ -63,45 +62,23 @@ function usageBrief(t: ReturnType<typeof useT>, usage: ManagedUsageView | null |
   return parts.length > 0 ? parts.join(" · ") : null;
 }
 
-/** One quota window's row inside the account tooltip: label, percent used,
- *  and the detailed reset time (relative countdown + exact timestamp). */
-function QuotaResetRow({
-  t,
-  label,
-  window,
-}: {
-  t: ReturnType<typeof useT>;
-  label: string;
-  window: ManagedUsageWindowView;
-}) {
-  const [now] = useState(() => Date.now());
-  const resetAt = window.resetAt;
-  const parsed = resetAt !== undefined ? Date.parse(resetAt) : Number.NaN;
-  const countdown = resetCountdown(t, resetAt, now);
-  return (
-    <div className="flex flex-col gap-0.5">
-      <span>{label}</span>
-      <span>{t("usage.percentUsed", { percent: formatUsagePercent(usageRatio(window.used, window.limit)) })}</span>
-      {countdown !== undefined && <span>{countdown}</span>}
-      {Number.isFinite(parsed) && <span className="text-muted-foreground">{formatDateTime(parsed)}</span>}
-    </div>
-  );
-}
-
-/** Tooltip body for an account's quota brief — detailed reset time per window. */
-function usageTooltipBody(t: ReturnType<typeof useT>, usage: ManagedUsageView | "error" | null) {
-  if (usage === null) return <span>{t("accounts.usageLoading")}</span>;
-  if (usage === "error") return <span>{t("accounts.usageUnavailable")}</span>;
-  return (
-    <div className="flex flex-col gap-1.5">
-      {usage.fiveHour !== undefined && (
-        <QuotaResetRow t={t} label={t("usage.fiveHourLimit")} window={usage.fiveHour} />
-      )}
-      {usage.summary !== undefined && (
-        <QuotaResetRow t={t} label={t("usage.weeklyLimit")} window={usage.summary} />
-      )}
-    </div>
-  );
+/** Always-visible line under the quota brief: each window's reset countdown
+ *  plus the exact reset timestamp. */
+function usageResetLine(t: ReturnType<typeof useT>, usage: ManagedUsageView): string | null {
+  const now = Date.now();
+  const windows = [
+    [t("usage.fiveHourLimit"), usage.fiveHour],
+    [t("usage.weeklyLimit"), usage.summary],
+  ] as const;
+  const parts: string[] = [];
+  for (const [label, window] of windows) {
+    if (window?.resetAt === undefined) continue;
+    const countdown = resetCountdown(t, window.resetAt, now);
+    const parsed = Date.parse(window.resetAt);
+    if (countdown === undefined || !Number.isFinite(parsed)) continue;
+    parts.push(`${label} ${countdown}(${formatDateTime(parsed)})`);
+  }
+  return parts.length > 0 ? parts.join(" · ") : null;
 }
 
 /**
@@ -238,6 +215,10 @@ export function AccountsModal({ onAuthAction }: AccountsModalProps) {
               const isBusy = busy === account.provider;
               const usage = usageByProvider[account.provider];
               const usageText = account.loggedIn ? usageBrief(t, usage ?? null) : null;
+              const resetLine =
+                account.loggedIn && usage !== undefined && usage !== null && usage !== "error"
+                  ? usageResetLine(t, usage)
+                  : null;
               return (
                 <div key={account.provider} className="flex items-center gap-2.5 rounded-md border px-2.5 py-2">
                   <AccountAvatar src={account.avatar} />
@@ -294,12 +275,10 @@ export function AccountsModal({ onAuthAction }: AccountsModalProps) {
                         : t("accounts.notLoggedIn")}
                     </div>
                     {usageText !== null && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div className="text-[10px] text-muted-foreground truncate">{usageText}</div>
-                        </TooltipTrigger>
-                        <TooltipContent>{usageTooltipBody(t, usage ?? null)}</TooltipContent>
-                      </Tooltip>
+                      <div className="text-[10px] text-muted-foreground truncate">{usageText}</div>
+                    )}
+                    {resetLine !== null && (
+                      <div className="text-[10px] text-muted-foreground/80 truncate">{resetLine}</div>
                     )}
                   </div>
                   {account.loggedIn && (

@@ -4,12 +4,15 @@ import { IconLoader2, IconUserCircle, IconPlus, IconX, IconPencil, IconCheck, Ic
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useSettingsStore } from "@/stores";
 import { bridge } from "@/services";
+import { formatDateTime } from "@/lib/utils";
 import { useT } from "@/i18n";
 import { KimiLogo } from "./KimiLogo";
 import { CustomProviderSection } from "./CustomProviderSection";
-import { formatUsagePercent, usageRatio, type ManagedUsageView } from "shared/managed-usage";
+import { resetCountdown } from "./UsageStatusBar";
+import { formatUsagePercent, usageRatio, type ManagedUsageView, type ManagedUsageWindowView } from "shared/managed-usage";
 import type { ManagedAccountInfo } from "shared/types";
 
 interface AccountsModalProps {
@@ -58,6 +61,47 @@ function usageBrief(t: ReturnType<typeof useT>, usage: ManagedUsageView | null |
     parts.push(`${t("usage.weeklyLimit")} ${formatUsagePercent(usageRatio(usage.summary.used, usage.summary.limit))}%`);
   }
   return parts.length > 0 ? parts.join(" · ") : null;
+}
+
+/** One quota window's row inside the account tooltip: label, percent used,
+ *  and the detailed reset time (relative countdown + exact timestamp). */
+function QuotaResetRow({
+  t,
+  label,
+  window,
+}: {
+  t: ReturnType<typeof useT>;
+  label: string;
+  window: ManagedUsageWindowView;
+}) {
+  const [now] = useState(() => Date.now());
+  const resetAt = window.resetAt;
+  const parsed = resetAt !== undefined ? Date.parse(resetAt) : Number.NaN;
+  const countdown = resetCountdown(t, resetAt, now);
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span>{label}</span>
+      <span>{t("usage.percentUsed", { percent: formatUsagePercent(usageRatio(window.used, window.limit)) })}</span>
+      {countdown !== undefined && <span>{countdown}</span>}
+      {Number.isFinite(parsed) && <span className="text-muted-foreground">{formatDateTime(parsed)}</span>}
+    </div>
+  );
+}
+
+/** Tooltip body for an account's quota brief — detailed reset time per window. */
+function usageTooltipBody(t: ReturnType<typeof useT>, usage: ManagedUsageView | "error" | null) {
+  if (usage === null) return <span>{t("accounts.usageLoading")}</span>;
+  if (usage === "error") return <span>{t("accounts.usageUnavailable")}</span>;
+  return (
+    <div className="flex flex-col gap-1.5">
+      {usage.fiveHour !== undefined && (
+        <QuotaResetRow t={t} label={t("usage.fiveHourLimit")} window={usage.fiveHour} />
+      )}
+      {usage.summary !== undefined && (
+        <QuotaResetRow t={t} label={t("usage.weeklyLimit")} window={usage.summary} />
+      )}
+    </div>
+  );
 }
 
 /**
@@ -250,7 +294,12 @@ export function AccountsModal({ onAuthAction }: AccountsModalProps) {
                         : t("accounts.notLoggedIn")}
                     </div>
                     {usageText !== null && (
-                      <div className="text-[10px] text-muted-foreground truncate">{usageText}</div>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="text-[10px] text-muted-foreground truncate">{usageText}</div>
+                        </TooltipTrigger>
+                        <TooltipContent>{usageTooltipBody(t, usage ?? null)}</TooltipContent>
+                      </Tooltip>
                     )}
                   </div>
                   {account.loggedIn && (

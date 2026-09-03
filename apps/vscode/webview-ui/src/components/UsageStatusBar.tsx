@@ -134,7 +134,7 @@ function quotaWindowState(
 }
 
 /** Localized "…后重置 / resets in …" countdown, two largest units. */
-function resetCountdown(
+export function resetCountdown(
   t: ReturnType<typeof useT>,
   resetAt: string | undefined,
   now: number,

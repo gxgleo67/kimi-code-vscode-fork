@@ -214,6 +214,7 @@ scripts/              # postinstall (node-pty fix)
 2. 危险 bash 命令（如 `rm -rf`、磁盘/格式化操作）在所有权限模式下都需批准，YOLO 也不例外；auto 模式直接拒绝，可通过配置关闭（官方 PR #3290）
 3. 子代理次模型池从实验特性毕业、默认启用，并上报每个子代理绑定的模型及来源（官方 PR #3334）
 4. 步骤重试与中断事件持久化到会话 wire 日志，恢复的会话保留每步的重试/中断历史（官方 PR #3428；0.9.2 的实时重试丢弃修复不受影响）
+5. 账号管理：鼠标悬停账号的额度行，弹出各窗口详情——已用百分比、重置倒计时和精确重置时间
 
 > ⚠ 暂未同步（留待后续版本）：官方 PR #3459——强制停止（重复熔断/步骤上限）后追加纯文本交接步骤，让子代理向主代理汇报停止原因和恢复提示；依赖官方子代理生命周期的 DI 重构，将单独安排移植。
 
@@ -223,6 +224,7 @@ scripts/              # postinstall (node-pty fix)
 2. Dangerous bash commands (e.g. `rm -rf`, disk/format operations) now require approval in every permission mode including YOLO — auto mode denies them outright; the guard can be turned off via config (upstream PR #3290)
 3. The subagent secondary-model pool graduated out of experimental and is enabled by default, reporting each spawned subagent's bound model and how it was chosen (upstream PR #3334)
 4. Step retry and interrupt events are persisted to the session wire log, preserving per-step retry/interrupt history across resumes (upstream PR #3428; the 0.9.2 realtime retry-discard fix is unaffected)
+5. Account Management: hovering an account's quota line shows a tooltip with each window's percent used, localized reset countdown, and exact reset timestamp
 
 > ⚠ Not yet synced (planned for a later release): upstream PR #3459 — a text-only handoff step after forced stops so subagents report their stop reason and a resume hint to the parent agent; it depends on an upstream DI rework of the subagent lifecycle and will be ported in its own round.
 

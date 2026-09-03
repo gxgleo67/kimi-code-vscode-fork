@@ -268,18 +268,19 @@ export function ActionMenu({ className, onAuthAction }: ActionMenuProps) {
             return (
               <MenuItem key={account.provider} onClick={() => handleSwitchAccount(account)}>
                 <span className={cn("size-1.5 rounded-full shrink-0 ml-2", account.loggedIn ? "bg-green-500" : "bg-muted-foreground/40")} />
-                <span className="flex-1 truncate">
+                <span className="truncate">
                   {account.displayName ?? account.nickname ?? t("accounts.accountN", { slot: account.slot })}
                 </span>
+                {account.isDefault === true && <span className="text-[9px] text-blue-500 shrink-0">{t("accounts.defaultBadge")}</span>}
+                {switchingProvider === account.provider
+                  ? <IconLoader2 className="size-3.5 animate-spin text-muted-foreground shrink-0" />
+                  : account.provider === currentProvider && <IconCheck className="size-3.5 text-blue-500 shrink-0" />}
+                <span className="flex-1" />
                 {quota !== undefined && (
                   <span onClick={(e) => e.stopPropagation()} className="shrink-0 flex items-center">
                     <QuotaRings fiveHour={quota.fiveHour} weekly={quota.weekly} now={now} />
                   </span>
                 )}
-                {account.isDefault === true && <span className="text-[9px] text-blue-500 shrink-0">{t("accounts.defaultBadge")}</span>}
-                {switchingProvider === account.provider
-                  ? <IconLoader2 className="size-3.5 animate-spin text-muted-foreground shrink-0" />
-                  : account.provider === currentProvider && <IconCheck className="size-3.5 text-blue-500 shrink-0" />}
               </MenuItem>
             );
           })}

@@ -4,6 +4,16 @@
 >
 > *中文:* 本文件只记录本 fork(Kimi Code (Fork))自身的更新,版本号独立编号。官方上游的更新记录请见 [MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code/blob/main/apps/vscode/CHANGELOG.md)。
 
+## 0.9.7(2026-09-02)
+
+1. Fixed queue "Insert now (steer)" silently dropping the message: the steer echo is no longer discarded when it lands outside a live step (e.g. between TurnBegin and StepBegin, or right after attaching to a busy session) — it now attaches to a created step or falls back to a plain user bubble, so steered text and images always show up in the conversation.
+2. Queue "Insert now" failures are no longer silent: a rejected steer request surfaces an error toast and keeps the message in the queue instead of vanishing into an unhandled rejection.
+
+*中文:*
+
+1. 修复队列「立即插入(插队)」消息被静默丢弃:插队回显落在没有活动步骤的时间窗时(如 TurnBegin 与 StepBegin 之间、刚附着到忙碌会话时)不再丢弃——自动补建步骤或退化为普通用户气泡,插队的文字和图片都会显示在对话里
+2. 队列「立即插入」失败不再静默:请求被拒绝时弹出错误提示,消息保留在队列中,不再沉入未处理的异常
+
 ## 0.9.6(2026-09-02)
 
 1. Account Management dialog: the quota line now shows each window's reset countdown and exact reset timestamp on an always-visible line below it (no hover needed).

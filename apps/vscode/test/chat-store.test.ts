@@ -507,3 +507,40 @@ describe("Webview steerNow (Alt+Enter immediate send)", () => {
     expect(useChatStore.getState().queue[0]?.content).toBe("jump in");
   });
 });
+
+describe("Webview SteerInput echo rendering", () => {
+  const imageContent = [
+    { type: "text", text: "look at this" },
+    { type: "image_url", image_url: { url: "data:image/png;base64,AAAA" } },
+  ] as const;
+
+  it("keeps image parts when the steer bubble lands in the current step", () => {
+    useChatStore.getState().sendMessage("first");
+    beginTurn();
+
+    useChatStore.getState().processEvent({ type: "SteerInput", payload: { user_input: [...imageContent] } });
+
+    const last = useChatStore.getState().messages.at(-1);
+    const steerItem = last?.steps?.at(-1)?.items.at(-1);
+    expect(steerItem).toEqual({ type: "steer", content: [...imageContent] });
+  });
+
+  it("surfaces the steered input as a user message when no assistant turn exists", () => {
+    useChatStore.getState().processEvent({ type: "SteerInput", payload: { user_input: [...imageContent] } });
+
+    const messages = useChatStore.getState().messages;
+    expect(messages).toHaveLength(1);
+    expect(messages[0]).toMatchObject({ role: "user", content: [...imageContent] });
+  });
+
+  it("creates a step when the echo lands between TurnBegin and StepBegin", () => {
+    useChatStore.getState().sendMessage("first");
+    useChatStore.getState().processEvent({ type: "TurnBegin", payload: { user_input: "first" } });
+
+    useChatStore.getState().processEvent({ type: "SteerInput", payload: { user_input: [...imageContent] } });
+
+    const last = useChatStore.getState().messages.at(-1);
+    expect(last?.role).toBe("assistant");
+    expect(last?.steps?.at(-1)?.items.at(-1)).toEqual({ type: "steer", content: [...imageContent] });
+  });
+});

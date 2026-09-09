@@ -213,6 +213,7 @@ export const en = {
   "queue.moveUp": "Move up",
   "queue.delete": "Delete",
   "queue.insertNow": "Insert now (steer)",
+  "queue.steerFailed": "Steer failed; the message stays in the queue.",
   "queue.queuedCount": "{count} Queued",
   "changes.changedCount": "{count} Changed",
 

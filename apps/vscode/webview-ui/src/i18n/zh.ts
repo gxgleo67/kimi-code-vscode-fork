@@ -206,6 +206,7 @@ export const zh: Record<TranslationKey, string> = {
   "queue.moveUp": "上移",
   "queue.delete": "删除",
   "queue.insertNow": "立即插入(插队)",
+  "queue.steerFailed": "插队失败,消息已保留在队列中",
   "queue.queuedCount": "{count} 条排队中",
   "changes.changedCount": "{count} 个变更",
 

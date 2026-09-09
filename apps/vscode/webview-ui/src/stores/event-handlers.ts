@@ -699,13 +699,28 @@ const eventHandlers: Record<string, EventHandler> = {
 
   SteerInput: (draft, payload: { user_input: string | ContentPart[] }) => {
     const last = getLastAssistant(draft);
-    if (!last?.steps) return;
+    if (!last) {
+      // No live assistant turn to attach to (e.g. the echo landed before the
+      // first TurnBegin on a fresh attach): surface the steered input as a
+      // user bubble instead of dropping it silently.
+      draft.messages.push({
+        id: crypto.randomUUID(),
+        role: "user",
+        content: payload.user_input,
+        timestamp: Date.now(),
+      });
+      return;
+    }
 
-    const currentStep = last.steps.at(-1);
-    if (!currentStep) return;
+    if (!last.steps) {
+      last.steps = [];
+    }
+    if (last.steps.length === 0) {
+      last.steps.push({ n: 0, items: [] });
+    }
 
     finishAllTextItems(last.steps);
-    currentStep.items.push({ type: "steer", content: payload.user_input });
+    last.steps.at(-1)!.items.push({ type: "steer", content: payload.user_input });
   },
 };
 

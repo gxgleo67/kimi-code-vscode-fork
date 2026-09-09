@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useChatStore } from "@/stores";
 import { bridge } from "@/services";
+import { toast } from "@/components/ui/sonner";
 import { useT } from "@/i18n";
 import { Content } from "@/lib/content";
 import { useResolvedMediaSrc } from "@/lib/use-resolved-media-src";
@@ -43,9 +44,13 @@ function QueueItem({ id, content, isStreaming, onEdit }: { id: string; content: 
   const videos = Content.getVideos(content);
 
   const handleSteer = async () => {
-    const result = await bridge.steerChat(content);
-    if (result.ok) {
-      removeFromQueue(id);
+    try {
+      const result = await bridge.steerChat(content);
+      if (result.ok) {
+        removeFromQueue(id);
+      }
+    } catch {
+      toast.error(t("queue.steerFailed"));
     }
   };
 

@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { APIError as AnthropicAPIError } from '@anthropic-ai/sdk';
 
 import { isUnknownCapability } from '#/kosong/contract/capability';
+import { providerImagePolicy } from '#/kosong/contract/image-formats';
 import {
   APIConnectionError,
   APIProviderQuotaExhaustedError,
@@ -1088,6 +1089,61 @@ describe('responseFormat wire encoding (per base)', () => {
         description: undefined,
       },
     });
+  });
+});
+
+describe('Anthropic lowering of inline images', () => {
+  const HEIC_URL = 'data:image/heic;base64,AAAA';
+  const HEIC_BLOCK = {
+    type: 'image',
+    source: { type: 'base64', data: 'AAAA', media_type: 'image/heic' },
+  };
+  const HEIC_HISTORY: Message[] = [
+    {
+      role: 'user',
+      content: [{ type: 'image_url', imageUrl: { url: HEIC_URL } }],
+      toolCalls: [],
+    },
+  ];
+
+  it('forwards a base64 image the Kimi trait accepts even though the route id is anthropic', async () => {
+    const provider = registry.createChatProvider({
+      protocol: 'anthropic',
+      providerType: 'kimi',
+      modelName: 'kimi-k2',
+      apiKey: 'sk-probe',
+    });
+
+    const { params } = await captureAnthropicBody(provider, undefined, HEIC_HISTORY);
+
+    const messages = params['messages'] as { content: unknown[] }[];
+    expect(messages[0]?.content[0]).toMatchObject(HEIC_BLOCK);
+  });
+
+  it('refuses a base64 image outside the baseline set when no trait widens it', async () => {
+    const provider = registry.createChatProvider({
+      protocol: 'anthropic',
+      modelName: 'claude-opus-4-6',
+      apiKey: 'sk-probe',
+    });
+
+    await expect(provider.generate('', [], HEIC_HISTORY)).rejects.toThrow(
+      /Unsupported media type for base64 image: image\/heic/,
+    );
+  });
+
+  it('honours an explicitly injected accepted-image set without a trait', async () => {
+    const provider = new AnthropicChatProvider({
+      model: 'claude-opus-4-6',
+      apiKey: 'sk-probe',
+      stream: false,
+      acceptedImageMimes: providerImagePolicy('kimi').acceptedMimes,
+    });
+
+    const { params } = await captureAnthropicBody(provider, undefined, HEIC_HISTORY);
+
+    const messages = params['messages'] as { content: unknown[] }[];
+    expect(messages[0]?.content[0]).toMatchObject(HEIC_BLOCK);
   });
 });
 

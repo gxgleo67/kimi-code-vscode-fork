@@ -264,6 +264,7 @@ describe('trait objects are plain declarations', () => {
   it('exposes exactly the hooks appendix A assigns to them, plus metadata markers', () => {
     const hookNames = (trait: ProtocolTrait): string[] => Object.keys(trait);
     expect(hookNames(kimiOpenAITrait).toSorted()).toEqual([
+      'acceptedImageMimes',
       'buildParams',
       'cacheKey',
       'convertError',
@@ -277,7 +278,11 @@ describe('trait objects are plain declarations', () => {
       'withMaxCompletionTokens',
       'withThinking',
     ]);
-    expect(hookNames(kimiAnthropicTrait).toSorted()).toEqual(['convertError', 'withThinking']);
+    expect(hookNames(kimiAnthropicTrait).toSorted()).toEqual([
+      'acceptedImageMimes',
+      'convertError',
+      'withThinking',
+    ]);
   });
 
   it('marks only the native-transport thinking trait as strict-validation (v1 parity)', () => {

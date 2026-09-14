@@ -243,7 +243,11 @@ export class SessionSwarmService implements ISessionSwarmService {
     return {
       agentId,
       profileName,
-      completion: mirrored.then((r) => ({ result: r.summary, usage: r.usage })),
+      completion: mirrored.then((r) => ({
+        result: r.summary,
+        usage: r.usage,
+        stopReason: r.stopReason,
+      })),
     };
   }
 

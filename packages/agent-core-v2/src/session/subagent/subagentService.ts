@@ -2,14 +2,10 @@ import { Service } from '#/_base/di/service';
 import { Error2, ErrorCodes } from '#/errors';
 import { LifecycleScope } from '#/app/scopes';
 import {
-  type IAgentScopeHandle,
   ScopeActivation,
   registerScopedService,
 } from '#/_base/di/scope';
 import { Emitter } from '#/_base/event';
-import type { AgentProfileSummaryPolicy } from '#/app/agentProfileCatalog/agentProfileCatalog';
-import { ISessionAgentProfileCatalog } from '#/session/sessionAgentProfileCatalog/sessionAgentProfileCatalog';
-import { IAgentProfileService } from '#/agent/profile/profile';
 import { createHooks } from '#/hooks';
 import { IAgentLifecycleService } from '#/session/agentLifecycle/agentLifecycle';
 
@@ -37,7 +33,6 @@ export class SessionSubagentService extends Service implements ISessionSubagentS
 
   constructor(
     @IAgentLifecycleService private readonly agentLifecycle: IAgentLifecycleService,
-    @ISessionAgentProfileCatalog private readonly catalog: ISessionAgentProfileCatalog,
   ) {
     super();
   }
@@ -49,21 +44,11 @@ export class SessionSubagentService extends Service implements ISessionSubagentS
         details: { agentId },
       });
     }
-    return runAgentTurn(handle, request, {
-      summaryPolicy: opts.summaryPolicy ?? this.summaryPolicyFor(handle),
-      signal: opts.signal,
-      onReady: opts.onReady,
-    });
+    return runAgentTurn(handle, request, { signal: opts.signal, onReady: opts.onReady });
   }
 
   notifyAgentTaskStopped(context: AgentTaskStopHookContext): void {
     this.onDidStopAgentTaskEmitter.fire(context);
-  }
-
-  private summaryPolicyFor(handle: IAgentScopeHandle): AgentProfileSummaryPolicy | undefined {
-    const profileName = handle.accessor.get(IAgentProfileService).data().profileName;
-    if (profileName === undefined) return undefined;
-    return this.catalog.get(profileName)?.summaryPolicy;
   }
 }
 

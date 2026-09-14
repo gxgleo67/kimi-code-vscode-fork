@@ -44,10 +44,8 @@ describe('tower-worker profile', () => {
     expect(prompt).toContain('Your final message is the entire handoff');
   });
 
-  it('keeps the coder summary policy and ports the description', () => {
+  it('keeps the coder whenToUse and ports the description', () => {
     const coder = builtinProfile('coder');
-    expect(TOWER_WORKER_PROFILE_DEF.summaryPolicy).toEqual(coder.summaryPolicy);
-    expect(TOWER_WORKER_PROFILE_DEF.summaryPolicy).toBeDefined();
     expect(TOWER_WORKER_PROFILE_DEF.description).toContain('Tower worker/reviewer');
     expect(TOWER_WORKER_PROFILE_DEF.whenToUse).toBe(coder.whenToUse);
   });

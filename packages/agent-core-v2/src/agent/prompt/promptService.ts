@@ -12,6 +12,7 @@ import { newMessageId } from '#/agent/contextMemory/messageId';
 import { USER_PROMPT_ORIGIN, type ContextMessage } from '#/agent/contextMemory/types';
 import { IAgentFullCompactionService } from '#/agent/fullCompaction/fullCompaction';
 import { IAgentLoopService, type Turn, type TurnResult } from '#/agent/loop/loop';
+import { IAgentProfileService } from '#/agent/profile/profile';
 import { TurnSteer } from '#/agent/loop/turnOps';
 import { IAgentStateService } from '#/agent/state/agentState';
 import { IAgentSystemReminderService } from '#/agent/systemReminder/systemReminder';
@@ -169,6 +170,7 @@ export class AgentPromptService implements IAgentPromptService {
     @IAgentLoopService private readonly loop: IAgentLoopService,
     @IAgentToolExecutorService toolExecutor: IAgentToolExecutorService,
     @IAgentToolPolicyService private readonly toolPolicy: IAgentToolPolicyService,
+    @IAgentProfileService private readonly profile: IAgentProfileService,
     @IEventDispatcher private readonly dispatcher: IEventDispatcher,
     @IAgentStateService private readonly states: IAgentStateService,
     @ITelemetryService private readonly telemetry: ITelemetryService,
@@ -334,7 +336,7 @@ export class AgentPromptService implements IAgentPromptService {
       role: 'user', content: selected.flatMap((item) => item.message.content), toolCalls: [], origin: USER_PROMPT_ORIGIN,
     };
     const { message: rerouted, captions } = this.extractCompressionCaptions(message);
-    const request = new SteerStepRequest(rerouted, captions, this.reminders, (materialized) => {
+    const request = new SteerStepRequest(rerouted, captions, this.reminders, this.profile.getModelProviderType(), (materialized) => {
       void this.dispatcher.dispatch(
         new TurnSteer({ input: materialized.content, origin: materialized.origin ?? USER_PROMPT_ORIGIN }),
       );
@@ -367,7 +369,7 @@ export class AgentPromptService implements IAgentPromptService {
 
   async inject(message: ContextMessage): Promise<Turn | undefined> {
     const { message: rerouted, captions } = this.extractCompressionCaptions(message);
-    const request = new SteerStepRequest(rerouted, captions, this.reminders, (materialized) => {
+    const request = new SteerStepRequest(rerouted, captions, this.reminders, this.profile.getModelProviderType(), (materialized) => {
       void this.dispatcher.dispatch(
         new TurnSteer({ input: materialized.content, origin: materialized.origin ?? USER_PROMPT_ORIGIN }),
       );
@@ -400,7 +402,7 @@ export class AgentPromptService implements IAgentPromptService {
         item.completionDeferred.resolve({ promptId: item.id, result: undefined, state: 'blocked' });
         this.publishCompleted(item.id, 'blocked'); return;
       }
-      const turn = (await this.loop.enqueue(new PromptStepRequest(message, captions, this.reminders)).assigned).turn;
+      const turn = (await this.loop.enqueue(new PromptStepRequest(message, captions, this.reminders, this.profile.getModelProviderType())).assigned).turn;
       if (turn === undefined) { this.pending.unshift(item); return; }
       item.state = 'running'; item.launchedDeferred.resolve(turn); this.active = Object.assign(item, { turn });
       void turn.result.then((result) => this.settle(item, result));

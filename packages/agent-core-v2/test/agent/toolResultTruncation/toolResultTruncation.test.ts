@@ -92,9 +92,9 @@ describe('ToolResultTruncationService', () => {
     );
   });
 
-  it('keeps already-truncated and mixed-media results unchanged', async () => {
+  it('spills already-truncated text results but keeps mixed-media results unchanged', async () => {
     const alreadyTruncated = {
-      output: 'z'.repeat(50_001),
+      output: `${'z'.repeat(50_001)}full text`,
       truncated: true,
     } as const;
     const mixedMedia = {
@@ -104,13 +104,18 @@ describe('ToolResultTruncationService', () => {
       ] satisfies ContentPart[],
     };
 
-    await expect(
-      truncation.truncateForModel({
-        toolName: 'Lookup',
-        toolCallId: 'call_truncated',
-        result: alreadyTruncated,
-      }),
-    ).resolves.toBe(alreadyTruncated);
+    const spilled = await truncation.truncateForModel({
+      toolName: 'Lookup',
+      toolCallId: 'call_truncated',
+      result: alreadyTruncated,
+    });
+    expect(spilled.truncated).toBe(true);
+    const rendered = spilled.output;
+    expect(typeof rendered).toBe('string');
+    if (typeof rendered !== 'string') throw new Error('expected string output');
+    await expect(readFile(renderedOutputPath(rendered), 'utf8')).resolves.toBe(
+      alreadyTruncated.output,
+    );
     await expect(
       truncation.truncateForModel({
         toolName: 'Lookup',

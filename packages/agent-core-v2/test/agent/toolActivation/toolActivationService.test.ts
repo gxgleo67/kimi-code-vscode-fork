@@ -246,7 +246,7 @@ describe('AgentToolActivationService', () => {
 
     expect(requirements).toMatchObject({
       Agent: ['process'],
-      Read: ['fs'],
+      Read: undefined,
       Write: ['fs'],
       Edit: ['fs'],
       Bash: ['process'],

@@ -554,7 +554,11 @@ export {
   type ImageCompressionTelemetry,
 } from '#/agent/media/image-compress';
 export {
-  MODEL_ACCEPTED_IMAGE_MIMES,
+  DEFAULT_INLINE_IMAGE_BYTE_BUDGET,
+  providerImagePolicy,
+  type ProviderImagePolicy,
+} from '#/kosong/contract/image-formats';
+export {
   buildImageConversionGuidance,
   buildUnsupportedImageNotice,
   decodeBase64Prefix,
@@ -630,6 +634,7 @@ export * from '#/agent/loop/loop';
 export * from '#/agent/loop/loopService';
 export * from '#/agent/loop/loopContinuation';
 export * from '#/agent/loop/loopContinuationService';
+export * from '#/agent/loop/handoffStep';
 export * from '#/agent/interruptionReminder/interruptionReminder';
 export * from '#/agent/interruptionReminder/interruptionReminderService';
 export * from '#/agent/interruptionReminder/interruptionReminderOps';

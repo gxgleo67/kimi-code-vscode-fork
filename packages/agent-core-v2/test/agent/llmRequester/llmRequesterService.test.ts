@@ -906,3 +906,30 @@ describe('AgentLLMRequesterService tool call id normalization', () => {
     expect(result.message.toolCalls[0]!.id).toBe('Bash_0__2');
   });
 });
+
+describe('AgentLLMRequesterService attempt retry notification', () => {
+  it('notifies before resending with a repaired projection', async () => {
+    const calls = { value: 0 };
+    const projection = recordProjectionCalls();
+    const { service } = createService(createRequester(calls), projection.projector);
+    const onAttemptRetry = vi.fn();
+
+    const result = await service.request({ onAttemptRetry });
+
+    expect(result.message.content).toEqual([{ type: 'text', text: 'ok' }]);
+    expect(calls.value).toBe(2);
+    expect(onAttemptRetry).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not notify when the error is final', async () => {
+    const calls = { value: 0 };
+    const { service } = createService(
+      createRequester(calls, new APIStatusError(400, 'max_tokens must be positive')),
+      undefined,
+    );
+    const onAttemptRetry = vi.fn();
+
+    await expect(service.request({ onAttemptRetry })).rejects.toMatchObject({ statusCode: 400 });
+    expect(onAttemptRetry).not.toHaveBeenCalled();
+  });
+});

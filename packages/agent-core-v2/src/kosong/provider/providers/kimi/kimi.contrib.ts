@@ -1,3 +1,4 @@
+import { providerImagePolicy } from '#/kosong/contract/image-formats';
 import type { ContentPart } from '#/kosong/contract/message';
 import type { Tool } from '#/kosong/contract/tool';
 import type {
@@ -101,6 +102,8 @@ export const kimiOpenAITrait: ProtocolTrait = {
     defaultBaseUrl: KIMI_DEFAULT_BASE_URL,
   }),
 
+  acceptedImageMimes: () => providerImagePolicy('kimi').acceptedMimes,
+
   convertError: (error) => classifyKimiQuotaError(error),
 
   cacheKey: (key) => ({ prompt_cache_key: key }),
@@ -199,6 +202,8 @@ export const kimiOpenAITrait: ProtocolTrait = {
 };
 
 export const kimiAnthropicTrait: ProtocolTrait = {
+  acceptedImageMimes: () => providerImagePolicy('kimi').acceptedMimes,
+
   convertError: (error) => classifyKimiQuotaError(error),
 
   withThinking: (effort, _options, generationKwargs) => {

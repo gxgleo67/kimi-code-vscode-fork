@@ -55,6 +55,7 @@ import {
   type TurnSeed,
 } from './stepRequest';
 import { StepRequestQueue, type StepRequestBatch } from './stepRequestQueue';
+import { HANDOFF_STEP_KIND } from './handoffStep';
 import {
   AssistantDelta,
   isDisplayablePromptOrigin,
@@ -505,7 +506,14 @@ export class AgentLoopService extends Disposable implements IAgentLoopService {
           result.type === 'completed' ? undefined : interruptReasonFor(result);
         const durationMs = Date.now() - startedAt;
         void this.dispatcher.dispatch(
-          new TurnEnded({ turnId: turn.id, reason: result.type, error, durationMs, interruptReason }),
+          new TurnEnded({
+            turnId: turn.id,
+            reason: result.type,
+            error,
+            durationMs,
+            interruptReason,
+            stopReason: result.type === 'completed' ? result.stopReason : undefined,
+          }),
         );
         if (error !== undefined) void this.dispatcher.dispatch(new AgentErrorEvent(error));
         if (interruptReason !== undefined) {
@@ -639,7 +647,21 @@ export class AgentLoopService extends Disposable implements IAgentLoopService {
       queue: job?.queue ?? this.standaloneStepQueue,
       steps: 0,
       lastStopReason: undefined,
+      forcedStopReason: undefined,
       current: undefined,
+    };
+  }
+
+  private completedResult(runtime: LoopRuntime): LoopRunResult {
+    const truncated = runtime.lastStopReason === 'truncated';
+    if (runtime.forcedStopReason === undefined) {
+      return { type: 'completed', steps: runtime.steps, truncated };
+    }
+    return {
+      type: 'completed',
+      steps: runtime.steps,
+      truncated,
+      stopReason: runtime.forcedStopReason,
     };
   }
 
@@ -647,16 +669,15 @@ export class AgentLoopService extends Disposable implements IAgentLoopService {
     runtime.current = undefined;
     runtime.turnSignal.throwIfAborted();
     if (!runtime.queue.hasPendingRequests()) {
-      return {
-        result: {
-          type: 'completed',
-          steps: runtime.steps,
-          truncated: runtime.lastStopReason === 'truncated',
-        },
-      };
+      return { result: this.completedResult(runtime) };
     }
     const maxSteps = this.config.get<LoopControl>(LOOP_CONTROL_SECTION)?.maxStepsPerTurn;
-    if (maxSteps !== undefined && maxSteps > 0 && runtime.steps >= maxSteps) {
+    if (
+      maxSteps !== undefined &&
+      maxSteps > 0 &&
+      runtime.steps >= maxSteps &&
+      runtime.queue.peekDriverKind() !== HANDOFF_STEP_KIND
+    ) {
       throw createMaxStepsExceededError(maxSteps);
     }
     const batch = runtime.queue.takeNextBatch()!;
@@ -691,6 +712,9 @@ export class AgentLoopService extends Disposable implements IAgentLoopService {
     }
     runtime.current = undefined;
     runtime.lastStopReason = result.stopReason;
+    if (result.stopTurnReason !== undefined && runtime.forcedStopReason === undefined) {
+      runtime.forcedStopReason = result.stopTurnReason;
+    }
     if (result.stopReason === 'filtered') {
       throw new Error2(ErrorCodes.PROVIDER_FILTERED, 'Provider safety policy blocked the response.', {
         name: 'ProviderFilteredError',
@@ -698,7 +722,7 @@ export class AgentLoopService extends Disposable implements IAgentLoopService {
       });
     }
     if (!result.hookStopTurn) return undefined;
-    return { type: 'completed', steps: runtime.steps, truncated: result.stopReason === 'truncated' };
+    return this.completedResult(runtime);
   }
 
   private async handleLoopStepError(
@@ -809,7 +833,10 @@ export class AgentLoopService extends Disposable implements IAgentLoopService {
     const markStepStarted = this.beginStep(turnId, signal, currentStep, stepUuid, onStarted);
     const streamParts = this.createStreamPartHandler(turnId, markStepStarted);
     const request = this.llmRequester.start(
-      { source: { type: 'turn', turnId, step: currentStep } },
+      {
+        source: { type: 'turn', turnId, step: currentStep },
+        onAttemptRetry: () => streamParts.discardAttempt(),
+      },
       streamParts.handle,
       signal,
     );
@@ -823,7 +850,7 @@ export class AgentLoopService extends Disposable implements IAgentLoopService {
     }
     this.lastRequestTraceId = request.trace.traceId;
     this.appendResponseContent(turnId, currentStep, stepUuid, response);
-    const finishReason = await this.executeStepTools(
+    const { finishReason, stopTurnReason } = await this.executeStepTools(
       turnId,
       signal,
       currentStep,
@@ -840,7 +867,7 @@ export class AgentLoopService extends Disposable implements IAgentLoopService {
       response.usage,
       finishReason,
     );
-    return { stopReason: finishReason, hookStopTurn };
+    return { stopReason: finishReason, hookStopTurn, stopTurnReason };
   }
 
   private beginStep(
@@ -911,13 +938,14 @@ export class AgentLoopService extends Disposable implements IAgentLoopService {
     stepUuid: string,
     response: AgentLLMRequestFinish,
     trace: LLMRequestTrace,
-  ): Promise<FinishReason> {
+  ): Promise<StepToolsOutcome> {
     let finishReason = response.providerFinishReason ?? 'completed';
     if (response.message.toolCalls.length === 0) {
-      return finishReason === 'tool_calls' ? 'other' : finishReason;
+      return { finishReason: finishReason === 'tool_calls' ? 'other' : finishReason };
     }
     const toolCallUuids = new Map<string, string>();
     let stopTurn = false;
+    let stopTurnReason: string | undefined;
     for await (const toolResult of this.toolExecutor.execute(response.message.toolCalls, {
       signal,
       turnId,
@@ -946,10 +974,13 @@ export class AgentLoopService extends Disposable implements IAgentLoopService {
         toolCallId: toolResult.toolCallId,
         result: { output: result.output, isError: result.isError, note: result.note },
       });
-      if (result.stopTurn === true) stopTurn = true;
+      if (result.stopTurn === true) {
+        stopTurn = true;
+        stopTurnReason ??= result.stopTurnReason;
+      }
     }
     finishReason = stopTurn ? 'completed' : 'tool_calls';
-    return finishReason;
+    return { finishReason, stopTurnReason };
   }
 
   private finishStep(
@@ -1129,6 +1160,11 @@ export class AgentLoopService extends Disposable implements IAgentLoopService {
       },
       drainInterruptedContent: () =>
         partialContent.splice(0).filter((part) => !isVacuousContentPart(part)),
+      discardAttempt: () => {
+        partialContent.length = 0;
+        callsByIndex.clear();
+        forceContentPartBoundary = false;
+      },
     };
   }
 }
@@ -1174,6 +1210,7 @@ interface LoopRuntime {
   readonly queue: StepRequestQueue;
   steps: number;
   lastStopReason: FinishReason | undefined;
+  forcedStopReason: string | undefined;
   current: StepRuntime | undefined;
 }
 
@@ -1190,6 +1227,7 @@ type BeginStepResult = { readonly step: StepRuntime } | { readonly result: LoopR
 interface StreamPartCollector {
   readonly handle: (part: StreamedMessagePart) => void;
   drainInterruptedContent(): ContentPart[];
+  discardAttempt(): void;
 }
 
 function cancelReasonFor(cancellation: unknown): 'user_cancelled' | 'aborted' {
@@ -1212,6 +1250,12 @@ function interruptReasonFor(
 type StepExecutionResult = {
   readonly stopReason: FinishReason;
   readonly hookStopTurn: boolean;
+  readonly stopTurnReason?: string;
+};
+
+type StepToolsOutcome = {
+  readonly finishReason: FinishReason;
+  readonly stopTurnReason?: string;
 };
 
 type LoopErrorDisposition =

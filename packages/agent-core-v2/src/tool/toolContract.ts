@@ -5,6 +5,10 @@ import type { ToolInputDisplay } from '@moonshot-ai/protocol';
 
 export type ExecutableToolOutput = string | ContentPart[];
 
+export const DEFAULT_TOOL_RESULT_MAX_CHARS = 50_000;
+
+export const DEFAULT_TOOL_RESULT_MAX_RETAINED_CHARS = 10_000_000;
+
 export type ToolDeliveryKind = 'steer';
 
 export interface ToolDeliveryMessage {
@@ -23,18 +27,22 @@ export interface ExecutableToolSuccessResult {
   readonly output: ExecutableToolOutput;
   readonly isError?: false | undefined;
   readonly stopTurn?: boolean | undefined;
+  readonly stopTurnReason?: string;
   readonly truncated?: boolean | undefined;
   readonly note?: string;
   readonly delivery?: ToolDelivery | undefined;
+  readonly spillExempt?: true;
 }
 
 export interface ExecutableToolErrorResult {
   readonly output: ExecutableToolOutput;
   readonly isError: true;
   readonly stopTurn?: boolean | undefined;
+  readonly stopTurnReason?: string;
   readonly truncated?: boolean | undefined;
   readonly note?: string;
   readonly delivery?: ToolDelivery | undefined;
+  readonly spillExempt?: true;
 }
 
 export type ExecutableToolResult = ExecutableToolSuccessResult | ExecutableToolErrorResult;

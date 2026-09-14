@@ -8,6 +8,7 @@ export interface ToolDedupeSuccessResult {
   readonly output: ToolDedupeOutput;
   readonly isError?: false | undefined;
   readonly stopTurn?: boolean | undefined;
+  readonly stopTurnReason?: string | undefined;
   readonly message?: string | undefined;
   readonly truncated?: boolean | undefined;
 }
@@ -16,11 +17,14 @@ export interface ToolDedupeErrorResult {
   readonly output: ToolDedupeOutput;
   readonly isError: true;
   readonly stopTurn?: boolean | undefined;
+  readonly stopTurnReason?: string | undefined;
   readonly message?: string | undefined;
   readonly truncated?: boolean | undefined;
 }
 
 export type ToolDedupeResult = ToolDedupeSuccessResult | ToolDedupeErrorResult;
+
+export const REPEAT_BREAKER_STOP_REASON = 'repeat_breaker';
 
 export interface IAgentToolDedupeService {
   readonly _serviceBrand: undefined;

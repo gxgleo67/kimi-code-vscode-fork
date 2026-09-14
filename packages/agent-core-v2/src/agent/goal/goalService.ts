@@ -1077,9 +1077,6 @@ export class AgentGoalService extends Disposable implements IAgentGoalService {
         Math.max(0, this.deadlineScheduler.now() - this.liveWallClockStartedAt)
       );
     }
-    if (state.status === 'active' && state.wallClockResumedAt !== undefined) {
-      return state.wallClockMs + Math.max(0, Date.now() - state.wallClockResumedAt);
-    }
     return state.wallClockMs;
   }
 
@@ -1089,9 +1086,6 @@ export class AgentGoalService extends Disposable implements IAgentGoalService {
         state.wallClockMs +
         Math.max(0, this.deadlineScheduler.now() - this.liveWallClockStartedAt)
       );
-    }
-    if (state.status === 'active' && state.wallClockResumedAt !== undefined) {
-      return state.wallClockMs + Math.max(0, Date.now() - state.wallClockResumedAt);
     }
     return state.wallClockMs;
   }
@@ -1138,7 +1132,7 @@ export class AgentGoalService extends Disposable implements IAgentGoalService {
     ) {
       return;
     }
-    const remainingMs = Math.max(0, budgetMs - this.liveWallClockMs(state));
+    const remainingMs = Math.min(2_147_483_647, Math.max(0, budgetMs - this.liveWallClockMs(state)));
     this.wallClockDeadline.value = this.deadlineScheduler.schedule(remainingMs, () => {
       this.handleWallClockDeadline();
     });

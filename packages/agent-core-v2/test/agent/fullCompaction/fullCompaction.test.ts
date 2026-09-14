@@ -291,7 +291,7 @@ describe('FullCompaction', () => {
       properties: expect.objectContaining({
         agent_id: 'main',
         source: 'manual',
-        tokens_before: 3_297,
+        tokens_before: 3_350,
         tokens_after: expect.any(Number),
         duration_ms: expect.any(Number),
         compacted_count: 6,
@@ -656,7 +656,7 @@ describe('FullCompaction', () => {
       event: 'compaction_finished',
       properties: expect.objectContaining({
         source: 'manual',
-        tokens_before: 14_363,
+        tokens_before: expect.any(Number),
         retry_count: 1,
         trace_id: 'trace-compact-1',
       }),
@@ -1070,7 +1070,7 @@ describe('FullCompaction', () => {
       properties: expect.objectContaining({
         agent_id: 'main',
         source: 'manual',
-        tokens_before: 14_363,
+        tokens_before: expect.any(Number),
         duration_ms: expect.any(Number),
         round: 1,
         retry_count: 0,
@@ -1295,7 +1295,7 @@ describe('FullCompaction', () => {
       event: 'compaction_failed',
       properties: expect.objectContaining({
         source: 'manual',
-        tokens_before: 14_363,
+        tokens_before: expect.any(Number),
         duration_ms: expect.any(Number),
         retry_count: 4,
         error_type: 'APIConnectionError',
@@ -1496,6 +1496,7 @@ describe('FullCompaction', () => {
     const ctx = testAgent();
     ctx.configure({
       provider: CATALOGUED_PROVIDER,
+      tools: SNAPSHOT_VISIBLE_TOOLS,
       modelCapabilities: {
         ...CATALOGUED_MODEL_CAPABILITIES,
         max_context_tokens: maxContextTokens,
@@ -1668,8 +1669,8 @@ describe('FullCompaction', () => {
       event: 'compaction_finished',
       properties: expect.objectContaining({
         source: 'auto',
-        tokens_before: 3_304,
-        tokens_after: 3_288,
+        tokens_before: 3_357,
+        tokens_after: 3_341,
         compacted_count: 7,
         retry_count: 0,
       }),

@@ -81,6 +81,8 @@ export interface ProtocolTrait {
 
   capability?(modelName: string, ctx: TraitContext): ModelCapability | undefined;
 
+  acceptedImageMimes?(ctx: TraitContext): ReadonlySet<string> | undefined;
+
   uploadVideo?(
     input: string | VideoUploadInput,
     options: GenerateOptions | undefined,
@@ -116,4 +118,15 @@ export function traitConvertError(
     bound = (error) => declared(error, context);
   }
   return bound;
+}
+
+export function traitAcceptedImageMimes(
+  traits: readonly ResolvedTrait[],
+): ReadonlySet<string> | undefined {
+  for (const { trait, context } of traits) {
+    if (trait.acceptedImageMimes === undefined) continue;
+    const declared = trait.acceptedImageMimes(context);
+    if (declared !== undefined) return declared;
+  }
+  return undefined;
 }

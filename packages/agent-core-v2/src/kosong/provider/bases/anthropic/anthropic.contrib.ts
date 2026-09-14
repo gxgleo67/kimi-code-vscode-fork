@@ -1,5 +1,5 @@
 import { registerProtocolBase } from '#/kosong/protocol/protocolBase';
-import { traitDefaultHeaders } from '#/kosong/protocol/protocolTrait';
+import { traitAcceptedImageMimes, traitDefaultHeaders } from '#/kosong/protocol/protocolTrait';
 
 import { AnthropicChatProvider, getAnthropicModelCapability } from './anthropic';
 import { composeAnthropicHooks } from './anthropicHooks';
@@ -18,6 +18,7 @@ registerProtocolBase({
         baseUrl:
           config.baseUrl ?? firstProcessEnv(endpoint?.baseUrlEnv) ?? endpoint?.defaultBaseUrl,
         defaultHeaders: traitDefaultHeaders(traits),
+        acceptedImageMimes: traitAcceptedImageMimes(traits),
         defaultMaxTokens: config.providerOptions?.defaultMaxTokens,
         adaptiveThinking: config.providerOptions?.adaptiveThinking,
         supportEfforts: config.providerOptions?.supportEfforts,

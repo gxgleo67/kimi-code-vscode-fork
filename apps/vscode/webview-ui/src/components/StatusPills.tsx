@@ -243,13 +243,14 @@ export function StatusPills() {
             </button>
           )}
           {hasChanges && (
-            <button type="button" onClick={() => togglePanel("changes")} className={pillClass(openPanel === "changes")}>
+            <button
+              type="button"
+              onClick={() => togglePanel("changes")}
+              className={pillClass(openPanel === "changes")}
+              title={t("changes.lineStats", { additions: fileStats.additions, deletions: fileStats.deletions })}
+            >
               <IconFileCode className="size-3.5" />
               <span>{t("changes.changedCount", { count: fileChanges.length })}</span>
-              <span className="text-[10px] tabular-nums">
-                <span className="text-green-600 dark:text-green-400">+{fileStats.additions}</span>{" "}
-                <span className="text-red-600 dark:text-red-400">-{fileStats.deletions}</span>
-              </span>
             </button>
           )}
         </div>

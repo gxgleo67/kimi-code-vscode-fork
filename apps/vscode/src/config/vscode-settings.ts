@@ -4,27 +4,6 @@ import type { ExtensionConfig } from "../../shared/types";
 declare const __EXTENSION_VERSION__: string;
 const EXTENSION_VERSION = typeof __EXTENSION_VERSION__ !== "undefined" ? __EXTENSION_VERSION__ : "0.0.0";
 
-/** Support backdoor with the highest priority: a truthy value forces the legacy v1 engine. */
-export const LEGACY_ENGINE_ENV = "KIMI_CODE_LEGACY_FLAG";
-
-const TRUTHY_ENV_VALUES = new Set(["1", "true", "yes", "on"]);
-
-/**
- * The single engine-selection decision for the whole extension. A truthy
- * `KIMI_CODE_LEGACY_FLAG` wins over the `kimi.useAgentCoreV1` setting, so
- * support and headless test runs can force the legacy engine without
- * touching user settings. Both default to the v2 engine.
- */
-export function resolveUseAgentCoreV1(
-  settingValue: boolean,
-  env: Readonly<Record<string, string | undefined>>,
-): boolean {
-  if (TRUTHY_ENV_VALUES.has((env[LEGACY_ENGINE_ENV] ?? "").trim().toLowerCase())) {
-    return true;
-  }
-  return settingValue;
-}
-
 function getConfig() {
   return vscode.workspace.getConfiguration("kimifork");
 }
@@ -70,9 +49,12 @@ export const VSCodeSettings = {
     return getConfig().get<boolean>("compactComposer", false);
   },
 
-  /** Read once at activation; a change needs a window reload to take effect. */
-  get useAgentCoreV1(): boolean {
-    return resolveUseAgentCoreV1(getConfig().get<boolean>("useAgentCoreV1", false), process.env);
+  get openPlanInEditor(): boolean {
+    return getConfig().get<boolean>("openPlanInEditor", false);
+  },
+
+  get planModeMaxThinking(): boolean {
+    return getConfig().get<boolean>("planModeMaxThinking", false);
   },
 
   getExtensionConfig(): ExtensionConfig {
@@ -86,6 +68,8 @@ export const VSCodeSettings = {
       language: this.language,
       defaultThinkingEffort: this.defaultThinkingEffort,
       compactComposer: this.compactComposer,
+      openPlanInEditor: this.openPlanInEditor,
+      planModeMaxThinking: this.planModeMaxThinking,
       version: EXTENSION_VERSION,
     };
   },
@@ -96,7 +80,7 @@ export function onSettingsChange(callback: (changedKeys: string[]) => void): vsc
     if (!e.affectsConfiguration("kimifork")) {
       return;
     }
-    const keys = ["yoloMode", "autosave", "enableNewConversationShortcut", "useCtrlEnterToSend", "showThinkingContent", "showThinkingExpanded", "editorContext", "language", "defaultThinkingEffort", "compactComposer"];
+    const keys = ["yoloMode", "autosave", "enableNewConversationShortcut", "useCtrlEnterToSend", "showThinkingContent", "showThinkingExpanded", "editorContext", "language", "defaultThinkingEffort", "compactComposer", "openPlanInEditor", "planModeMaxThinking"];
     const changedKeys = keys.filter((key) => e.affectsConfiguration(`kimifork.${key}`));
     if (changedKeys.length > 0) {
       callback(changedKeys);

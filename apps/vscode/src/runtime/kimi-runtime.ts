@@ -1,6 +1,6 @@
 import {
-  createKimiHarness,
   createKimiHarnessV2,
+  effectiveModelAlias,
   type KimiHarness,
   type Session,
   type SessionSummary,
@@ -30,11 +30,11 @@ export interface KimiRuntimeOptions {
   readonly homeDir?: string;
   readonly harness?: KimiHarness;
   /**
-   * Engine rollback: create the legacy v1 harness instead of the default v2
-   * one. The decision is made once in `config/vscode-settings.ts`; a change
-   * applies on the next window reload, when the runtime is rebuilt.
+   * Live read of the kimifork.planModeMaxThinking setting. Injected by the
+   * bridge (which owns VS Code config access); when absent, sessions never
+   * boost the thinking effort for plan mode.
    */
-  readonly useAgentCoreV1?: boolean;
+  readonly planModeMaxThinkingEnabled?: () => boolean;
 }
 
 /**
@@ -62,12 +62,12 @@ export class KimiRuntime {
   private readonly broadcast: RuntimeBroadcast;
   private readonly captureBaseline: KimiRuntimeOptions["captureBaseline"];
   private readonly log: KimiRuntimeOptions["log"];
+  private readonly planModeMaxThinkingEnabled: KimiRuntimeOptions["planModeMaxThinkingEnabled"];
   private readonly sessions = new Map<string, SessionRuntime>();
   private readonly sessionByView = new Map<string, string>();
   private readonly viewChains = new Map<string, Promise<void>>();
   /** Views that must start blank on their first mount (Open in New Tab). */
   private readonly freshViews = new Set<string>();
-  private readonly agentCoreV1: boolean;
   private experimentGate: Promise<void> | undefined;
   private closed = false;
 
@@ -75,11 +75,10 @@ export class KimiRuntime {
     this.broadcast = options.broadcast;
     this.captureBaseline = options.captureBaseline;
     this.log = options.log;
-    this.agentCoreV1 = options.useAgentCoreV1 === true;
-    const createHarness = options.useAgentCoreV1 ? createKimiHarness : createKimiHarnessV2;
+    this.planModeMaxThinkingEnabled = options.planModeMaxThinkingEnabled;
     this.harness =
       options.harness ??
-      createHarness({
+      createKimiHarnessV2({
         homeDir: options.homeDir,
         identity: {
           productName: "kimi-code-vscode",
@@ -326,17 +325,46 @@ export class KimiRuntime {
       broadcast: this.broadcast,
       captureBaseline: this.captureBaseline,
       log: this.log,
-      // AI session titles are a v2-only service; on the v1 engine the RPC
-      // does not exist, so the hook is left out entirely.
-      generateSessionTitle: this.agentCoreV1
-        ? undefined
-        : (id) => this.harness.generateSessionTitle({ id }),
+      generateSessionTitle: (id) => this.harness.generateSessionTitle({ id }),
+      planModeThinkingBoost:
+        this.planModeMaxThinkingEnabled === undefined
+          ? undefined
+          : {
+              enabled: this.planModeMaxThinkingEnabled,
+              resolveMaxEffort: (model) => this.resolveMaxThinkingEffort(model),
+            },
       onOrphanSettled: (id) => {
         this.reapOrphan(id);
       },
     });
     this.sessions.set(session.id, runtime);
     return runtime;
+  }
+
+  /**
+   * Highest declared thinking effort for a model alias (support_efforts is
+   * ordered by strength), resolved through the same provider-type effective
+   * profile the config handlers use. Undefined when the model or its levels
+   * are unknown — the caller then leaves the effort untouched rather than
+   * guessing a level the model may reject.
+   */
+  private async resolveMaxThinkingEffort(model: string | undefined): Promise<string | undefined> {
+    if (model === undefined) return undefined;
+    try {
+      const config = await this.harness.getConfig();
+      const alias = config.models?.[model];
+      if (alias === undefined) return undefined;
+      const effective = effectiveModelAlias(
+        alias,
+        config.providers?.[alias.provider]?.type ?? alias.protocol,
+      );
+      const efforts = effective.supportEfforts;
+      if (efforts === undefined || efforts.length === 0) return undefined;
+      return efforts[efforts.length - 1];
+    } catch (error) {
+      this.log("Failed to resolve the model's highest thinking effort", error);
+      return undefined;
+    }
   }
 
   /**

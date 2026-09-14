@@ -47,6 +47,18 @@ export interface ExtensionConfig {
    * stay fully visible. Default off.
    */
   compactComposer: boolean;
+  /**
+   * When a plan review is raised, also open the plan document in VS Code as a
+   * rendered Markdown preview. Default off — the plan renders inline in the
+   * approval dialog.
+   */
+  openPlanInEditor: boolean;
+  /**
+   * While plan mode is active, raise the session's thinking effort to the
+   * current model's highest supported level; restore the previous effort when
+   * plan mode exits. Default off.
+   */
+  planModeMaxThinking: boolean;
   version: string;
 }
 

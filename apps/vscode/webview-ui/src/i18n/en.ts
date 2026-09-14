@@ -79,6 +79,10 @@ export const en = {
   "menu.language": "Language / 语言",
   "menu.compactComposer": "Compact composer",
   "menu.compactComposerDesc": "Show the composer's permission/mode buttons as icons to save space; the model name and thinking effort always stay fully visible. Default off.",
+  "menu.openPlanInEditor": "Open plan in editor",
+  "menu.openPlanInEditorDesc": "When a plan review appears, also open the plan document as a rendered Markdown preview in VS Code. Default off — the plan renders inline in the approval dialog.",
+  "menu.planModeMaxThinking": "Max thinking in plan mode",
+  "menu.planModeMaxThinkingDesc": "While plan mode is on, raise thinking effort to the model's highest supported level; restore the previous effort when plan mode exits. Default off.",
 
   // ── WelcomeScreen / useWelcomeHint ──────────────────────────────────────
   "welcome.commands": "⚡ Commands",
@@ -216,6 +220,7 @@ export const en = {
   "queue.steerFailed": "Steer failed; the message stays in the queue.",
   "queue.queuedCount": "{count} Queued",
   "changes.changedCount": "{count} Changed",
+  "changes.lineStats": "+{additions} -{deletions}",
 
   // ── ApprovalDialog (incl. plan review) ──────────────────────────────────
   "approval.allowThis": "Allow this {action}?",
@@ -225,8 +230,7 @@ export const en = {
   "approval.executeThisPlan": "Execute this plan?",
   "approval.failedToLoad": "Failed to load {path}: {error}",
   "approval.loadingPlan": "Loading plan...",
-  "approval.planOpenedInEditor": "Plan opened in the VS Code editor",
-  "approval.reopenPlan": "Reopen",
+  "approval.openInEditor": "Open in editor",
   "approval.revisePlaceholder": "What should the plan change?",
   "approval.sendFeedback": "Send feedback",
   "approval.execute": "Execute",

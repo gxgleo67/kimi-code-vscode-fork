@@ -55,7 +55,6 @@ const host = vi.hoisted(() => {
     Uri,
     watcher,
     harness,
-    createKimiHarness: vi.fn(() => harness),
     createKimiHarnessV2: vi.fn(() => harness),
     showWarningMessage,
     workspaceFolders: [] as Array<{ uri: Uri }>,
@@ -79,7 +78,6 @@ vi.mock("@moonshot-ai/kimi-code-sdk", async (importOriginal) => {
   const original = await importOriginal<typeof import("@moonshot-ai/kimi-code-sdk")>();
   return {
     ...original,
-    createKimiHarness: () => host.createKimiHarness(),
     createKimiHarnessV2: () => host.createKimiHarnessV2(),
   };
 });
@@ -98,7 +96,6 @@ beforeEach(async () => {
   host.harness.resumeSession.mockReset();
   host.harness.getConfig.mockReset();
   host.harness.getConfig.mockResolvedValue({ models: {} });
-  host.createKimiHarness.mockImplementation(() => host.harness);
   host.createKimiHarnessV2.mockImplementation(() => host.harness);
   host.showWarningMessage.mockReset();
   host.showWarningMessage.mockResolvedValue(undefined);
@@ -136,25 +133,12 @@ describe("Engine startup", () => {
     );
   }
 
-  it("reports the rollback setting when the default engine cannot start", () => {
-    // Keep v2 the default even when the suite itself runs under the legacy flag.
-    vi.stubEnv("KIMI_CODE_LEGACY_FLAG", "");
+  it("reports a readable error when the engine cannot start", () => {
     host.createKimiHarnessV2.mockImplementationOnce(() => {
       throw new Error("engine boom");
     });
 
-    expect(constructBridge).toThrow(
-      /Failed to start the Kimi engine: engine boom\..*kimi\.useAgentCoreV1/s,
-    );
-  });
-
-  it("reports no rollback hint when the legacy engine itself cannot start", () => {
-    vi.stubEnv("KIMI_CODE_LEGACY_FLAG", "1");
-    host.createKimiHarness.mockImplementationOnce(() => {
-      throw new Error("legacy boom");
-    });
-
-    expect(constructBridge).toThrow(/^Failed to start the Kimi engine: legacy boom\.$/);
+    expect(constructBridge).toThrow(/^Failed to start the Kimi engine: engine boom\.$/);
   });
 });
 

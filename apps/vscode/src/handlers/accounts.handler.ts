@@ -39,7 +39,16 @@ function entryFromProviderId(provider: string): ManagedAccountEntry {
 
 interface AccountConfigView {
   readonly providers?: Record<string, unknown> | undefined;
-  readonly models?: Record<string, { readonly provider?: string | undefined }> | undefined;
+  readonly models?:
+    | Record<
+        string,
+        {
+          readonly provider?: string | undefined;
+          readonly model?: string | undefined;
+          readonly supportEfforts?: readonly string[] | undefined;
+        }
+      >
+    | undefined;
   readonly defaultModel?: string | undefined;
 }
 
@@ -243,11 +252,33 @@ const switchAccount: Handler<{ provider: string }, AccountSwitchResult> = async 
     if (aliases.length === 0) {
       throw new Error("This account has no available models.");
     }
-    const target = aliases[0]!;
     const runtime = ctx.getSession();
+    // Keep the user's current model across the account switch: alias ids are
+    // per-account (`kimi-code-2/<model>`), so match by the underlying model
+    // id. Fall back to the account's first alias only when the account does
+    // not offer the current model.
+    const currentAlias = runtime !== undefined
+      ? (await runtime.session.getStatus()).model
+      : config.defaultModel;
+    const currentModelId = currentAlias !== undefined ? config.models?.[currentAlias]?.model : undefined;
+    const target = (currentModelId !== undefined
+      ? aliases.find((alias) => config.models?.[alias]?.model === currentModelId)
+      : undefined) ?? aliases[0]!;
     if (runtime !== undefined) {
       const status = await runtime.session.getStatus();
-      if (status.model !== target) await runtime.session.setModel(target);
+      if (status.model !== target) {
+        await runtime.session.setModel(target);
+        // A model switch re-seats the thinking effort onto the new model's
+        // default; restore the user's pick when the target model supports it.
+        const effort = status.thinkingEffort;
+        const after = await runtime.session.getStatus();
+        const supported = config.models?.[target]?.supportEfforts;
+        if (after.thinkingEffort !== effort && (supported === undefined || supported.includes(effort))) {
+          await runtime.session.setThinking(effort).catch((error: unknown) => {
+            ctx.logError("Failed to restore thinking effort after an account switch", error);
+          });
+        }
+      }
     }
     return { success: true, model: target };
   } catch (error) {

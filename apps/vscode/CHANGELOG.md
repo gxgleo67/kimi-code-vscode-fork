@@ -4,7 +4,39 @@
 >
 > *中文:* 本文件只记录本 fork(Kimi Code (Fork))自身的更新,版本号独立编号。官方上游的更新记录请见 [MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code/blob/main/apps/vscode/CHANGELOG.md)。
 
-## 0.9.7(2026-09-02)
+## 0.9.10(2026-09-14)
+
+1. The file-changes pill in the top bar no longer shows inline `+N -N` line counts — it shows only the changed-file count (`[N] changes`), and hovering reveals the exact added/deleted lines.
+2. Switching accounts no longer resets the session model to the account's first alphabetical alias: the switch now matches the current model id across accounts (e.g. staying on K3-256K instead of jumping back to K3), and the previous thinking effort is restored when the target model supports it.
+3. Synced upstream fixes from MoonshotAI/kimi-code: #3459 stop-handoff steps & subagent `stop_reason`; #3734 discard a retried attempt's partial stream state (fixes duplicated/garbled text after retries); #3654 MCP structured tool results; #3649 HEIC/HEIF/BMP image support; #3652 image-format gating by provider capability; #3645 paged reads for large files; #3658 glob result pagination; #3688 MCP tool-result attachments; #3657 goal time budgets (partial — parts depending on upstream's pause-on-close lifecycle do not apply to this fork). Upstream #3697 (steer interrupts background waits) was reviewed and is not portable: it depends on upstream's machine/WaitFor layer that this fork does not have.
+
+*中文:*
+
+1. 顶部「变更」胶囊不再内联显示 `+N/-N` 行数,只显示变更数量(`[N]个变更`),鼠标悬停才显示具体增删行数
+2. 切换账号不再把模型重置为该账号按字母序的第一个别名:现在按当前模型 id 跨账号匹配(例如保持 K3-256K,不再跳回 K3),目标模型支持时还会恢复原有思考强度
+3. 同步官方上游修复(MoonshotAI/kimi-code):#3459 停止交接步骤与子代理 stop_reason;#3734 重试时作废上一段流式残留(修复重试后文本乱码/重复);#3654 MCP 结构化工具结果;#3649 支持 HEIC/HEIF/BMP 图片;#3652 按供应商能力做图片格式门控;#3645 大文件分页读取;#3658 glob 结果分页;#3688 MCP 工具结果附件;#3657 目标时间预算(部分移植——依赖上游「关闭时暂停」生命周期的部分本 fork 不适用)。#3697(插队打断后台等待)经评审不可移植:依赖本 fork 没有的上游 machine/WaitFor 层
+
+## 0.9.9(2026-09-12)
+
+1. Removed the legacy v1 engine rollback switch: the `kimifork.useAgentCoreV1` setting and the `KIMI_CODE_LEGACY_FLAG` env var are gone, the extension always runs the v2 engine, and engine startup errors no longer suggest rolling back. (The v1 harness package remains inside the SDK for session interop.)
+2. New setting "Max thinking in plan mode" (default off): entering plan mode raises the session's thinking effort to the current model's highest supported level, and exiting plan mode (approve / revise / manual toggle) restores the previous effort — restored from session metadata even after a window reload mid-plan.
+
+*中文:*
+
+1. 移除 v1 旧引擎回退开关:`kimifork.useAgentCoreV1` 设置与 `KIMI_CODE_LEGACY_FLAG` 环境变量已删除,扩展固定运行 v2 引擎,启动失败的报错不再提示回退(SDK 内的 v1 包仍保留用于会话互通)
+2. 新增设置项「计划模式最高思考强度」(默认关闭):进入计划模式时自动把思考强度提升到当前模型支持的最高档,退出计划模式(执行/拒绝/手动关闭)时恢复原有强度;窗口重载后退出计划模式也能从会话元数据中恢复
+
+## 0.9.8(2026-09-12)
+
+1. Plan review redesigned to match Claude Code: the plan is rendered inline in the approval dialog with full Markdown formatting (headings, bold, lists, tables, code highlighting) instead of auto-opening the raw `.md` source in a VS Code editor tab and falling back to unformatted plain text.
+2. New setting "Open plan in editor" (default off): when enabled, a plan review also opens the plan document in VS Code as a rendered Markdown preview (`markdown.showPreview`, no longer the raw source). The approval dialog keeps a manual "Open in editor" link next to the plan path.
+
+*中文:*
+
+1. 计划审批界面参考 Claude Code 重做:计划正文在审批对话框内以完整 Markdown 格式渲染(标题/加粗/列表/表格/代码高亮),不再自动打开原始 `.md` 源码标签页、也不再退化为无格式纯文本
+2. 新增设置项「在编辑器中打开计划」(默认关闭):开启后计划审批出现时自动在 VS Code 中以渲染预览(Markdown Preview,不再是源码)打开计划文档;审批对话框计划路径旁保留手动「在编辑器中打开」入口
+
+## 0.9.7(2026-09-12)
 
 1. Fixed queue "Insert now (steer)" silently dropping the message: the steer echo is no longer discarded when it lands outside a live step (e.g. between TurnBegin and StepBegin, or right after attaching to a busy session) — it now attaches to a created step or falls back to a plain user bubble, so steered text and images always show up in the conversation.
 2. Queue "Insert now" failures are no longer silent: a rejected steer request surfaces an error toast and keeps the message in the queue instead of vanishing into an unhandled rejection.
@@ -14,7 +46,7 @@
 1. 修复队列「立即插入(插队)」消息被静默丢弃:插队回显落在没有活动步骤的时间窗时(如 TurnBegin 与 StepBegin 之间、刚附着到忙碌会话时)不再丢弃——自动补建步骤或退化为普通用户气泡,插队的文字和图片都会显示在对话里
 2. 队列「立即插入」失败不再静默:请求被拒绝时弹出错误提示,消息保留在队列中,不再沉入未处理的异常
 
-## 0.9.6(2026-09-02)
+## 0.9.6(2026-09-04)
 
 1. Account Management dialog: the quota line now shows each window's reset countdown and exact reset timestamp on an always-visible line below it (no hover needed).
 2. Settings menu account rows: the text quota ("5h 45% · 7d 12%") is replaced by the same concentric ring indicator as the composer status bar (outer ring = 5h, inner ring = 7d, same color rules); hovering the rings shows percent used and reset countdowns.
@@ -26,7 +58,7 @@
 2. 设置菜单账号行:文字额度(「5h 45% · 7d 12%」)改为与输入框状态栏一致的同心圆环(外环 5 小时、内环 7 天,颜色规则相同);悬停圆环显示已用百分比与重置倒计时
 3. 设置菜单账号行:「默认」标签与当前账号对号移到账号名称后面,额度圆环保持右对齐
 
-## 0.9.5(2026-09-02)
+## 0.9.5(2026-09-03)
 
 1. Synced from official upstream: queued prompts no longer get stuck after an interrupted session resumes — the prompt resolution events are now persisted to the session log, so a restored queue knows which entries were already settled (upstream PR #3371).
 2. Synced from official upstream: dangerous bash commands (e.g. `rm -rf`, disk/format operations) now require approval in every permission mode, including YOLO — auto mode denies them outright, and non-interactive hosts skip the guard; it can be turned off via config (upstream PR #3290).

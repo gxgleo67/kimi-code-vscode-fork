@@ -148,6 +148,16 @@ const setCompactComposer: Handler<{ enabled: boolean }, { ok: boolean }> = async
   return { ok: true };
 };
 
+const setOpenPlanInEditor: Handler<{ enabled: boolean }, { ok: boolean }> = async (params) => {
+  await vscode.workspace.getConfiguration("kimifork").update("openPlanInEditor", params.enabled, vscode.ConfigurationTarget.Global);
+  return { ok: true };
+};
+
+const setPlanModeMaxThinking: Handler<{ enabled: boolean }, { ok: boolean }> = async (params) => {
+  await vscode.workspace.getConfiguration("kimifork").update("planModeMaxThinking", params.enabled, vscode.ConfigurationTarget.Global);
+  return { ok: true };
+};
+
 const openSettings: Handler<void, { ok: boolean }> = async () => {
   await vscode.commands.executeCommand("workbench.action.openSettings", "kimifork");
   return { ok: true };
@@ -194,6 +204,8 @@ export const configHandlers = {
   [Methods.GetExtensionConfig]: getExtensionConfig,
   [Methods.SetLanguage]: setLanguage,
   [Methods.SetCompactComposer]: setCompactComposer,
+  [Methods.SetOpenPlanInEditor]: setOpenPlanInEditor,
+  [Methods.SetPlanModeMaxThinking]: setPlanModeMaxThinking,
   [Methods.OpenSettings]: openSettings,
   [Methods.GetModels]: getModels,
   [Methods.GetSlashCommands]: getSlashCommands,

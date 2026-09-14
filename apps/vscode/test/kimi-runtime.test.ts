@@ -25,14 +25,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Events } from "../shared/bridge";
 import { KimiRuntime, type OpenSessionOptions } from "../src/runtime/kimi-runtime";
+import { PLAN_MODE_PRE_THINKING_EFFORT_METADATA_KEY } from "../src/runtime/session-runtime";
 
 const sdkFactories = vi.hoisted(() => {
-  const v1Harness = { homeDir: "/tmp/kimi-runtime-v1-home", close: vi.fn(async () => undefined) };
   const v2Harness = { homeDir: "/tmp/kimi-runtime-v2-home", close: vi.fn(async () => undefined) };
   return {
-    v1Harness,
     v2Harness,
-    createKimiHarness: vi.fn(() => v1Harness),
     createKimiHarnessV2: vi.fn(() => v2Harness),
   };
 });
@@ -41,7 +39,6 @@ vi.mock("@moonshot-ai/kimi-code-sdk", async (importOriginal) => {
   const original = await importOriginal<typeof import("@moonshot-ai/kimi-code-sdk")>();
   return {
     ...original,
-    createKimiHarness: sdkFactories.createKimiHarness,
     createKimiHarnessV2: sdkFactories.createKimiHarnessV2,
   };
 });
@@ -56,6 +53,7 @@ interface FakeSessionBoundary {
   readonly subscriptionCount: () => number;
   readonly closeCount: () => number;
   readonly emit: (event: Event) => void;
+  readonly patchStatus: (patch: Partial<SessionStatus>) => void;
   readonly setPromptImpl: (impl: (input: string | PromptInput) => Promise<void>) => void;
 }
 
@@ -155,6 +153,9 @@ function createFakeSession(
     closeCount: () => closes,
     emit: (event: Event) => {
       for (const listener of [...listeners]) listener(event);
+    },
+    patchStatus: (patch: Partial<SessionStatus>) => {
+      status = { ...status, ...patch };
     },
     setPromptImpl: (impl) => {
       promptImpl = impl;
@@ -283,8 +284,26 @@ function createRuntime(
   return { runtime, sdk };
 }
 
+function createBoostRuntime(sdk: FakeHarnessBoundary, enabled: () => boolean) {
+  return new KimiRuntime({
+    version: "0.6.0",
+    harness: sdk.harness,
+    broadcast: () => undefined,
+    captureBaseline: () => undefined,
+    log: () => undefined,
+    planModeMaxThinkingEnabled: enabled,
+  });
+}
+
+function planStatus(planMode: boolean, agentId = "main"): Event {
+  return { type: "agent.status.updated", sessionId: "saved-1", agentId, planMode } as Event;
+}
+
+/** Let the serialized plan-mode thinking chain run to completion. */
+const flushPlanModeChain = () => new Promise<void>((resolve) => setImmediate(resolve));
+
 describe("Kimi runtime (owns shared SDK sessions for Webviews)", () => {
-  it("creates the v2 harness by default and the v1 harness for rollback", async () => {
+  it("creates the v2 harness", async () => {
     const defaults = new KimiRuntime({
       version: "0.6.0",
       broadcast: () => undefined,
@@ -301,20 +320,8 @@ describe("Kimi runtime (owns shared SDK sessions for Webviews)", () => {
       },
       uiMode: "vscode",
     });
-    expect(sdkFactories.createKimiHarness).not.toHaveBeenCalled();
     expect(defaults.harness).toBe(sdkFactories.v2Harness as unknown as KimiHarness);
     await defaults.dispose();
-
-    const rollback = new KimiRuntime({
-      version: "0.6.0",
-      useAgentCoreV1: true,
-      broadcast: () => undefined,
-      captureBaseline: () => undefined,
-      log: () => undefined,
-    });
-    expect(sdkFactories.createKimiHarness).toHaveBeenCalledOnce();
-    expect(rollback.harness).toBe(sdkFactories.v1Harness as unknown as KimiHarness);
-    await rollback.dispose();
   });
 
   it("forwards the requested settings but starts a new session in manual mode", async () => {
@@ -519,6 +526,82 @@ describe("Kimi runtime (owns shared SDK sessions for Webviews)", () => {
 
     expect(session.setThinkingEfforts).toEqual([]);
     await expect(opened.session.getStatus()).resolves.toMatchObject({ thinkingEffort: "max" });
+  });
+
+  it("raises thinking effort to the model's highest level in plan mode and restores it on exit", async () => {
+    const sdk = createFakeHarness();
+    vi.spyOn(sdk.harness, "getConfig").mockResolvedValue({
+      models: {
+        "kimi-test": { provider: "local", model: "mock-model", supportEfforts: ["low", "high", "max"] },
+      },
+      providers: { local: { type: "kimi", baseUrl: "http://localhost", apiKey: "sk-test" } },
+    } as never);
+    const runtime = createBoostRuntime(sdk, () => true);
+    const boundary = sdk.addSession("saved-1", "/workspace", { model: "kimi-test", thinkingEffort: "high", planMode: false });
+
+    await runtime.openSession(openOptions({ sessionId: "saved-1", effort: "high" }));
+
+    // Subagent status updates never touch the session-level effort.
+    boundary.emit(planStatus(true, "subagent-1"));
+    await flushPlanModeChain();
+    expect(boundary.setThinkingEfforts).toEqual([]);
+
+    boundary.patchStatus({ planMode: true });
+    boundary.emit(planStatus(true));
+    await vi.waitFor(() => {
+      expect(boundary.setThinkingEfforts).toEqual(["max"]);
+    });
+    expect(boundary.metadataUpdates).toContainEqual({ [PLAN_MODE_PRE_THINKING_EFFORT_METADATA_KEY]: "high" });
+
+    boundary.patchStatus({ planMode: false });
+    boundary.emit(planStatus(false));
+    await vi.waitFor(() => {
+      expect(boundary.setThinkingEfforts).toEqual(["max", "high"]);
+    });
+    expect(boundary.metadataUpdates).toContainEqual({ [PLAN_MODE_PRE_THINKING_EFFORT_METADATA_KEY]: null });
+  });
+
+  it("leaves the thinking effort untouched when the plan-mode boost is disabled", async () => {
+    const sdk = createFakeHarness();
+    const runtime = createBoostRuntime(sdk, () => false);
+    const boundary = sdk.addSession("saved-1", "/workspace", { thinkingEffort: "high", planMode: false });
+
+    await runtime.openSession(openOptions({ sessionId: "saved-1" }));
+
+    boundary.patchStatus({ planMode: true });
+    boundary.emit(planStatus(true));
+    await flushPlanModeChain();
+    boundary.patchStatus({ planMode: false });
+    boundary.emit(planStatus(false));
+    await flushPlanModeChain();
+
+    expect(boundary.setThinkingEfforts).toEqual([]);
+    // The resume flow may persist legacy approval flags; the plan-mode boost
+    // must not add its own metadata writes while disabled.
+    expect(
+      boundary.metadataUpdates.every((patch) => !(PLAN_MODE_PRE_THINKING_EFFORT_METADATA_KEY in patch)),
+    ).toBe(true);
+  });
+
+  it("restores the persisted pre-plan effort when plan mode exits after a reload", async () => {
+    const sdk = createFakeHarness();
+    const runtime = createBoostRuntime(sdk, () => true);
+    const boundary = sdk.addSession(
+      "saved-1",
+      "/workspace",
+      { thinkingEffort: "max", planMode: true },
+      { [PLAN_MODE_PRE_THINKING_EFFORT_METADATA_KEY]: "medium" },
+    );
+
+    await runtime.openSession(openOptions({ sessionId: "saved-1" }));
+
+    // Attaching seeded the baseline as planMode=true, so no boost fires for an
+    // already-active plan; exiting still restores the persisted effort.
+    boundary.patchStatus({ planMode: false });
+    boundary.emit(planStatus(false));
+    await vi.waitFor(() => {
+      expect(boundary.setThinkingEfforts).toEqual(["medium"]);
+    });
   });
 
   it("announces the session's actual status to the attaching view so the display matches it", async () => {

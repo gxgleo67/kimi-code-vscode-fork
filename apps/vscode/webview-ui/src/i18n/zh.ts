@@ -76,6 +76,10 @@ export const zh: Record<TranslationKey, string> = {
   "menu.language": "Language / 语言",
   "menu.compactComposer": "精简模式",
   "menu.compactComposerDesc": "输入框的权限/模式按钮以图标形式精简显示；模型名称与思考强度始终完整显示（默认关闭）",
+  "menu.openPlanInEditor": "在编辑器中打开计划",
+  "menu.openPlanInEditorDesc": "计划审批出现时,同时在 VS Code 中以渲染预览打开计划文档;默认关闭,计划只在审批对话框内渲染显示",
+  "menu.planModeMaxThinking": "计划模式最高思考强度",
+  "menu.planModeMaxThinkingDesc": "计划模式开启期间,将思考强度提升到当前模型支持的最高档,退出计划模式时恢复原有强度;默认关闭",
 
   // ── 欢迎页 ──────────────────────────────────────────────────────────────
   "welcome.commands": "⚡ 命令",
@@ -209,6 +213,7 @@ export const zh: Record<TranslationKey, string> = {
   "queue.steerFailed": "插队失败,消息已保留在队列中",
   "queue.queuedCount": "{count} 条排队中",
   "changes.changedCount": "{count} 个变更",
+  "changes.lineStats": "+{additions} -{deletions}",
 
   // ── 审批对话框(含计划审查) ──────────────────────────────────────────────
   "approval.allowThis": "允许执行此{action}吗?",
@@ -218,8 +223,7 @@ export const zh: Record<TranslationKey, string> = {
   "approval.executeThisPlan": "执行此计划?",
   "approval.failedToLoad": "加载 {path} 失败:{error}",
   "approval.loadingPlan": "正在加载计划...",
-  "approval.planOpenedInEditor": "计划已在 VS Code 编辑器中打开",
-  "approval.reopenPlan": "重新打开",
+  "approval.openInEditor": "在编辑器中打开",
   "approval.revisePlaceholder": "计划需要修改什么?",
   "approval.sendFeedback": "发送反馈",
   "approval.execute": "执行",

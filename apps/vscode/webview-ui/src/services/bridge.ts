@@ -196,6 +196,13 @@ class Bridge {
     return this.call<{ ok: boolean }>(Methods.SetCompactComposer, { enabled });
   }
 
+  setOpenPlanInEditor(enabled: boolean) {
+    return this.call<{ ok: boolean }>(Methods.SetOpenPlanInEditor, { enabled });
+  }
+
+  setPlanModeMaxThinking(enabled: boolean) {
+    return this.call<{ ok: boolean }>(Methods.SetPlanModeMaxThinking, { enabled });
+  }
   setPermissionMode(mode: PermissionMode) {
     return this.call<{ ok: boolean }>(Methods.SetPermissionMode, { mode });
   }

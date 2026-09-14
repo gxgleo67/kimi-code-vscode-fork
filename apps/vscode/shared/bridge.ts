@@ -29,6 +29,8 @@ export const Methods = {
   GetExtensionConfig: "getExtensionConfig",
   SetLanguage: "setLanguage",
   SetCompactComposer: "setCompactComposer",
+  SetOpenPlanInEditor: "setOpenPlanInEditor",
+  SetPlanModeMaxThinking: "setPlanModeMaxThinking",
   SetPermissionMode: "setPermissionMode",
   OpenSettings: "openSettings",
   OpenFolder: "openFolder",
@@ -199,6 +201,8 @@ function validateParams(method: RpcMethod, params: unknown): boolean {
     case Methods.SetLanguage:
       return isPlainObject(params) && (params["language"] === "en" || params["language"] === "zh");
     case Methods.SetCompactComposer:
+    case Methods.SetOpenPlanInEditor:
+    case Methods.SetPlanModeMaxThinking:
       return hasBoolean(params, "enabled");
     case Methods.SetPermissionMode:
       return isPlainObject(params)

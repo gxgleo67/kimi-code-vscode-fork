@@ -137,7 +137,7 @@ vi.mock("@moonshot-ai/kimi-code-sdk", async (importOriginal) => {
   const original = await importOriginal<typeof import("@moonshot-ai/kimi-code-sdk")>();
   return {
     ...original,
-    createKimiHarness: () => ({
+    createKimiHarnessV2: () => ({
       homeDir: "/tmp/kimi-code-test-home",
       // The runtime enables the secondary-model experiment on first use.
       getConfig: vi.fn(async () => ({})),

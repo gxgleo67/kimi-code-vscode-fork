@@ -239,10 +239,12 @@ const readPlanFile: Handler<FilePathParams, string> = async ({ filePath }) => {
 };
 
 /**
- * Open a plan file in a VSCode editor tab. Plan files live outside the
- * workspace, so the workspace-only `openFile` rejects them — this sibling
- * keeps the same narrow surface as `readPlanFile` and reports failure as
- * `{ ok: false }` so the webview can fall back to its inline preview.
+ * Open a plan file as a rendered Markdown preview (the review dialog already
+ * carries the formatted inline view; this is for users who want the full
+ * editor surface). Plan files live outside the workspace, so the
+ * workspace-only `openFile` rejects them — this sibling keeps the same
+ * narrow surface as `readPlanFile` and reports failure as `{ ok: false }`
+ * so the webview can fall back to its inline preview.
  */
 const openPlanFile: Handler<FilePathParams, { ok: boolean }> = async ({ filePath }) => {
   if (!filePath.toLowerCase().endsWith(".md")) return { ok: false };
@@ -250,7 +252,11 @@ const openPlanFile: Handler<FilePathParams, { ok: boolean }> = async ({ filePath
     const uri = vscode.Uri.file(filePath);
     const stat = await vscode.workspace.fs.stat(uri);
     if (stat.size > PLAN_FILE_MAX_BYTES) return { ok: false };
-    await vscode.window.showTextDocument(uri, { preview: false });
+    try {
+      await vscode.commands.executeCommand("markdown.showPreview", uri);
+    } catch {
+      await vscode.window.showTextDocument(uri, { preview: false });
+    }
     return { ok: true };
   } catch {
     return { ok: false };

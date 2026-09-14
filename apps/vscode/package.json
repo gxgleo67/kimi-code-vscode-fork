@@ -3,7 +3,7 @@
   "publisher": "gxgleo",
   "displayName": "Kimi Code (Fork)",
   "description": "Unofficial Kimi Code fork: web-inspired UX overhaul — fixes long-session stalls, draft reflux, queue loss and retry wipeout; adds auto session titles, 5h/7d quota rings, progress pill and queue highlights | Kimi Code 体验增强版(非官方 fork):参照 Kimi Web 界面交互深度改造官方插件,修复长对话卡顿卡死、草稿回流、排队消息丢失、重试丢轮次等体验问题,新增自动会话标题、5h/7d 额度圆环、当前进度胶囊、队列高亮提醒等",
-  "version": "0.9.7",
+  "version": "0.9.10",
   "private": true,
   "license": "Apache-2.0",
   "type": "module",
@@ -120,10 +120,15 @@
           "default": false,
           "description": "Show the composer's permission/mode buttons in compact icon form to save space in narrow sidebars; the model name and thinking effort always stay fully visible. Default off. / 输入框的权限/模式按钮以图标形式精简显示，节省窄侧栏空间；模型名称与思考强度始终完整显示，默认关闭"
         },
-        "kimifork.useAgentCoreV1": {
+        "kimifork.openPlanInEditor": {
           "type": "boolean",
           "default": false,
-          "description": "Temporary rollback switch: run Kimi on the legacy v1 engine instead of the current one. This setting will be removed in a future version. Requires a window reload to take effect."
+          "description": "When a plan review appears, also open the plan document as a rendered Markdown preview in VS Code; default off — the plan renders inline in the approval dialog. / 计划审批出现时，同时在 VS Code 中以渲染预览打开计划文档；默认关闭——计划在审批对话框内渲染显示"
+        },
+        "kimifork.planModeMaxThinking": {
+          "type": "boolean",
+          "default": false,
+          "description": "While plan mode is active, raise thinking effort to the current model's highest supported level and restore the previous effort when plan mode exits. Default off. / 计划模式开启期间，将思考强度提升到当前模型支持的最高档，退出计划模式时恢复原有强度，默认关闭"
         }
       }
     },

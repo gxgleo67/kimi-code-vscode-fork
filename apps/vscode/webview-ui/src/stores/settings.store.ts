@@ -41,6 +41,8 @@ export const DEFAULT_EXTENSION_CONFIG: ExtensionConfig = {
   language: "en",
   defaultThinkingEffort: "high",
   compactComposer: false,
+  openPlanInEditor: false,
+  planModeMaxThinking: false,
   version: "",
 };
 

@@ -28,6 +28,21 @@ import { ReverseRpcController } from "./reverse-rpc";
 
 export type RuntimeBroadcast = (event: string, data: unknown, webviewId?: string) => void;
 
+/**
+ * Plan-mode thinking boost (kimifork.planModeMaxThinking): while plan mode is
+ * active the session runs at the model's highest supported effort; the
+ * previous effort returns when plan mode exits. The callbacks are injected by
+ * the owning KimiRuntime so this class stays free of VS Code config imports.
+ */
+export interface PlanModeThinkingBoost {
+  readonly enabled: () => boolean;
+  /** Highest supported effort for the model, or undefined when unknown. */
+  readonly resolveMaxEffort: (model: string | undefined) => Promise<string | undefined>;
+}
+
+/** Session metadata key holding the effort to restore after plan mode exits. */
+export const PLAN_MODE_PRE_THINKING_EFFORT_METADATA_KEY = "vscode_plan_mode_pre_thinking_effort";
+
 export interface SessionRuntimeOptions {
   readonly session: Session;
   readonly legacyApproval: LegacyApprovalFlags;
@@ -43,6 +58,8 @@ export interface SessionRuntimeOptions {
    * title. Left undefined on the v1 engine, where the RPC does not exist.
    */
   readonly generateSessionTitle?: (sessionId: string) => Promise<string | undefined>;
+  /** Optional plan-mode thinking boost; absent means the feature is off. */
+  readonly planModeThinkingBoost?: PlanModeThinkingBoost;
   /**
    * Fired when work settles while no view is subscribed. The owner uses it
    * to close orphaned sessions that outlived their last webview; the delay
@@ -77,6 +94,13 @@ interface PendingHostCompaction {
   readonly reject: (error: unknown) => void;
 }
 
+function readPrePlanThinkingEffort(
+  metadata: Readonly<Record<string, unknown>> | undefined,
+): string | undefined {
+  const value = metadata?.[PLAN_MODE_PRE_THINKING_EFFORT_METADATA_KEY];
+  return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
 /**
  * Owns the one SDK event subscription and reverse-RPC handlers for a session.
  * Any number of Webviews may subscribe without replacing each other's approval
@@ -103,10 +127,14 @@ export class SessionRuntime {
   private readonly terminalKeys = new Set<string>();
   private suppressedError: SuppressedError | undefined;
   private readonly generateSessionTitle: SessionRuntimeOptions["generateSessionTitle"];
+  private readonly planModeThinkingBoost: SessionRuntimeOptions["planModeThinkingBoost"];
   private readonly onOrphanSettled: SessionRuntimeOptions["onOrphanSettled"];
   private legacyApproval: LegacyApprovalFlags;
   private activeTurnId: number | undefined;
   private cancelFallbackTimer: ReturnType<typeof setTimeout> | undefined;
+  private lastPlanMode: boolean | undefined;
+  private prePlanThinkingEffort: string | undefined;
+  private planModeThinkingChain: Promise<void> = Promise.resolve();
   private closed = false;
 
   constructor(options: SessionRuntimeOptions) {
@@ -116,6 +144,7 @@ export class SessionRuntime {
     this.log = options.log;
     this.legacyApproval = options.legacyApproval;
     this.generateSessionTitle = options.generateSessionTitle;
+    this.planModeThinkingBoost = options.planModeThinkingBoost;
     this.onOrphanSettled = options.onOrphanSettled;
     this.reverseRpc = new ReverseRpcController((event) => this.emitStreamEvent(event));
 
@@ -174,6 +203,9 @@ export class SessionRuntime {
     this.ensureOpen();
     const status = await this.session.getStatus();
     if (this.closed || !this.webviewIds.has(webviewId)) return;
+    // Seed the plan-mode baseline on attach so a plan that was entered before
+    // a reload still restores its thinking effort when it exits.
+    this.lastPlanMode ??= status.planMode;
     const goalResult = await this.session.getGoal().catch(() => null);
     if (this.closed || !this.webviewIds.has(webviewId)) return;
     const goal = goalResult?.goal ?? null;
@@ -466,8 +498,7 @@ export class SessionRuntime {
     this.webviewIds.clear();
   }
 
-  private async applyLegacyApproval(flags: LegacyApprovalFlags): Promise<void> {
-    this.ensureOpen();
+  private async applyLegacyApproval(flags: LegacyApprovalFlags): Promise<void> {    this.ensureOpen();
     const permission = corePermissionForLegacyApproval(flags);
     const status = await this.session.getStatus();
     const permissionChanged = status.permission !== permission;
@@ -491,6 +522,63 @@ export class SessionRuntime {
     }
   }
 
+  /**
+   * Serialize plan-mode effort adjustments: rapid plan on/off toggles would
+   * otherwise interleave a boost with a restore and lose the original effort.
+   */
+  private enqueuePlanModeThinking(entered: boolean): void {
+    this.planModeThinkingChain = this.planModeThinkingChain
+      .then(() => this.applyPlanModeThinking(entered))
+      .catch((error: unknown) => {
+        this.log("Failed to adjust thinking effort for a plan mode change", error);
+      });
+  }
+
+  private async applyPlanModeThinking(entered: boolean): Promise<void> {
+    const boost = this.planModeThinkingBoost;
+    if (boost === undefined || !boost.enabled() || this.closed) return;
+
+    if (entered) {
+      const status = await this.session.getStatus();
+      // Plan mode may have been exited again while the status was in flight.
+      if (this.closed || !status.planMode) return;
+      const current = status.thinkingEffort;
+      const max = await boost.resolveMaxEffort(status.model);
+      if (max === undefined || max === current || this.closed) return;
+      try {
+        await this.session.setThinking(max);
+      } catch (error) {
+        // An unsupported top level must not leave a stale restore value behind.
+        this.log("Failed to raise thinking effort for plan mode", error);
+        return;
+      }
+      this.prePlanThinkingEffort = current;
+      await this.session
+        .updateMetadata({ [PLAN_MODE_PRE_THINKING_EFFORT_METADATA_KEY]: current })
+        .catch((error: unknown) => {
+          this.log("Failed to persist the pre-plan thinking effort", error);
+        });
+      return;
+    }
+
+    // Prefer the in-memory value; after an extension reload mid-plan the
+    // metadata copy is the only record of the effort to restore.
+    const restore =
+      this.prePlanThinkingEffort ?? readPrePlanThinkingEffort(this.session.summary?.metadata);
+    this.prePlanThinkingEffort = undefined;
+    if (restore === undefined) return;
+    try {
+      await this.session.setThinking(restore);
+    } catch (error) {
+      this.log("Failed to restore the pre-plan thinking effort", error);
+    }
+    await this.session
+      .updateMetadata({ [PLAN_MODE_PRE_THINKING_EFFORT_METADATA_KEY]: null })
+      .catch((error: unknown) => {
+        this.log("Failed to clear the pre-plan thinking effort", error);
+      });
+  }
+
   private onSdkEvent(event: Event): void {
     if (this.closed) return;
 
@@ -505,6 +593,16 @@ export class SessionRuntime {
     if (event.type === "turn.started" && event.agentId === "main" && this.activePrompt !== undefined) {
       this.activePrompt.started = true;
       this.activeTurnId = event.turnId;
+    }
+
+    if (event.type === "agent.status.updated" && event.agentId === "main" && event.planMode !== undefined) {
+      // Status snapshots repeat planMode on every update; only an actual flip
+      // triggers the thinking-effort boost/restore, so the setThinking echo
+      // below cannot re-enter this path.
+      if (this.lastPlanMode !== undefined && event.planMode !== this.lastPlanMode) {
+        this.enqueuePlanModeThinking(event.planMode);
+      }
+      this.lastPlanMode = event.planMode;
     }
 
     if (event.type === "tool.call.started") {

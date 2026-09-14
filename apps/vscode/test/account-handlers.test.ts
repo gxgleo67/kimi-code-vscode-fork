@@ -23,20 +23,37 @@ interface FakeConfig {
   providers: Record<string, unknown>;
   // `model` mirrors real config.toml entries — the SDK's effectiveModelAlias
   // name-matches it, so a bare `{ provider }` alias is not a valid fixture.
-  models: Record<string, { provider: string; model: string }>;
+  models: Record<string, { provider: string; model: string; supportEfforts?: string[] }>;
 }
 
-function fakeContext(initial: FakeConfig, options?: { sessionModel?: string }) {
+function fakeContext(
+  initial: FakeConfig,
+  options?: { sessionModel?: string; sessionEffort?: string; reseatedEffort?: string },
+) {
   let config = structuredClone(initial);
   const names = new Map<string, unknown>();
   const setConfig = vi.fn(async (patch: { defaultModel?: string }) => {
     config = { ...config, ...patch };
   });
-  const setModel = vi.fn(async () => undefined);
+  // A model switch re-seats the thinking effort onto the new model's default;
+  // `reseatedEffort` simulates that so the restore path can be observed.
+  let effort = options?.sessionEffort;
+  const setModel = vi.fn(async () => {
+    effort = options?.reseatedEffort ?? effort;
+  });
+  const setThinking = vi.fn(async (value: string) => {
+    effort = value;
+  });
   const runtime =
     options?.sessionModel === undefined
       ? undefined
-      : { session: { getStatus: vi.fn(async () => ({ model: options.sessionModel })), setModel } };
+      : {
+          session: {
+            getStatus: vi.fn(async () => ({ model: options.sessionModel, thinkingEffort: effort })),
+            setModel,
+            setThinking,
+          },
+        };
   const ctx = {
     harness: {
       getConfig: vi.fn(async () => config),
@@ -53,7 +70,7 @@ function fakeContext(initial: FakeConfig, options?: { sessionModel?: string }) {
     getSession: vi.fn(() => runtime),
     logError: vi.fn(),
   } as unknown as HandlerContext;
-  return { ctx, names, setConfig, setModel, readConfig: () => config };
+  return { ctx, names, setConfig, setModel, setThinking, readConfig: () => config };
 }
 
 const CONFIG: FakeConfig = {
@@ -147,5 +164,70 @@ describe("switchAccount", () => {
 
     const result = await switchAccount({ provider: "managed:kimi-code-9" }, ctx);
     expect(result.success).toBe(false);
+  });
+
+  // Two models per account; alphabetically the plain alias sorts first, so a
+  // switch that ignores the current model would land on it.
+  const MULTI: FakeConfig = {
+    defaultModel: "kimi-code/kimi-for-coding",
+    providers: { "managed:kimi-code": {}, "managed:kimi-code-2": {} },
+    models: {
+      "kimi-code/kimi-for-coding": { provider: "managed:kimi-code", model: "kimi-for-coding" },
+      "kimi-code/kimi-k3-256k": { provider: "managed:kimi-code", model: "kimi-k3-256k" },
+      "kimi-code-2/kimi-for-coding": {
+        provider: "managed:kimi-code-2",
+        model: "kimi-for-coding",
+        supportEfforts: ["low", "medium", "high"],
+      },
+      "kimi-code-2/kimi-k3-256k": {
+        provider: "managed:kimi-code-2",
+        model: "kimi-k3-256k",
+        supportEfforts: ["low", "medium", "high"],
+      },
+    },
+  };
+
+  it("keeps the current model id across the switch instead of jumping to the first alias", async () => {
+    const { ctx, setModel } = fakeContext(MULTI, { sessionModel: "kimi-code/kimi-k3-256k" });
+
+    const result = await switchAccount({ provider: "managed:kimi-code-2" }, ctx);
+    expect(result).toEqual({ success: true, model: "kimi-code-2/kimi-k3-256k" });
+    expect(setModel).toHaveBeenCalledWith("kimi-code-2/kimi-k3-256k");
+  });
+
+  it("restores the thinking effort after the model switch re-seats it", async () => {
+    const { ctx, setModel, setThinking } = fakeContext(MULTI, {
+      sessionModel: "kimi-code/kimi-for-coding",
+      sessionEffort: "high",
+      reseatedEffort: "medium",
+    });
+
+    const result = await switchAccount({ provider: "managed:kimi-code-2" }, ctx);
+    expect(result).toEqual({ success: true, model: "kimi-code-2/kimi-for-coding" });
+    expect(setModel).toHaveBeenCalledWith("kimi-code-2/kimi-for-coding");
+    expect(setThinking).toHaveBeenCalledWith("high");
+  });
+
+  it("does not restore an effort the target model does not support", async () => {
+    const unsupported: FakeConfig = {
+      ...MULTI,
+      models: {
+        ...MULTI.models,
+        "kimi-code-2/kimi-for-coding": {
+          provider: "managed:kimi-code-2",
+          model: "kimi-for-coding",
+          supportEfforts: ["low", "medium"],
+        },
+      },
+    };
+    const { ctx, setThinking } = fakeContext(unsupported, {
+      sessionModel: "kimi-code/kimi-for-coding",
+      sessionEffort: "high",
+      reseatedEffort: "medium",
+    });
+
+    const result = await switchAccount({ provider: "managed:kimi-code-2" }, ctx);
+    expect(result.success).toBe(true);
+    expect(setThinking).not.toHaveBeenCalled();
   });
 });

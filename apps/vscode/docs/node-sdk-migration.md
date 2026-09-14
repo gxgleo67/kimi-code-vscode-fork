@@ -1,6 +1,9 @@
 # VS Code Node SDK Migration Design
 
-Status: accepted and implemented for extension `0.6.0`
+Status: accepted and implemented for extension `0.6.0`; superseded — the
+extension later switched to the v2 engine and the temporary v1 rollback switch
+(`kimifork.useAgentCoreV1` / `KIMI_CODE_LEGACY_FLAG`) has been removed. This
+document is kept as the historical record of the original migration.
 
 Last updated: 2026-07-16
 

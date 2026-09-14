@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { IconSettings, IconServer, IconLogout, IconLogin, IconLoader2, IconRefresh, IconFileText, IconFolder, IconCheck, IconLanguage, IconViewportNarrow, IconUsers, IconChevronRight } from "@tabler/icons-react";
+import { IconSettings, IconServer, IconLogout, IconLogin, IconLoader2, IconRefresh, IconFileText, IconFolder, IconCheck, IconLanguage, IconViewportNarrow, IconUsers, IconChevronRight, IconFileDescription, IconBrain } from "@tabler/icons-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -168,6 +168,22 @@ export function ActionMenu({ className, onAuthAction }: ActionMenuProps) {
     });
   };
 
+  const handleToggleOpenPlanInEditor = (enabled: boolean) => {
+    useSettingsStore.getState().setExtensionConfig({ ...extensionConfig, openPlanInEditor: enabled });
+    void bridge.setOpenPlanInEditor(enabled).catch((error: unknown) => {
+      useSettingsStore.getState().setExtensionConfig({ ...useSettingsStore.getState().extensionConfig, openPlanInEditor: !enabled });
+      toast.error(t("toast.saveSettingFailed", { error: error instanceof Error ? error.message : String(error) }));
+    });
+  };
+
+  const handleTogglePlanModeMaxThinking = (enabled: boolean) => {
+    useSettingsStore.getState().setExtensionConfig({ ...extensionConfig, planModeMaxThinking: enabled });
+    void bridge.setPlanModeMaxThinking(enabled).catch((error: unknown) => {
+      useSettingsStore.getState().setExtensionConfig({ ...useSettingsStore.getState().extensionConfig, planModeMaxThinking: !enabled });
+      toast.error(t("toast.saveSettingFailed", { error: error instanceof Error ? error.message : String(error) }));
+    });
+  };
+
   const handleAuthAction = async () => {
     setLoading(true);
     try {
@@ -250,6 +266,32 @@ export function ActionMenu({ className, onAuthAction }: ActionMenuProps) {
               checked={extensionConfig.compactComposer}
               onCheckedChange={handleToggleCompactComposer}
               aria-label={t("menu.compactComposer")}
+            />
+          </div>
+          <div className="flex items-center gap-2 px-2.5 py-1.5 text-xs">
+            <IconFileDescription className="size-4 shrink-0 text-muted-foreground" />
+            <span className="flex-1">
+              {t("menu.openPlanInEditor")}
+              <span className="block text-[10px] text-muted-foreground leading-snug">{t("menu.openPlanInEditorDesc")}</span>
+            </span>
+            <Switch
+              size="sm"
+              checked={extensionConfig.openPlanInEditor}
+              onCheckedChange={handleToggleOpenPlanInEditor}
+              aria-label={t("menu.openPlanInEditor")}
+            />
+          </div>
+          <div className="flex items-center gap-2 px-2.5 py-1.5 text-xs">
+            <IconBrain className="size-4 shrink-0 text-muted-foreground" />
+            <span className="flex-1">
+              {t("menu.planModeMaxThinking")}
+              <span className="block text-[10px] text-muted-foreground leading-snug">{t("menu.planModeMaxThinkingDesc")}</span>
+            </span>
+            <Switch
+              size="sm"
+              checked={extensionConfig.planModeMaxThinking}
+              onCheckedChange={handleTogglePlanModeMaxThinking}
+              aria-label={t("menu.planModeMaxThinking")}
             />
           </div>
         </div>

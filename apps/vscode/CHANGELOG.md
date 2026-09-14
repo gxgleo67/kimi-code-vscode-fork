@@ -4,6 +4,14 @@
 >
 > *中文:* 本文件只记录本 fork(Kimi Code (Fork))自身的更新,版本号独立编号。官方上游的更新记录请见 [MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code/blob/main/apps/vscode/CHANGELOG.md)。
 
+## 0.9.11(2026-09-14)
+
+1. Re-release of 0.9.10 with a bumped version number to work around a silent marketplace upload rejection (no functional changes).
+
+*中文:*
+
+1. 0.9.10 内容不变,仅递增版本号重新发布,绕过市场网页端静默上传失败(无功能变更)
+
 ## 0.9.10(2026-09-14)
 
 1. The file-changes pill in the top bar no longer shows inline `+N -N` line counts — it shows only the changed-file count (`[N] changes`), and hovering reveals the exact added/deleted lines.

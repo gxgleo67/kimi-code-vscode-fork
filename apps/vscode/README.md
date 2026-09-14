@@ -208,6 +208,14 @@ scripts/              # postinstall (node-pty fix)
 
 ## 🕓 更新记录 | Changelog
 
+**2026-09-14（0.9.11 · 重新发布）**：
+
+1. 0.9.10 内容不变，仅递增版本号重新发布，绕过市场网页端静默上传失败（无功能变更）
+
+*English:*
+
+1. Re-release of 0.9.10 with a bumped version number to work around a silent marketplace upload rejection (no functional changes)
+
 **2026-09-14（0.9.10 · 变更胶囊悬停 + 切账号保持模型 + 官方同步）**：
 
 1. 顶部「变更」胶囊不再内联显示 `+N/-N` 行数，只显示变更数量（`[N]个变更`），鼠标悬停才显示具体增删行数

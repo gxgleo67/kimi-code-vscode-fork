@@ -63,6 +63,7 @@ const turnEndedSchema = z.object({
   error: z.custom<KimiErrorPayload>().optional(),
   durationMs: z.number().optional(),
   stopReason: z.string().optional(),
+  traceId: z.string().optional(),
 });
 
 export interface TurnEndedPayload {
@@ -72,6 +73,7 @@ export interface TurnEndedPayload {
   readonly durationMs?: number;
   readonly interruptReason?: TurnInterruptReason;
   readonly stopReason?: string;
+  readonly traceId?: string;
 }
 
 export class TurnEnded extends Event2<TurnEndedPayload> {
@@ -89,6 +91,7 @@ export class TurnEnded extends Event2<TurnEndedPayload> {
     if (this.error !== undefined) record['error'] = this.error;
     if (this.durationMs !== undefined) record['durationMs'] = this.durationMs;
     if (this.stopReason !== undefined) record['stopReason'] = this.stopReason;
+    if (this.traceId !== undefined) record['traceId'] = this.traceId;
     record['time'] = this.time;
     return record as SerializedEvent2;
   }

@@ -190,6 +190,30 @@ describe('AgentPromptService', () => {
     expect(events[0]?.promptIds).toEqual([one.id, two.id, three.id]);
   });
 
+  it('reuses the queued prompt id for a single steer and marks the origin in-turn', async () => {
+    const { prompt, context, loop, eventBus } = harness();
+    const events: TurnSteer[] = [];
+    const steered: PromptSteered[] = [];
+    eventBus.subscribe(TurnSteer, (event) => events.push(event));
+    eventBus.subscribe(PromptSteered, (event) => steered.push(event));
+    const active = await prompt.enqueue({ message: message('active') });
+    await active.launched;
+    const one = await prompt.enqueue({ message: message('one') });
+    const two = await prompt.enqueue({ message: message('two') });
+    await prompt.steer([two.id, one.id]);
+    loop.drainNextBatch(context);
+    const three = await prompt.enqueue({ message: message('three') });
+    await prompt.steer([three.id]);
+    loop.drainNextBatch(context);
+    expect(events).toHaveLength(2);
+    expect(events[0]?.messageId).not.toBe(one.id);
+    expect(events[1]?.messageId).toBe(three.id);
+    expect(steered[1]?.messageId).toBe(three.id);
+    expect(events[1]?.promptIds).toEqual([three.id]);
+    expect(events[1]?.origin).toMatchObject({ kind: 'user', inTurn: true });
+    expect(events[0]?.origin).toMatchObject({ kind: 'user', inTurn: true });
+  });
+
   it('aborts pending prompts and settles completion', async () => {
     const { prompt, eventBus } = harness();
     const aborted: PromptAborted[] = [];

@@ -8,6 +8,7 @@ import { defineState } from '#/state/state';
 import { extractImageCompressionCaptions } from '#/agent/media/image-compress';
 import { userCancellationReason } from '#/_base/utils/abort';
 import { IAgentContextMemoryService } from '#/agent/contextMemory/contextMemory';
+import { markInTurnOrigin } from '#/agent/contextMemory/conversationTime';
 import { newMessageId } from '#/agent/contextMemory/messageId';
 import { USER_PROMPT_ORIGIN, type ContextMessage, type UserPromptOrigin } from '#/agent/contextMemory/types';
 import { IAgentFullCompactionService } from '#/agent/fullCompaction/fullCompaction';
@@ -355,13 +356,13 @@ export class AgentPromptService implements IAgentPromptService {
             : [{ display_text: promptDisplayTextFromContentParts(stripBundledSkillBlocks(item.message)) }];
         })
       : [];
-    const messageId = newMessageId();
+    const messageId = selected.length === 1 ? selected[0]!.id : newMessageId();
     const message: ContextMessage = {
       id: messageId,
       role: 'user',
       content: selected.flatMap((item) => item.message.content),
       toolCalls: [],
-      origin: clientMetadata.length === 0 ? USER_PROMPT_ORIGIN : { kind: 'user', clientMetadata },
+      origin: markInTurnOrigin<UserPromptOrigin>(clientMetadata.length === 0 ? USER_PROMPT_ORIGIN : { kind: 'user', clientMetadata }),
     };
     const { message: rerouted, captions } = this.extractCompressionCaptions(message);
     const selectedIds = selected.map((x) => x.id);

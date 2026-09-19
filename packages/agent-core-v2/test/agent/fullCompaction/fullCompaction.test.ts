@@ -291,7 +291,7 @@ describe('FullCompaction', () => {
       properties: expect.objectContaining({
         agent_id: 'main',
         source: 'manual',
-        tokens_before: 3_350,
+        tokens_before: 3_330,
         tokens_after: expect.any(Number),
         duration_ms: expect.any(Number),
         compacted_count: 6,
@@ -1800,8 +1800,8 @@ describe('FullCompaction', () => {
       event: 'compaction_finished',
       properties: expect.objectContaining({
         source: 'auto',
-        tokens_before: 3_357,
-        tokens_after: 3_341,
+        tokens_before: 3_337,
+        tokens_after: 3_321,
         compacted_count: 7,
         retry_count: 0,
       }),

@@ -57,6 +57,9 @@ import { IFlagService } from '#/app/flag/flag';
 import { normalizeAgentProfile, type AgentProfile } from '#/app/agentProfileCatalog/agentProfileCatalog';
 import { ITelemetryService, noopTelemetryService } from '#/app/telemetry/telemetry';
 import { ISessionCronService } from '#/session/cron/sessionCronService';
+import { ICronCreateTool } from '#/agent/tools/cron/cron-create/cron-create';
+import { ICronDeleteTool } from '#/agent/tools/cron/cron-delete/cron-delete';
+import { ICronListTool } from '#/agent/tools/cron/cron-list/cron-list';
 import { ISessionMetadata, type AgentMeta } from '#/session/sessionMetadata/sessionMetadata';
 import { ISessionAgentProfileCatalog } from '#/session/sessionAgentProfileCatalog/sessionAgentProfileCatalog';
 import type {
@@ -547,6 +550,13 @@ describe('Agent tool description', () => {
     return tool!.description;
   }
 
+  function registerCronTools(): void {
+    const registry = ctx.get(IAgentToolRegistryService);
+    registry.register(ctx.get(ICronCreateTool), { source: 'builtin' });
+    registry.register(ctx.get(ICronListTool), { source: 'builtin' });
+    registry.register(ctx.get(ICronDeleteTool), { source: 'builtin' });
+  }
+
   it('explains the fixed background subagent timeout', () => {
     ctx = createTestAgent();
 
@@ -558,13 +568,176 @@ describe('Agent tool description', () => {
     expect(description).toContain('Default to a foreground subagent');
   });
 
-  it('renders the tool set for each subagent type', () => {
+  it('renders the tool set for each subagent type', async () => {
     ctx = createTestAgent();
+    registerCronTools();
+    ctx.configure({
+      modelCapabilities: {
+        image_in: true,
+        video_in: false,
+        audio_in: false,
+        thinking: false,
+        tool_use: true,
+        max_context_tokens: 0,
+      },
+    });
+    await ctx.get(IEventDispatcher).flush();
 
     const description = agentDescription();
 
     expect(description).toContain('Tools: Bash, Read, ReadMediaFile, Glob, Grep, WebSearch, FetchURL');
     expect(description).toContain('Tools: Bash, CronCreate, CronDelete, CronList, Edit');
+  });
+
+  it('omits unregistered tools from subagent type descriptions', () => {
+    ctx = createTestAgent();
+
+    const description = agentDescription();
+
+    expect(description).toContain('Available agent types');
+    expect(description).not.toContain('ReadMediaFile');
+    expect(description).toContain('Tools: Bash, Read, Glob, Grep, WebSearch, FetchURL');
+  });
+
+  it('lists ReadMediaFile when a selectable pool model has image input even if the primary model does not', () => {
+    ctx = createTestAgent({
+      initialConfig: {
+        secondaryModel: {
+          defaultModel: 'provider/vision',
+          models: { 'provider/vision': 'vision-capable model' },
+        },
+        models: {
+          'provider/vision': {
+            provider: 'test-provider',
+            model: 'vision-model',
+            maxContextSize: 262_144,
+            capabilities: ['image_in'],
+          },
+        },
+      },
+    });
+
+    const description = agentDescription();
+
+    expect(description).toContain('ReadMediaFile');
+  });
+
+  it('omits ReadMediaFile when the tool policy disables it even with a vision-capable pool model', () => {
+    ctx = createTestAgent({
+      initialConfig: {
+        secondaryModel: {
+          defaultModel: 'provider/vision',
+          models: { 'provider/vision': 'vision-capable model' },
+        },
+        models: {
+          'provider/vision': {
+            provider: 'test-provider',
+            model: 'vision-model',
+            maxContextSize: 262_144,
+            capabilities: ['image_in'],
+          },
+        },
+        tools: { disabled: ['ReadMediaFile'] },
+      },
+    });
+
+    const description = agentDescription();
+
+    expect(description).not.toContain('ReadMediaFile');
+  });
+
+  it('omits ReadMediaFile when secondary models are forced to a text-only model even if the primary model has image input', async () => {
+    ctx = createTestAgent({
+      initialConfig: {
+        secondaryModel: { force: true, defaultModel: 'provider/text' },
+        models: {
+          'provider/text': {
+            provider: 'test-provider',
+            model: 'text-model',
+            maxContextSize: 262_144,
+          },
+        },
+      },
+    });
+    ctx.configure({
+      modelCapabilities: {
+        image_in: true,
+        video_in: false,
+        audio_in: false,
+        thinking: false,
+        tool_use: true,
+        max_context_tokens: 0,
+      },
+    });
+    await ctx.get(IEventDispatcher).flush();
+
+    const description = agentDescription();
+
+    expect(description).not.toContain('ReadMediaFile');
+  });
+
+  it('preserves glob tool patterns that do not end with an asterisk', () => {
+    const caller = normalizeAgentProfile({
+      name: 'caller',
+      description: 'Caller',
+      systemPrompt: () => 'caller',
+    });
+    const globber = normalizeAgentProfile({
+      name: 'globber',
+      description: 'Globber',
+      tools: ['Read', 'mcp__server__get_?_details'],
+      systemPrompt: () => 'globber',
+    });
+    const profiles = [caller, globber];
+    const catalog: ISessionAgentProfileCatalog = {
+      _serviceBrand: undefined,
+      ready: Promise.resolve(),
+      onDidChange: Event.None as ISessionAgentProfileCatalog['onDidChange'],
+      get: (name) => profiles.find((profile) => profile.name === name),
+      getDefault: () => caller,
+      list: () => profiles,
+      inspect: () => undefined,
+      load: async () => {},
+      reload: async () => {},
+    };
+    ctx = createTestAgent(sessionService(ISessionAgentProfileCatalog, catalog));
+
+    const description = agentDescription();
+
+    expect(description).toContain('- globber: Globber');
+    expect(description).toContain('mcp__server__get_?_details');
+  });
+
+  it('preserves extglob tool patterns', () => {
+    const caller = normalizeAgentProfile({
+      name: 'caller',
+      description: 'Caller',
+      systemPrompt: () => 'caller',
+    });
+    const globber = normalizeAgentProfile({
+      name: 'globber',
+      description: 'Globber',
+      tools: ['Read', 'mcp__server__@(read|write)'],
+      systemPrompt: () => 'globber',
+    });
+    const profiles = [caller, globber];
+    const catalog: ISessionAgentProfileCatalog = {
+      _serviceBrand: undefined,
+      ready: Promise.resolve(),
+      onDidChange: Event.None as ISessionAgentProfileCatalog['onDidChange'],
+      get: (name) => profiles.find((profile) => profile.name === name),
+      getDefault: () => caller,
+      list: () => profiles,
+      inspect: () => undefined,
+      load: async () => {},
+      reload: async () => {},
+    };
+    ctx = createTestAgent(sessionService(ISessionAgentProfileCatalog, catalog));
+
+    const description = agentDescription();
+
+    expect(description).toContain('- globber: Globber');
+    expect(description).toContain('mcp__server__@(read|write)');
   });
 
   it('renders global tool restrictions in subagent type descriptions', () => {
@@ -574,11 +747,12 @@ describe('Agent tool description', () => {
         tools: { disabled: ['Bash'] },
       })),
     );
+    registerCronTools();
 
     const description = agentDescription();
     const coderTools = description
       .split('\n')
-      .find((line) => line.startsWith('  Tools:') && line.includes('ReadMediaFile'));
+      .find((line) => line.startsWith('  Tools:') && line.includes('CronCreate'));
 
     expect(coderTools).toBeDefined();
     expect(coderTools).not.toContain('Bash');
@@ -595,6 +769,7 @@ describe('Agent tool description', () => {
       agentService(IAgentProfileService, {
         _serviceBrand: undefined,
         data: () => callerData,
+        getModelCapabilities: () => ({}),
         onDidChange: Event.None,
       } as unknown as IAgentProfileService),
       configServices(() => ({

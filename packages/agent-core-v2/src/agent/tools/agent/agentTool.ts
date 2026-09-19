@@ -26,6 +26,7 @@ import { IAgentLoopService } from '#/agent/loop/loop';
 import { IAgentUserToolService } from '#/agent/userTool/userTool';
 import {
   ToolAccesses,
+  isMcpToolName,
   type ExecutableToolContext,
   type ExecutableToolResult,
   type ToolExecution,
@@ -60,7 +61,9 @@ import {
   buildSubagentModelDescriptions,
   exposesSubagentModelChoice,
   formatSubagentTimeoutDescription,
+  isSubagentModelForced,
   resolveSubagentBinding,
+  resolveSubagentModelPool,
   resolveSubagentThinking,
   resolveSubagentTimeoutMs,
   stripSubagentModelParameter,
@@ -86,6 +89,12 @@ import AGENT_DESCRIPTION_BASE from './agent.md?raw';
 
 const SUBAGENT_TOOL_PARAMETERS = toInputJsonSchema(SubagentToolInputSchema);
 const SUBAGENT_TOOL_PARAMETERS_NO_MODEL = stripSubagentModelParameter(SUBAGENT_TOOL_PARAMETERS);
+const READ_MEDIA_FILE_TOOL_NAME = 'ReadMediaFile';
+const MCP_GLOB_MAGIC = /[*?[\]{}!@+()]/;
+
+function isToolNamePattern(name: string): boolean {
+  return isMcpToolName(name) && MCP_GLOB_MAGIC.test(name);
+}
 
 export class SubagentTool implements ISubagentTool {
   declare readonly _serviceBrand: undefined;
@@ -142,9 +151,21 @@ export class SubagentTool implements ISubagentTool {
       allowlist === undefined
         ? catalogProfiles
         : catalogProfiles.filter((profile) => allowlist.includes(profile.name));
+    const knownTools = this.knownToolReferences();
+    const available = new Set(knownTools.map((ref) => ref.name));
+    const anyMediaModel = this.anyMediaCapableModel();
     const typeLines = buildProfileDescriptions(
-      profiles,
-      this.knownToolReferences(),
+      profiles.map((profile) => ({
+        ...profile,
+        tools: profile.tools?.filter(
+          (name) =>
+            isToolNamePattern(name) ||
+            (name === READ_MEDIA_FILE_TOOL_NAME
+              ? anyMediaModel && this.toolPolicy.isToolActiveForProfile(profile, name, 'builtin')
+              : available.has(name)),
+        ),
+      })),
+      knownTools,
       (profile, name, source) =>
         this.toolPolicy.isToolActiveForProfile(profile, name, source),
     );
@@ -181,6 +202,31 @@ export class SubagentTool implements ISubagentTool {
       if (!refs.has(ref.name)) refs.set(ref.name, ref);
     }
     return [...refs.values()];
+  }
+
+  private anyMediaCapableModel(): boolean {
+    if (isSubagentModelForced(this.config)) {
+      const forced = resolveSubagentModelPool(this.config)?.defaultModel;
+      if (forced === undefined) return false;
+      try {
+        const capabilities = this.modelCatalog.get(forced).capabilities;
+        return capabilities.image_in || capabilities.video_in;
+      } catch {
+        return false;
+      }
+    }
+    const own = this.profile.getModelCapabilities();
+    if (own.image_in || own.video_in) return true;
+    const pool = resolveSubagentModelPool(this.config);
+    if (pool === undefined) return false;
+    for (const alias of Object.keys(pool.models)) {
+      try {
+        const capabilities = this.modelCatalog.get(alias).capabilities;
+        if (capabilities.image_in || capabilities.video_in) return true;
+      } catch {
+      }
+    }
+    return false;
   }
 
   async resolveExecution(args: SubagentToolInput): Promise<ToolExecution> {

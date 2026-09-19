@@ -1,6 +1,9 @@
 import type { IHostFileSystem } from '#/os/interface/hostFileSystem';
 import { IAgentRuntimeService, inspectAgentRuntime } from '#/agent/runtimeBinding/agentRuntime';
 import { ISessionMediaStore } from '#/agent/media/sessionMediaStore';
+import { IAgentProfileService } from '#/agent/profile/profile';
+import { IAgentToolPolicyService } from '#/agent/toolPolicy/toolPolicy';
+import { IAgentToolRegistryService } from '#/agent/toolRegistry/toolRegistry';
 import { isDaemonFileUrl } from '#/agent/media/mediaRef';
 import { attachmentFileSource, runtimeFileSource, withAttachmentLocation, type FileReadSource } from '#/agent/tools/fileReadSource';
 import { RuntimeWorkspaceView } from '#/runtime/runtimeWorkspaceView';
@@ -147,6 +150,8 @@ async function* decodedLines(lines: readonly string[]): AsyncGenerator<string> {
   yield* lines;
 }
 
+const READ_MEDIA_FILE_TOOL_NAME = 'ReadMediaFile';
+
 function notReadableFileOutput(path: string): string {
   return `"${path}" is not readable as UTF-8 text. Only text files can be read.`;
 }
@@ -175,6 +180,9 @@ export class ReadTool implements IReadTool {
     @ISessionWorkspaceContext private readonly workspaceCtx: ISessionWorkspaceContext,
     @ISessionSkillCatalog private readonly skillCatalog: ISessionSkillCatalog,
     @IConfigService private readonly config: IConfigService,
+    @IAgentProfileService private readonly profile: IAgentProfileService,
+    @IAgentToolPolicyService private readonly toolPolicy: IAgentToolPolicyService,
+    @IAgentToolRegistryService private readonly toolRegistry: IAgentToolRegistryService,
     @ISessionMediaStore private readonly attachmentStore?: ISessionMediaStore,
   ) {}
 
@@ -270,9 +278,24 @@ export class ReadTool implements IReadTool {
       const header = await source.readBytes(MEDIA_SNIFF_BYTES);
       const fileType = detectFileType(source.name, header);
       if (fileType.kind === 'image' || fileType.kind === 'video') {
+        const kind = fileType.kind;
+        const article = kind === 'image' ? 'an' : 'a';
+        const capabilities = this.profile.getModelCapabilities();
+        const supported = kind === 'image' ? capabilities.image_in : capabilities.video_in;
+        if (!supported) {
+          return {
+            isError: true,
+            output: `"${args.path}" is ${article} ${kind} file. The current model does not support ${kind} input (missing ${kind}_in capability), so this agent cannot view it. Only text files can be read.`,
+          };
+        }
+        const mediaToolAvailable =
+          this.toolRegistry.resolve(READ_MEDIA_FILE_TOOL_NAME) !== undefined &&
+          this.toolPolicy.isToolActive(READ_MEDIA_FILE_TOOL_NAME);
         return {
           isError: true,
-          output: `"${args.path}" is ${fileType.kind === 'image' ? 'an' : 'a'} ${fileType.kind} file. Only text files can be read.`,
+          output: mediaToolAvailable
+            ? `"${args.path}" is ${article} ${kind} file. Only text files can be read; use ReadMediaFile for image and video files.`
+            : `"${args.path}" is ${article} ${kind} file. Only text files can be read.`,
         };
       }
 

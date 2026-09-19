@@ -39,6 +39,8 @@ import { IAgentToolResultTruncationService } from '#/agent/toolResultTruncation/
 import { ToolResultTruncationService } from '#/agent/toolResultTruncation/toolResultTruncationService';
 import { ReadInputSchema, type ReadInput } from '#/agent/tools/os/read/read';
 import { ReadTool } from '#/agent/tools/os/read/readTool';
+import type { IAgentProfileService } from '#/agent/profile/profile';
+import type { IAgentToolPolicyService } from '#/agent/toolPolicy/toolPolicy';
 import { ReadMediaFileTool } from '#/agent/tools/read-media-file/readMediaFileTool';
 import { SessionMediaStoreService } from '#/agent/media/sessionMediaStoreService';
 import { JsonAtomicDocumentStore } from '#/persistence/backends/node-fs/atomicDocumentStore';
@@ -1103,6 +1105,11 @@ describe('Read through the truncation pipeline', () => {
         stubWorkspaceContext(homeDir),
         { catalog: { getSkillRoots: () => [] } } as unknown as ISessionSkillCatalog,
         readConfig,
+        {
+          getModelCapabilities: () => ({ image_in: true, video_in: true }),
+        } as unknown as IAgentProfileService,
+        { isToolActive: () => true } as unknown as IAgentToolPolicyService,
+        { resolve: () => ({}) } as unknown as IAgentToolRegistryService,
         attachmentStore,
       ),
     );

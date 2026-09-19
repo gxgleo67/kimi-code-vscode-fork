@@ -9,7 +9,7 @@ import { extractImageCompressionCaptions } from '#/agent/media/image-compress';
 import { userCancellationReason } from '#/_base/utils/abort';
 import { IAgentContextMemoryService } from '#/agent/contextMemory/contextMemory';
 import { newMessageId } from '#/agent/contextMemory/messageId';
-import { USER_PROMPT_ORIGIN, type ContextMessage } from '#/agent/contextMemory/types';
+import { USER_PROMPT_ORIGIN, type ContextMessage, type UserPromptOrigin } from '#/agent/contextMemory/types';
 import { IAgentFullCompactionService } from '#/agent/fullCompaction/fullCompaction';
 import { IAgentLoopService, type Turn, type TurnResult } from '#/agent/loop/loop';
 import { IAgentProfileService } from '#/agent/profile/profile';
@@ -49,7 +49,10 @@ import {
   type PromptSubmitContext,
   type SteerPayload,
 } from './prompt';
-import { promptMetadataTextFromContentParts } from './promptMetadataText';
+import {
+  promptDisplayTextFromContentParts,
+  promptMetadataTextFromContentParts,
+} from './promptMetadataText';
 import { PromptStepRequest, RetryStepRequest, SteerStepRequest } from './promptStepRequests';
 import { PromptAccepted, promptAdmissionKey } from './promptOps';
 import { daemonFileRefFromPart } from '#/agent/media/mediaRef';
@@ -136,6 +139,7 @@ export interface PromptQueuedPayload {
   readonly promptId: string;
   readonly content: ContentPart[];
   readonly queueLength: number;
+  readonly clientMetadata?: UserPromptOrigin['clientMetadata'];
 }
 
 export class PromptQueued extends Event2<PromptQueuedPayload> {
@@ -217,7 +221,11 @@ export class AgentPromptService implements IAgentPromptService {
         submitted = true;
         this.reservedPromptIds.delete(id);
         await this.dispatcher.dispatch(
-          new PromptAccepted({ promptId: id, content: stripBundledSkillBlocks(message) }),
+          new PromptAccepted({
+            promptId: id,
+            content: stripBundledSkillBlocks(message),
+            clientMetadata: message.origin?.kind === 'user' ? message.origin.clientMetadata : undefined,
+          }),
         );
         return this.enqueue({ id, message });
       },
@@ -332,8 +340,24 @@ export class AgentPromptService implements IAgentPromptService {
     }
     const selected = this.pending.filter((item) => ids.has(item.id));
     for (const item of selected) this.pending.splice(this.pending.indexOf(item), 1);
+    const hasClientMetadata = selected.some((item) => {
+      const origin = item.message.origin;
+      return origin?.kind === 'user' && (origin.clientMetadata?.length ?? 0) > 0;
+    });
+    const clientMetadata = hasClientMetadata
+      ? selected.flatMap((item) => {
+          const origin = item.message.origin;
+          const metadata = origin?.kind === 'user' ? origin.clientMetadata : undefined;
+          return metadata !== undefined && metadata.length > 0
+            ? metadata
+            : [{ display_text: promptDisplayTextFromContentParts(stripBundledSkillBlocks(item.message)) }];
+        })
+      : [];
     const message: ContextMessage = {
-      role: 'user', content: selected.flatMap((item) => item.message.content), toolCalls: [], origin: USER_PROMPT_ORIGIN,
+      role: 'user',
+      content: selected.flatMap((item) => item.message.content),
+      toolCalls: [],
+      origin: clientMetadata.length === 0 ? USER_PROMPT_ORIGIN : { kind: 'user', clientMetadata },
     };
     const { message: rerouted, captions } = this.extractCompressionCaptions(message);
     const request = new SteerStepRequest(rerouted, captions, this.reminders, this.profile.getModelProviderType(), (materialized) => {
@@ -467,7 +491,14 @@ export class AgentPromptService implements IAgentPromptService {
   private publishCompleted(promptId: string, reason: 'completed' | 'failed' | 'blocked'): void { void this.dispatcher.dispatch(new PromptCompleted({ promptId, finishedAt: new Date().toISOString(), reason })); }
   private publishQueued(record: Record): void {
     if ((record.message.origin ?? USER_PROMPT_ORIGIN).kind !== 'user') return;
-    void this.dispatcher.dispatch(new PromptQueued({ promptId: record.id, content: record.message.content, queueLength: this.pending.length }));
+    void this.dispatcher.dispatch(
+      new PromptQueued({
+        promptId: record.id,
+        content: record.message.content,
+        queueLength: this.pending.length,
+        clientMetadata: (record.message.origin as UserPromptOrigin | undefined)?.clientMetadata,
+      }),
+    );
   }
   private publishAborted(promptId: string): void { void this.dispatcher.dispatch(new PromptAborted({ promptId, abortedAt: new Date().toISOString() })); }
 }

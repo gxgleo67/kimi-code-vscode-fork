@@ -92,6 +92,7 @@ export class AgentSkillService extends Service implements IAgentSkillService {
         skillPath: skill.path,
         skillSource: skill.source,
         skillArgs: input.args,
+        clientMetadata: input.clientMetadata,
       },
       content,
     );
@@ -133,7 +134,7 @@ export class AgentSkillService extends Service implements IAgentSkillService {
           eventService: this.eventService,
           sessionId: this.sessionContext.sessionId,
         },
-        promptMetadataTextFromContentParts(input.input),
+        promptMetadataTextFromContentParts(input.input, input.clientMetadata),
       );
     }
     for (const activation of prepared) {
@@ -147,6 +148,7 @@ export class AgentSkillService extends Service implements IAgentSkillService {
         origin: {
           kind: 'user',
           skillActivations: prepared.map((activation) => activation.entry),
+          clientMetadata: input.clientMetadata,
         },
       },
     });

@@ -6,6 +6,7 @@ import type { ContentPart } from '#/kosong/contract/message';
 export interface SkillActivationInput {
   readonly name: string;
   readonly args?: string;
+  readonly clientMetadata?: readonly Readonly<Record<string, unknown>>[];
   readonly content?: readonly ContentPart[];
 }
 
@@ -16,6 +17,7 @@ export interface PromptSkillActivation {
 
 export interface PromptWithSkillsInput {
   readonly input: readonly ContentPart[];
+  readonly clientMetadata?: readonly Readonly<Record<string, unknown>>[];
   readonly skills: readonly PromptSkillActivation[];
 }
 

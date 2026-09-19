@@ -214,13 +214,23 @@ export class AgentConversationUndoService
     const pending = this.prompt.list().pending.at(-1);
     let lastPrompt = pending === undefined
       ? undefined
-      : promptMetadataTextFromContentParts(pending.message.content);
+      : promptMetadataTextFromContentParts(
+          pending.message.content,
+          pending.message.origin?.kind === 'user' || pending.message.origin?.kind === 'skill_activation'
+            ? pending.message.origin.clientMetadata
+            : undefined,
+        );
     if (lastPrompt === undefined) {
       const history = this.context.get();
       for (let i = history.length - 1; i >= 0; i--) {
         const message = history[i]!;
         if (!isUndoAnchor(message)) continue;
-        lastPrompt = promptMetadataTextFromContentParts(message.content);
+        lastPrompt = promptMetadataTextFromContentParts(
+          message.content,
+          message.origin?.kind === 'user' || message.origin?.kind === 'skill_activation'
+            ? message.origin.clientMetadata
+            : undefined,
+        );
         if (lastPrompt !== undefined) break;
       }
     }

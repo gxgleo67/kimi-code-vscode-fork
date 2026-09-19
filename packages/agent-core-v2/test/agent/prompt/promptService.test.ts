@@ -11,6 +11,7 @@ import { IAgentLoopService } from '#/agent/loop/loop';
 import { IAgentPromptService } from '#/agent/prompt/prompt';
 import { IAgentProfileService } from '#/agent/profile/profile';
 import { AgentPromptService, PromptAborted, PromptCompleted, PromptQueued, PromptSteered } from '#/agent/prompt/promptService';
+import { TurnSteer } from '#/agent/loop/turnOps';
 import { IAgentScopeContext, makeAgentScopeContext } from '#/agent/scopeContext/scopeContext';
 import { IAgentSystemReminderService } from '#/agent/systemReminder/systemReminder';
 import { AgentSystemReminderService } from '#/agent/systemReminder/systemReminderService';
@@ -138,6 +139,45 @@ describe('AgentPromptService', () => {
       [active.id, [one.id, two.id]],
     ]);
     loop.drainNextBatch(context);
+  });
+
+  it('keeps each steered prompt client metadata in FIFO order without adding it to model content', async () => {
+    const { prompt, context, loop, eventBus } = harness();
+    const events: TurnSteer[] = [];
+    const queued: PromptQueued[] = [];
+    const steered: PromptSteered[] = [];
+    eventBus.subscribe(PromptQueued, (event) => queued.push(event));
+    eventBus.subscribe(PromptSteered, (event) => steered.push(event));
+    eventBus.subscribe(TurnSteer, (event) => events.push(event));
+    const active = await prompt.enqueue({ message: message('active') });
+    await active.launched;
+    const first = { composer: { version: 1, refId: 'first' } };
+    const second = { composer: { version: 1, refId: 'second' } };
+    const one = await prompt.enqueue({ message: { ...message('one'), origin: { kind: 'user', clientMetadata: [first] } } });
+    const two = await prompt.enqueue({ message: { ...message('two'), origin: { kind: 'user', clientMetadata: [second] } } });
+    await prompt.steer([two.id, one.id]);
+    loop.drainNextBatch(context);
+    expect(events[0]?.origin).toMatchObject({ kind: 'user', clientMetadata: [first, second] });
+    expect(queued.find((event) => event.promptId === one.id)?.clientMetadata).toEqual([first]);
+    expect(queued.find((event) => event.promptId === two.id)?.clientMetadata).toEqual([second]);
+    expect(steered.map((event) => event.promptIds)).toEqual([[one.id, two.id]]);
+    expect(events[0]?.input).toEqual([{ type: 'text', text: 'one' }, { type: 'text', text: 'two' }]);
+  });
+
+  it('keeps plain inputs beside composer metadata in a mixed steer', async () => {
+    const { prompt, context, loop, eventBus } = harness();
+    const events: TurnSteer[] = [];
+    eventBus.subscribe(TurnSteer, (event) => events.push(event));
+    const active = await prompt.enqueue({ message: message('active') });
+    await active.launched;
+    const metadata = { display_text: 'Save button', kimi_code_composer: { version: 1 } };
+    const one = await prompt.enqueue({ message: message('[literal](example.md)') });
+    const two = await prompt.enqueue({ message: { ...message('browser wire'), origin: { kind: 'user', clientMetadata: [metadata] } } });
+    const three = await prompt.enqueue({ message: message('last instruction') });
+    await prompt.steer([three.id, two.id, one.id]);
+    loop.drainNextBatch(context);
+    expect(events[0]?.origin).toMatchObject({ clientMetadata: [{ display_text: '[literal](example.md)' }, metadata, { display_text: 'last instruction' }] });
+    expect(events[0]?.input).toEqual([{ type: 'text', text: '[literal](example.md)' }, { type: 'text', text: 'browser wire' }, { type: 'text', text: 'last instruction' }]);
   });
 
   it('aborts pending prompts and settles completion', async () => {

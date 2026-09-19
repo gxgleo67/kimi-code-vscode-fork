@@ -799,6 +799,7 @@ export interface AgentStateSnapshot {
       readonly turnId: number;
       readonly origin: /* PromptOrigin — packages/agent-core-v2/src/agent/contextMemory/types.ts */ /* UserPromptOrigin — packages/agent-core-v2/src/agent/contextMemory/types.ts */ {
         readonly kind: 'user';
+        readonly clientMetadata?: readonly Readonly<Record<string, unknown>>[];
         readonly skillActivations?: readonly /* BundledSkillActivation — packages/agent-core-v2/src/agent/contextMemory/types.ts */ {
           readonly activationId: string;
           readonly skillName: string;
@@ -809,6 +810,7 @@ export interface AgentStateSnapshot {
         }[];
       } | /* SkillActivationOrigin — packages/agent-core-v2/src/agent/contextMemory/types.ts */ {
         readonly kind: 'skill_activation';
+        readonly clientMetadata?: readonly Readonly<Record<string, unknown>>[];
         readonly activationId: string;
         readonly skillName: string;
         readonly skillArgs?: string;
@@ -932,6 +934,7 @@ export interface AgentStateSnapshot {
     turnId: number;
     origin: /* PromptOrigin — packages/agent-core-v2/src/agent/contextMemory/types.ts */ /* UserPromptOrigin — packages/agent-core-v2/src/agent/contextMemory/types.ts */ {
       readonly kind: 'user';
+      readonly clientMetadata?: readonly Readonly<Record<string, unknown>>[];
       readonly skillActivations?: readonly /* BundledSkillActivation — packages/agent-core-v2/src/agent/contextMemory/types.ts */ {
         readonly activationId: string;
         readonly skillName: string;
@@ -942,6 +945,7 @@ export interface AgentStateSnapshot {
       }[];
     } | /* SkillActivationOrigin — packages/agent-core-v2/src/agent/contextMemory/types.ts */ {
       readonly kind: 'skill_activation';
+      readonly clientMetadata?: readonly Readonly<Record<string, unknown>>[];
       readonly activationId: string;
       readonly skillName: string;
       readonly skillArgs?: string;
@@ -997,6 +1001,7 @@ export interface AgentStateSnapshot {
       readonly turnId: number;
       readonly origin: /* PromptOrigin — packages/agent-core-v2/src/agent/contextMemory/types.ts */ /* UserPromptOrigin — packages/agent-core-v2/src/agent/contextMemory/types.ts */ {
         readonly kind: 'user';
+        readonly clientMetadata?: readonly Readonly<Record<string, unknown>>[];
         readonly skillActivations?: readonly /* BundledSkillActivation — packages/agent-core-v2/src/agent/contextMemory/types.ts */ {
           readonly activationId: string;
           readonly skillName: string;
@@ -1007,6 +1012,7 @@ export interface AgentStateSnapshot {
         }[];
       } | /* SkillActivationOrigin — packages/agent-core-v2/src/agent/contextMemory/types.ts */ {
         readonly kind: 'skill_activation';
+        readonly clientMetadata?: readonly Readonly<Record<string, unknown>>[];
         readonly activationId: string;
         readonly skillName: string;
         readonly skillArgs?: string;
@@ -1141,6 +1147,7 @@ export interface AgentStateSnapshot {
     readonly providerMessageId?: string;
     readonly origin?: /* UserPromptOrigin — packages/agent-core-v2/src/agent/contextMemory/types.ts */ {
       readonly kind: 'user';
+      readonly clientMetadata?: readonly Readonly<Record<string, unknown>>[];
       readonly skillActivations?: readonly /* BundledSkillActivation — packages/agent-core-v2/src/agent/contextMemory/types.ts */ {
         readonly activationId: string;
         readonly skillName: string;
@@ -1151,6 +1158,7 @@ export interface AgentStateSnapshot {
       }[];
     } | /* SkillActivationOrigin — packages/agent-core-v2/src/agent/contextMemory/types.ts */ {
       readonly kind: 'skill_activation';
+      readonly clientMetadata?: readonly Readonly<Record<string, unknown>>[];
       readonly activationId: string;
       readonly skillName: string;
       readonly skillArgs?: string;

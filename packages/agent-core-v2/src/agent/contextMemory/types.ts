@@ -6,6 +6,7 @@ export type SkillSource = 'project' | 'user' | 'extra' | 'builtin';
 
 export interface UserPromptOrigin {
   readonly kind: 'user';
+  readonly clientMetadata?: readonly Readonly<Record<string, unknown>>[];
   readonly skillActivations?: readonly BundledSkillActivation[];
 }
 
@@ -22,6 +23,7 @@ export interface BundledSkillActivation {
 
 export interface SkillActivationOrigin {
   readonly kind: 'skill_activation';
+  readonly clientMetadata?: readonly Readonly<Record<string, unknown>>[];
   readonly activationId: string;
   readonly skillName: string;
   readonly skillArgs?: string | undefined;

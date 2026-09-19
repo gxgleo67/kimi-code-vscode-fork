@@ -7,6 +7,7 @@ import { defineState } from '#/state/state';
 const promptAcceptedSchema = z.object({
   promptId: z.string().min(1),
   content: z.unknown().optional(),
+  clientMetadata: z.unknown().optional(),
 });
 
 export class PromptAccepted extends Event2<z.infer<typeof promptAcceptedSchema>> {

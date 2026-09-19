@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { IAgentContextMemoryService } from '#/agent/contextMemory/contextMemory';
 import { IAgentConversationUndoParticipantRegistry } from '#/agent/contextMemory/conversationUndoParticipants';
 import { ContextApplyCompaction } from '#/agent/contextMemory/contextEvents';
+import type { PromptOrigin } from '#/agent/contextMemory/types';
 import { IAgentFullCompactionService } from '#/agent/fullCompaction/fullCompaction';
 import { IAgentLoopService } from '#/agent/loop/loop';
 import { MessageStepRequest } from '#/agent/loop/stepRequest';
@@ -468,7 +469,7 @@ describe('AgentConversationUndoService', () => {
     await expect(metadata.read()).resolves.toMatchObject({ lastPrompt: undefined });
   });
 
-  it('uses the newest pending prompt as lastPrompt after undo', async () => {
+  it.each([undefined, 'Save button · Rename it'])('uses the newest pending prompt as lastPrompt after undo (display=%s)', async (displayText) => {
     setup();
     const metadata = ctx.get(ISessionMetadata);
     await metadata.ready;
@@ -486,7 +487,7 @@ describe('AgentConversationUndoService', () => {
             role: 'user',
             content: [{ type: 'text', text: 'queued prompt' }],
             toolCalls: [],
-            origin: { kind: 'user' },
+            origin: { kind: 'user', clientMetadata: displayText === undefined ? undefined : [{ display_text: displayText }] } as PromptOrigin,
           },
         },
       ],
@@ -494,7 +495,7 @@ describe('AgentConversationUndoService', () => {
 
     try {
       await ctx.get(IAgentConversationUndoService).undo(1);
-      await expect(metadata.read()).resolves.toMatchObject({ lastPrompt: 'queued prompt' });
+      await expect(metadata.read()).resolves.toMatchObject({ lastPrompt: displayText ?? 'queued prompt' });
     } finally {
       list.mockRestore();
     }

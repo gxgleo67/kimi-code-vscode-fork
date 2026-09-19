@@ -460,6 +460,7 @@ interface PromptAcceptedPayload {
   _name: 'prompt.accepted';
   promptId: string;
   content?: any;
+  clientMetadata?: any;
 }
 
 /**

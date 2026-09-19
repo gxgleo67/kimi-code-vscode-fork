@@ -36,6 +36,7 @@ export interface InspectedResolvedModel {
   readonly supportEfforts?: readonly string[];
   readonly defaultEffort?: string;
   readonly alwaysThinking: boolean;
+  readonly adaptiveThinking?: boolean;
   readonly headers: Readonly<Record<string, string>>;
   readonly providerOptions?: ProtocolProviderOptions;
 }
@@ -229,6 +230,7 @@ interface ResolvedModelLike {
   readonly supportEfforts?: readonly string[];
   readonly defaultEffort?: string;
   readonly alwaysThinking: boolean;
+  readonly adaptiveThinking?: boolean;
   readonly headers: Readonly<Record<string, string>>;
   readonly providerOptions?: ProtocolProviderOptions;
 }
@@ -393,6 +395,7 @@ export function assembleModelInspection(args: {
       supportEfforts: model.supportEfforts,
       defaultEffort: model.defaultEffort,
       alwaysThinking: model.alwaysThinking,
+      adaptiveThinking: model.adaptiveThinking,
       headers: model.headers,
       providerOptions: model.providerOptions,
     },

@@ -140,6 +140,27 @@ describe('Model assembly (pure data)', () => {
     }
   });
 
+  it('surfaces a declared adaptive_thinking flag on the assembled model', () => {
+    const { host, catalog } = createHost({
+      providers: {
+        openai: { type: 'openai', apiKey: 'sk-o', baseUrl: 'https://api.openai.com/v1' },
+      },
+      models: {
+        custom: {
+          provider: 'openai',
+          model: 'my-custom-model',
+          maxContextSize: 200000,
+          adaptiveThinking: true,
+        },
+      },
+    });
+    try {
+      expect(catalog.get('custom').adaptiveThinking).toBe(true);
+    } finally {
+      host.dispose();
+    }
+  });
+
   it('the Model carries no morphs and no request driver — pure data only', () => {
     const { host, catalog } = createHost(kimiSections);
     try {

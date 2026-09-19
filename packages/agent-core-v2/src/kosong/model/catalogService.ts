@@ -365,6 +365,7 @@ export class ModelCatalog extends Disposable implements IModelCatalog {
       supportEfforts: model.supportEfforts,
       defaultEffort: model.defaultEffort,
       alwaysThinking: declared.has('always_thinking'),
+      adaptiveThinking: model.adaptiveThinking,
       providerType,
       providerName,
       authProvider,

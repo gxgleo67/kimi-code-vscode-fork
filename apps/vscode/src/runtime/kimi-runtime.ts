@@ -39,11 +39,10 @@ export interface KimiRuntimeOptions {
 
 /**
  * Experiments the fork turns on for every session: secondary-model lets
- * subagents bind a separately configured model; auto_session_title lets the
- * managed title service summarize an AI session title after a turn completes.
+ * subagents bind a separately configured model.
  * Values must match the engine's flag ids (config.toml [experimental] keys).
  */
-const FORK_EXPERIMENT_FLAGS = ["secondary-model", "auto_session_title"] as const;
+const FORK_EXPERIMENT_FLAGS = ["secondary-model"] as const;
 
 export interface OpenSessionOptions {
   readonly webviewId: string;
@@ -396,8 +395,7 @@ export class KimiRuntime {
   /**
    * Gate the fork's experiments on: secondary-model lets subagents bind a
    * separately configured model (the TUI gates /secondary_model on the same
-   * flag), and auto_session_title lets the managed title service summarize an
-   * AI session title once a turn completes. Lazy and serialized with the
+   * flag). Lazy and serialized with the
    * first session flow: a config write racing an unrelated write from another
    * client sharing this home would interleave v1's whole-document
    * read-merge-write and clobber it, so the flags are persisted on first use

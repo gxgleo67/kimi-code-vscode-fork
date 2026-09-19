@@ -752,9 +752,9 @@ export class SessionRuntime {
 
   /**
    * Ask the engine for an AI session title after a completed turn. Fire-and-
-   * forget: the engine no-ops unless the auto_session_title experiment and a
-   * managed OAuth login are present, and it skips sessions whose title is
-   * already custom or generated, so a failure must never surface in the chat.
+   * forget: the engine no-ops unless a managed OAuth login is present, and it
+   * skips sessions whose title is already custom or generated, so a failure
+   * must never surface in the chat.
    */
   private requestSessionTitle(): void {
     if (this.generateSessionTitle === undefined) return;

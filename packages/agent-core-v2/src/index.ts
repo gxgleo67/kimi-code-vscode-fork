@@ -165,6 +165,8 @@ export * from '#/kosong/provider/protocolAdapterRegistry';
 import '#/app/skillCatalog/configSection';
 import '#/app/agentIdentity/configSection';
 export * from '#/app/agentIdentity/configSection';
+import '#/app/watch/configSection';
+export * from '#/app/watch/configSection';
 export * from '#/app/agentIdentity/agentIdentity';
 export * from '#/app/agentIdentity/agentIdentityService';
 import '#/kosong/protocol/errors';

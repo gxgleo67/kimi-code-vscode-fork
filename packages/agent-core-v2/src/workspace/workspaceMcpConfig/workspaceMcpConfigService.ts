@@ -114,7 +114,7 @@ export class WorkspaceMcpConfigService extends Disposable implements IWorkspaceM
     });
     this.watchPaths([paths.user]);
     const projectRoot = dirname(paths.projectRoot);
-    const handle = this.fsWatch.watch(projectRoot, {
+    const handle = this.fsWatch.watchCandidates(projectRoot, [paths.projectRoot, paths.project], {
       ignored: subtreeWatchFilter(projectRoot, [paths.projectRoot, paths.project]),
     });
     this._register(handle);

@@ -85,7 +85,7 @@ export class WorkspaceRootSkillSource extends Disposable implements IWorkspaceRo
     const signature = [...scannedDirectories].toSorted().join('\0');
     if (signature === this.watchSignature) return false;
     const resources = this.watchResources.add(new DisposableStore());
-    const handle = this.fsWatch.watch(projectRoot, {
+    const handle = this.fsWatch.watchCandidates(projectRoot, candidates, {
       ignored: subtreeWatchFilter(projectRoot, candidates, {
         scannedDirectories,
         keepEntryFile: 'SKILL.md',

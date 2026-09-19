@@ -10,6 +10,8 @@ import {
   IAtomicTomlDocumentStore,
   type IAtomicDocumentStore,
 } from '#/persistence/interface/atomicDocumentStore';
+import { setHostFsWatchEnabled } from '#/os/interface/hostFsWatch';
+import { WATCH_SECTION, type WatchConfig } from '#/app/watch/configSection';
 
 import {
   type AnyEnvBindings,
@@ -324,6 +326,7 @@ export class ConfigService extends Disposable implements IConfigService {
     this._register(this.registry.onDidRegisterOverlay(() => this.reapplyOverlays()));
     const { configKey } = this;
     const { homeDir } = this.bootstrap;
+    this.applyWatchEnabled();
     this.ready = (async () => {
       await migrateThinkingEffortMaxToHigh(this.documentStore, configKey, homeDir);
       await this.load('load');
@@ -570,6 +573,7 @@ export class ConfigService extends Disposable implements IConfigService {
     this.applySectionEnvBindings(next, true);
     this.applyEnvOverlay(next);
     this.effective = next;
+    this.applyWatchEnabled();
 
     const candidates = new Set(
       domains ?? [...Object.keys(previous), ...Object.keys(next)],
@@ -579,6 +583,10 @@ export class ConfigService extends Disposable implements IConfigService {
     }
     this.commit(source, [...candidates]);
     this.emitDiagnosticsIfChanged();
+  }
+
+  private applyWatchEnabled(): void {
+    setHostFsWatchEnabled(this.get<WatchConfig | undefined>(WATCH_SECTION)?.enabled ?? true);
   }
 
   private deliveredValue(domain: string): unknown {

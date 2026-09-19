@@ -116,7 +116,7 @@ export class WorkspaceInstructionsService
     );
     for (const { root, candidates } of plan) {
       try {
-        const handle = this.fsWatch.watch(root, {
+        const handle = this.fsWatch.watchCandidates(root, candidates, {
           ignored: subtreeWatchFilter(root, candidates),
         });
         this._register(handle);

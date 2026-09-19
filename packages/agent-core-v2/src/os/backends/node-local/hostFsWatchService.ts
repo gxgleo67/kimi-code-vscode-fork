@@ -1,4 +1,4 @@
-import { watch as fsWatch, realpathSync } from 'node:fs';
+import { watch as fsWatch, existsSync, realpathSync } from 'node:fs';
 import { basename, dirname, isAbsolute, join, relative, sep } from 'node:path';
 
 import { FSWatcher } from 'chokidar';
@@ -16,6 +16,7 @@ import {
   type HostFsWatchOptions,
   type IHostFsWatchHandle,
   IHostFsWatchService,
+  isHostFsWatchEnabled,
 } from '#/os/interface/hostFsWatch';
 
 const DEFAULT_IGNORED = (p: string): boolean => /(?:^|[/\\])\.git(?:$|[/\\])/.test(p);
@@ -246,6 +247,7 @@ export class HostFsWatchService implements IHostFsWatchService {
   constructor(private readonly runtime: HostFsWatchRuntime = NODE_HOST_FS_WATCH_RUNTIME) {}
 
   watch(path: string, options?: HostFsWatchOptions): IHostFsWatchHandle {
+    if (!isHostFsWatchEnabled()) return disabledHostFsWatchHandle();
     const watched = this.runtime.resolvePath?.(path) ?? path;
     const toRequestedPath = (changed: string): string =>
       watched === path ? changed : requestedPath(watched, path, changed);
@@ -258,6 +260,171 @@ export class HostFsWatchService implements IHostFsWatchService {
       return new SignalWatchHandle(watched, mappedOptions, this.runtime, toRequestedPath);
     }
     return new HostFsWatchHandle(watched, mappedOptions, toRequestedPath);
+  }
+
+  watchCandidates(
+    root: string,
+    candidates: readonly string[],
+    options?: HostFsWatchOptions,
+  ): IHostFsWatchHandle {
+    if (!isHostFsWatchEnabled()) return disabledHostFsWatchHandle();
+    return new CandidateWatchHandle(this, root, candidates, options);
+  }
+}
+
+function disabledHostFsWatchHandle(): IHostFsWatchHandle {
+  return {
+    ready: Promise.resolve(),
+    onDidChange: () => ({ dispose: () => {} }),
+    dispose: () => {},
+  };
+}
+
+class CandidateWatchHandle implements IHostFsWatchHandle {
+  readonly ready: Promise<void>;
+  readonly onDidChange: Event<HostFsChange>;
+
+  private readonly readiness = createWatchReadiness();
+  private readonly emitter: Emitter<HostFsChange>;
+  private handles: IHostFsWatchHandle[] = [];
+  private planKey = '';
+  private disposed = false;
+
+  constructor(
+    private readonly service: HostFsWatchService,
+    private readonly root: string,
+    private readonly candidates: readonly string[],
+    private readonly options: HostFsWatchOptions | undefined,
+  ) {
+    this.ready = this.readiness.promise;
+    this.emitter = new Emitter<HostFsChange>();
+    this.onDidChange = this.emitter.event;
+    void this.rebuild(true);
+  }
+
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.readiness.resolve();
+    this.teardown();
+    this.emitter.dispose();
+  }
+
+  private async rebuild(initial: boolean): Promise<void> {
+    if (this.disposed) return;
+    const plan = planCandidateWatches(this.root, this.candidates);
+    const key = `${plan.notify.join('\0')}\0\0${plan.paths.join('\0')}\0\0${plan.pending.join('\0')}`;
+    if (!initial && key === this.planKey) return;
+    this.planKey = key;
+    this.teardown();
+    const next: IHostFsWatchHandle[] = [];
+    for (const path of plan.paths) next.push(this.service.watch(path, this.options));
+    for (const dir of plan.notify) {
+      if (!watchPathExists(dir)) continue;
+      next.push(
+        this.service.watch(dir, {
+          ...this.options,
+          recursive: false,
+          ignored: (path) =>
+            !isCandidateRelated(dir, this.candidates, path) ||
+            (this.options?.ignored?.(path) ?? false),
+        }),
+      );
+    }
+    for (const path of plan.pending) next.push(this.service.watch(path, this.options));
+    this.handles = next;
+    for (const handle of next) {
+      handle.onDidChange((change) => {
+        if (this.disposed) return;
+        void this.rebuild(false);
+        this.emitter.fire(change);
+      });
+    }
+    try {
+      await Promise.all(next.map((handle) => handle.ready));
+      this.readiness.resolve();
+    } catch (error) {
+      this.readiness.reject(error);
+    }
+  }
+
+  private teardown(): void {
+    for (const handle of this.handles) handle.dispose();
+    this.handles = [];
+  }
+}
+
+function planCandidateWatches(
+  root: string,
+  candidates: readonly string[],
+): {
+  readonly paths: readonly string[];
+  readonly notify: readonly string[];
+  readonly pending: readonly string[];
+} {
+  const paths = new Set<string>();
+  const notify = new Set<string>();
+  const pending = new Set<string>();
+  for (const candidate of candidates) {
+    if (watchPathExists(candidate)) {
+      paths.add(candidate);
+      continue;
+    }
+    let current = dirname(candidate);
+    while (!watchPathExists(current) && !sameWatchPath(current, root)) {
+      const parent = dirname(current);
+      if (parent === current) break;
+      current = parent;
+    }
+    if (watchPathExists(current) && !isKimiCodeDir(current)) notify.add(current);
+    else pending.add(candidate);
+  }
+  return {
+    paths: [...paths].toSorted(),
+    notify: [...notify].toSorted(),
+    pending: [...pending].toSorted(),
+  };
+}
+
+function isKimiCodeDir(path: string): boolean {
+  const name = basename(path);
+  return process.platform === 'win32' ? name.toLowerCase() === '.kimi-code' : name === '.kimi-code';
+}
+
+function isCandidateRelated(root: string, candidates: readonly string[], path: string): boolean {
+  for (const candidate of candidates) {
+    if (sameWatchPath(path, candidate)) return true;
+    if (isPathInside(path, candidate) || isPathInside(candidate, path)) return true;
+    const segment = firstPathSegment(root, candidate);
+    if (segment !== undefined && (basename(path) === segment || path.endsWith(`${sep}${segment}`))) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function firstPathSegment(root: string, candidate: string): string | undefined {
+  const rel = relative(root, candidate);
+  if (rel === '' || isOutside(rel)) return undefined;
+  return rel.split(/[/\\]/)[0];
+}
+
+function isPathInside(path: string, parent: string): boolean {
+  const rel = relative(parent, path);
+  return rel !== '' && !isOutside(rel);
+}
+
+function sameWatchPath(left: string, right: string): boolean {
+  const a = left.replaceAll('\\', '/').replace(/\/+$/, '');
+  const b = right.replaceAll('\\', '/').replace(/\/+$/, '');
+  return process.platform === 'win32' ? a.toLowerCase() === b.toLowerCase() : a === b;
+}
+
+function watchPathExists(path: string): boolean {
+  try {
+    return existsSync(path);
+  } catch {
+    return false;
   }
 }
 

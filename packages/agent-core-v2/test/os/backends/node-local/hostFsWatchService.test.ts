@@ -434,6 +434,63 @@ describe('host filesystem change notifications', () => {
     30000,
   );
 
+  it('watchCandidates fires for candidate files and ignores unrelated root changes', async () => {
+    root = await longTempDir('hostfswatch-cand-');
+    const candidate = join(root, 'config.toml');
+    const events: HostFsChange[] = [];
+    handle = new HostFsWatchService().watchCandidates(root, [candidate]);
+    handle.onDidChange((e) => events.push(e));
+    await handle.ready;
+
+    await writeFile(join(root, 'unrelated.txt'), 'x');
+    await wait(300);
+    expect(events.some((e) => e.path.endsWith('unrelated.txt'))).toBe(false);
+
+    await writeFile(candidate, 'v1');
+    await expect
+      .poll(() => events.some((e) => e.path === candidate), { timeout: 5000 })
+      .toBe(true);
+  });
+
+  it('watchCandidates watches an existing candidate file directly', async () => {
+    root = await longTempDir('hostfswatch-cand-');
+    const candidate = join(root, 'config.toml');
+    await writeFile(candidate, 'v1');
+    const events: HostFsChange[] = [];
+    handle = new HostFsWatchService().watchCandidates(root, [candidate]);
+    handle.onDidChange((e) => events.push(e));
+    await handle.ready;
+
+    await writeFile(candidate, 'v2');
+    await expect
+      .poll(() => events.some((e) => e.path === candidate && e.action === 'modified'), {
+        timeout: 5000,
+      })
+      .toBe(true);
+  });
+
+  it('returns disabled handles when KIMI_CODE_WATCH is false', async () => {
+    root = await longTempDir('hostfswatch-kill-');
+    process.env.KIMI_CODE_WATCH = '0';
+    const plain = new HostFsWatchService().watch(root);
+    try {
+      const events: HostFsChange[] = [];
+      handle = new HostFsWatchService().watchCandidates(root, [join(root, 'config.toml')]);
+      handle.onDidChange((e) => events.push(e));
+      plain.onDidChange((e) => events.push(e));
+      await handle.ready;
+      await plain.ready;
+
+      await writeFile(join(root, 'config.toml'), 'x');
+      await wait(300);
+
+      expect(events).toHaveLength(0);
+    } finally {
+      plain.dispose();
+      delete process.env.KIMI_CODE_WATCH;
+    }
+  });
+
   it.skipIf(process.platform !== 'darwin')(
     'signal mode keeps the fd footprint bounded on a fat subtree',
     async () => {

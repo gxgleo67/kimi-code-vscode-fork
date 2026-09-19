@@ -163,8 +163,7 @@ export class WorkspaceDirsService extends Disposable implements IWorkspaceDirs {
 
   private watchLocalToml(): void {
     try {
-      const handle = this.fsWatch.watch(this.projectRoot, {
-        recursive: true,
+      const handle = this.fsWatch.watchCandidates(this.projectRoot, [this.configPath], {
         ignored: subtreeWatchFilter(this.projectRoot, [this.configPath]),
       });
       this._register(handle);

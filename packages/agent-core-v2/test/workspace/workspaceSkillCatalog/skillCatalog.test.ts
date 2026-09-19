@@ -150,16 +150,19 @@ function workspaceContextStub(workDir: string): IWorkspaceContext {
 function fsWatchStub(
   onWatch?: (options: HostFsWatchOptions | undefined) => void,
 ): IHostFsWatchService {
+  const watch = (_path: string, options?: HostFsWatchOptions): IHostFsWatchHandle => {
+    onWatch?.(options);
+    return {
+      ready: Promise.resolve(),
+      onDidChange: Event.None as Event<HostFsChange>,
+      dispose: () => {},
+    };
+  };
   return {
     _serviceBrand: undefined,
-    watch: (_path, options): IHostFsWatchHandle => {
-      onWatch?.(options);
-      return {
-        ready: Promise.resolve(),
-        onDidChange: Event.None as Event<HostFsChange>,
-        dispose: () => {},
-      };
-    },
+    watch,
+    watchCandidates: (root: string, _candidates: readonly string[], options?: HostFsWatchOptions) =>
+      watch(root, options),
   };
 }
 
@@ -836,16 +839,18 @@ describe('WorkspaceSkillCatalogService', () => {
     }
 
     const handles: TestWatchHandle[] = [];
+    const createHandle = (): TestWatchHandle => {
+      const handle = new TestWatchHandle(
+        handles.length === 0 ? Promise.resolve() : replacementReady.promise,
+      );
+      handles.push(handle);
+      if (handles.length === 2) replacementStarted.resolve(undefined);
+      return handle;
+    };
     const watchService: IHostFsWatchService = {
       _serviceBrand: undefined,
-      watch: () => {
-        const handle = new TestWatchHandle(
-          handles.length === 0 ? Promise.resolve() : replacementReady.promise,
-        );
-        handles.push(handle);
-        if (handles.length === 2) replacementStarted.resolve(undefined);
-        return handle;
-      },
+      watch: () => createHandle(),
+      watchCandidates: () => createHandle(),
     };
     let scans = 0;
     const discovery: ISkillDiscovery = {

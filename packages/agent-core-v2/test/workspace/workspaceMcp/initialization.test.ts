@@ -94,6 +94,11 @@ describe('Workspace MCP initialization', () => {
             onDidChange: Event.None as Event<HostFsChange>,
             dispose: () => {},
           }),
+          watchCandidates: (): IHostFsWatchHandle => ({
+            ready: Promise.resolve(),
+            onDidChange: Event.None as Event<HostFsChange>,
+            dispose: () => {},
+          }),
         });
         reg.defineInstance(IHostFileSystem, new HostFileSystem());
         reg.definePartialInstance(IWorkspaceTrust, {

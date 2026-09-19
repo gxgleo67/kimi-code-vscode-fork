@@ -73,6 +73,10 @@ function fakeHostFsWatch(): FakeWatch {
       watchCalls.push(path);
       return handle;
     },
+    watchCandidates: (root) => {
+      watchCalls.push(root);
+      return handle;
+    },
   };
   return {
     service,

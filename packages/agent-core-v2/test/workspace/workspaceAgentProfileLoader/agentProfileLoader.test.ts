@@ -107,13 +107,15 @@ function workspaceContextStub(workDir: string): IWorkspaceContext {
 }
 
 function fsWatchStub(): IHostFsWatchService {
+  const handle = (): IHostFsWatchHandle => ({
+    ready: Promise.resolve(),
+    onDidChange: Event.None as Event<HostFsChange>,
+    dispose: () => {},
+  });
   return {
     _serviceBrand: undefined,
-    watch: (): IHostFsWatchHandle => ({
-      ready: Promise.resolve(),
-      onDidChange: Event.None as Event<HostFsChange>,
-      dispose: () => {},
-    }),
+    watch: handle,
+    watchCandidates: handle,
   };
 }
 

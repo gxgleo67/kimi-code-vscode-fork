@@ -72,16 +72,18 @@ describe('WorkspaceMcpConfigService', () => {
   });
 
   function fsWatchStub(): IHostFsWatchService {
+    const watch = (path: string): IHostFsWatchHandle => {
+      let emitter = watchFires.get(path);
+      if (emitter === undefined) {
+        emitter = new Emitter<HostFsChange>();
+        watchFires.set(path, emitter);
+      }
+      return { ready: Promise.resolve(), onDidChange: emitter.event, dispose: () => {} };
+    };
     return {
       _serviceBrand: undefined,
-      watch: (path: string): IHostFsWatchHandle => {
-        let emitter = watchFires.get(path);
-        if (emitter === undefined) {
-          emitter = new Emitter<HostFsChange>();
-          watchFires.set(path, emitter);
-        }
-        return { ready: Promise.resolve(), onDidChange: emitter.event, dispose: () => {} };
-      },
+      watch,
+      watchCandidates: (root: string): IHostFsWatchHandle => watch(root),
     };
   }
 

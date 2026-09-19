@@ -315,6 +315,7 @@ export interface SkillSummary {
   readonly type?: string | undefined;
   readonly disableModelInvocation?: boolean | undefined;
   readonly isSubSkill?: boolean | undefined;
+  readonly scopes?: readonly ('tui' | 'web')[];
 }
 
 export interface ActivateSkillPayload {

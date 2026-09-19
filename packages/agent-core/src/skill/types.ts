@@ -1,5 +1,7 @@
 export type SkillSource = 'project' | 'user' | 'extra' | 'builtin';
 
+export type SkillScope = 'tui' | 'web';
+
 export interface SkillMetadata {
   readonly name?: string | undefined;
   readonly description?: string | undefined;
@@ -33,6 +35,7 @@ export interface SkillSummary {
   readonly type?: string | undefined;
   readonly disableModelInvocation?: boolean | undefined;
   readonly isSubSkill?: boolean | undefined;
+  readonly scopes?: readonly SkillScope[];
 }
 
 export interface SkillRoot {

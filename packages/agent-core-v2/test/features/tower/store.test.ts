@@ -157,6 +157,42 @@ describe('init', () => {
   });
 });
 
+describe('roster identity', () => {
+  it('retires a stale roster entry when a new agent reuses its agent id', async () => {
+    await store.init('session-a');
+    await store.registerAgent(
+      rosterEntry({ name: 'worker-old', kind: 'worker', sessionId: 'session-a', agentId: 'agent-0' }),
+    );
+    await store.registerAgent(
+      rosterEntry({ name: 'worker-new', kind: 'worker', sessionId: 'session-b', agentId: 'agent-0' }),
+    );
+
+    const state = await store.load();
+    expect(state.roster.agents.map((agent) => agent.name)).toEqual(['worker-new']);
+    expect(store.resolveCallerName(state, 'agent-0')).toBe('worker-new');
+  });
+
+  it('resolves an agent id to the latest roster entry when duplicates exist', async () => {
+    await store.init('session-a');
+    await store.registerAgent(
+      rosterEntry({ name: 'worker-old', kind: 'worker', sessionId: 'session-a', agentId: 'agent-0' }),
+    );
+    const state = await store.load();
+    state.roster.agents.push(
+      rosterEntry({ name: 'worker-new', kind: 'worker', sessionId: 'session-b', agentId: 'agent-0' }),
+    );
+    await writeFile(
+      join(repo, '.tower/comms/state.json'),
+      `${JSON.stringify(state, null, 2)}\n`,
+      'utf8',
+    );
+
+    const reloaded = await store.load();
+    expect(store.resolveAgent(reloaded, 'agent-0')?.name).toBe('worker-new');
+    expect(store.resolveCallerName(reloaded, 'agent-0')).toBe('worker-new');
+  });
+});
+
 describe('plan', () => {
   beforeEach(async () => {
     await store.init();
@@ -704,7 +740,7 @@ describe('roster', () => {
   it('rejects duplicate agent names', async () => {
     await store.registerAgent(rosterEntry({ name: 'w1', kind: 'worker' }));
     await expect(
-      store.registerAgent(rosterEntry({ name: 'w1', kind: 'reviewer' })),
+      store.registerAgent(rosterEntry({ name: 'w1', kind: 'reviewer', agentId: 'agent-w1-reviewer' })),
     ).rejects.toThrow(/already registered/);
   });
 

@@ -278,9 +278,17 @@ export class TowerStore {
     return all.slice(-lines);
   }
 
+  resolveAgent(state: TowerState, agentId: string): TowerRosterEntry | undefined {
+    let resolved: TowerRosterEntry | undefined;
+    for (const agent of state.roster.agents) {
+      if (agent.agentId === agentId) resolved = agent;
+    }
+    return resolved;
+  }
+
   resolveCallerName(state: TowerState, agentId: string): string {
     if (agentId === 'main') return TOWER_NAME;
-    const entry = state.roster.agents.find((agent) => agent.agentId === agentId);
+    const entry = this.resolveAgent(state, agentId);
     if (entry === undefined) {
       throw new TowerProtocolError(
         `agent "${agentId}" is not a tower participant — only spawned workers/reviewers and the tower can use tower tools`,
@@ -303,6 +311,12 @@ export class TowerStore {
 
   async registerAgent(entry: TowerRosterEntry): Promise<void> {
     const state = await this.load();
+    for (let index = state.roster.agents.length - 1; index >= 0; index -= 1) {
+      const agent = state.roster.agents[index];
+      if (agent !== undefined && agent.agentId === entry.agentId) {
+        state.roster.agents.splice(index, 1);
+      }
+    }
     if (this.findAgent(state, entry.name) !== undefined) {
       throw new TowerProtocolError(`tower agent name "${entry.name}" is already registered`);
     }

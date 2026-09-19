@@ -62,8 +62,7 @@ export class AgentTowerService extends Disposable implements IAgentTowerService 
         const entry = await store
           .load()
           .then(
-            (state) =>
-              state.roster.agents.find((agent) => agent.agentId === this.agentCtx.agentId),
+            (state) => store.resolveAgent(state, this.agentCtx.agentId),
             () => undefined,
           );
         const slot = entry?.worktree;

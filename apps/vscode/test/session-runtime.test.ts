@@ -381,6 +381,68 @@ describe("session runtime (adapts one SDK session for subscribed Webviews)", () 
     });
   });
 
+  it("forwards engine goal updates to subscribed views as StatusUpdate", () => {
+    const { sdk, broadcasts } = createRuntime();
+
+    sdk.emit({
+      type: "goal.updated",
+      sessionId: "session-1",
+      agentId: "main",
+      snapshot: {
+        goalId: "goal-1",
+        objective: "Ship the fix",
+        status: "active",
+        turnsUsed: 2,
+        tokensUsed: 1200,
+        wallClockMs: 8000,
+        budget: {
+          tokenBudget: null,
+          turnBudget: null,
+          wallClockBudgetMs: null,
+          remainingTokens: null,
+          remainingTurns: null,
+          remainingWallClockMs: null,
+          tokenBudgetReached: false,
+          turnBudgetReached: false,
+          wallClockBudgetReached: false,
+          overBudget: false,
+        },
+      },
+    });
+
+    expect(streamData(broadcasts)).toContainEqual({
+      type: "StatusUpdate",
+      payload: {
+        goal: {
+          objective: "Ship the fix",
+          status: "active",
+          turnsUsed: 2,
+          tokensUsed: 1200,
+          wallClockMs: 8000,
+          terminalReason: undefined,
+        },
+      },
+      _sessionId: "session-1",
+    });
+  });
+
+  it("forwards an engine goal clear as a null goal StatusUpdate", () => {
+    const { sdk, broadcasts } = createRuntime();
+
+    sdk.emit({
+      type: "goal.updated",
+      sessionId: "session-1",
+      agentId: "main",
+      snapshot: null,
+    });
+
+    expect(streamData(broadcasts)).toContainEqual({
+      type: "StatusUpdate",
+      payload: { goal: null },
+      _sessionId: "session-1",
+    });
+  });
+
   it("broadcasts a legacy tool call when an SDK tool starts", () => {
     const { sdk, broadcasts } = createRuntime();
 

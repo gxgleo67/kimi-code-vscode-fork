@@ -590,6 +590,32 @@ export class SessionRuntime {
       }
     }
 
+    if (event.type === "goal.updated") {
+      // Goal state changes also come from the model (UpdateGoal tool), the
+      // budget driver, or an interruption pause — none of those answer a host
+      // RPC, so without this live forward the view's goal state goes stale and
+      // a later cancel click fails against the already-cleared engine state.
+      const snapshot = event.snapshot;
+      const goal =
+        snapshot === null
+          ? null
+          : {
+              objective: snapshot.objective,
+              status: snapshot.status,
+              turnsUsed: snapshot.turnsUsed,
+              tokensUsed: snapshot.tokensUsed,
+              wallClockMs: snapshot.wallClockMs,
+              terminalReason: snapshot.terminalReason,
+            };
+      for (const webviewId of this.webviewIds) {
+        this.broadcast(
+          Events.StreamEvent,
+          { type: "StatusUpdate", payload: { goal }, _sessionId: this.id },
+          webviewId,
+        );
+      }
+    }
+
     if (event.type === "turn.started" && event.agentId === "main" && this.activePrompt !== undefined) {
       this.activePrompt.started = true;
       this.activeTurnId = event.turnId;

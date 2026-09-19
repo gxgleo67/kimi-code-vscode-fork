@@ -161,21 +161,25 @@ function clearHandshakeTimer() {
   }
 }
 
-// Streamed text arrives as one bridge message per delta. Coalescing deltas
-// within a short window turns a burst of messages into a single store update,
-// so long conversations don't re-render once per token.
+// Streamed deltas arrive as one bridge message per chunk. Coalescing the hot
+// ones (text / think / tool-call argument parts) within a short window turns a
+// burst of messages into a single store update, so long conversations don't
+// re-render once per token.
 const TEXT_DELTA_WINDOW_MS = 50;
 
-let pendingTextParts: string[] = [];
+let pendingStreamEvents: UIStreamEvent[] = [];
 let textDeltaTimer: ReturnType<typeof setTimeout> | null = null;
 
-/** Extract the text of a pure-text ContentPart delta; null for any other event. */
-function textDeltaOf(event: UIStreamEvent): string | null {
+/** True for the high-frequency delta events that are safe to coalesce into the
+ *  per-window batch. Order relative to control events is preserved because
+ *  every other event flushes the buffer first. */
+function isBatchableStreamEvent(event: UIStreamEvent): boolean {
+  if (event.type === "ToolCallPart") return true;
   if (event.type !== "ContentPart" || !("payload" in event)) {
-    return null;
+    return false;
   }
   const part = event.payload as ContentPart;
-  return part.type === "text" && part.text ? part.text : null;
+  return (part.type === "text" && !!part.text) || (part.type === "think" && !!part.think);
 }
 
 function clearTextDeltaTimer() {
@@ -186,20 +190,22 @@ function clearTextDeltaTimer() {
 }
 
 /**
- * Apply buffered text deltas as one event, preserving arrival order. Must run
- * before processing any control event so it observes everything that arrived
- * before it.
+ * Apply buffered stream deltas in one store update, preserving arrival order.
+ * Must run before processing any control event so it observes everything that
+ * arrived before it.
  */
 function flushTextDeltas() {
   clearTextDeltaTimer();
-  if (pendingTextParts.length === 0) {
+  if (pendingStreamEvents.length === 0) {
     return;
   }
-  const text = pendingTextParts.join("");
-  pendingTextParts = [];
+  const events = pendingStreamEvents;
+  pendingStreamEvents = [];
   useChatStore.setState(
     produce((draft: ChatState) => {
-      processEvent(draft, { type: "ContentPart", payload: { type: "text", text } });
+      for (const event of events) {
+        processEvent(draft, event);
+      }
     }),
   );
 }
@@ -417,18 +423,20 @@ export const useChatStore = create<ChatState>((set, get) => ({
   setSessionTitle: (sessionTitle) => set({ sessionTitle }),
 
   processEvent: (event) => {
-    // Pure-text deltas are buffered and applied in a single batch per window;
-    // every other event is a control event and flushes the buffer first, so
+    // Hot deltas are buffered and applied in a single batch per window; every
+    // other event is a control event and flushes the buffer first, so
     // application order matches arrival order.
-    const textDelta = textDeltaOf(event);
-    if (textDelta !== null) {
-      // Ack the handshake on arrival: the engine has responded regardless of
-      // when the buffered text gets applied.
-      clearHandshakeTimer();
-      if (!get().handshakeReceived) {
-        set({ handshakeReceived: true });
+    if (isBatchableStreamEvent(event)) {
+      // ContentPart acks the handshake on arrival (parity with the unbuffered
+      // path): the engine has responded regardless of when the buffered delta
+      // gets applied.
+      if (event.type === "ContentPart") {
+        clearHandshakeTimer();
+        if (!get().handshakeReceived) {
+          set({ handshakeReceived: true });
+        }
       }
-      pendingTextParts.push(textDelta);
+      pendingStreamEvents.push(event);
       textDeltaTimer ??= setTimeout(flushTextDeltas, TEXT_DELTA_WINDOW_MS);
       return;
     }

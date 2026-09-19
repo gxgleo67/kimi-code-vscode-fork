@@ -219,12 +219,28 @@ const createGoal: Handler<{ objective: string }, { ok: boolean }> = async (param
 const controlGoal: Handler<{ action: "pause" | "resume" | "cancel" }, { ok: boolean }> = async (params, ctx) => {
   const runtime = ctx.getSession();
   if (runtime === undefined) return { ok: false };
-  if (params.action === "pause") await runtime.session.pauseGoal();
-  else if (params.action === "resume") await runtime.session.resumeGoal();
-  else await runtime.session.cancelGoal();
-  await runtime.announceStatus(ctx.webviewId);
+  try {
+    if (params.action === "pause") await runtime.session.pauseGoal();
+    else if (params.action === "resume") await runtime.session.resumeGoal();
+    else await runtime.session.cancelGoal();
+  } catch (error) {
+    // The goal may already be gone engine-side (model-completed, budget
+    // blocked, or cleared by another client) — the end state the user asked
+    // for then already holds, so treat goal.not_found as success.
+    if (!isGoalNotFoundError(error)) throw error;
+  } finally {
+    // Re-announce even on failure: the view's goal state may be stale from a
+    // transition it never saw, and this is what resyncs it.
+    await runtime.announceStatus(ctx.webviewId);
+  }
   return { ok: true };
 };
+
+function isGoalNotFoundError(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const { code, message } = error as { code?: unknown; message?: unknown };
+  return code === "goal.not_found" || message === "No current goal";
+}
 
 const getBackgroundTasks: Handler<void, { tasks: BackgroundTaskItem[] }> = async (_, ctx) => {
   const runtime = ctx.getSession();

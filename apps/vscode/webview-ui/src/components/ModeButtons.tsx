@@ -95,6 +95,16 @@ export function ModeButtons({ compact = false }: { compact?: boolean }) {
     useChatStore.setState({ goalArmed: next });
   };
 
+  // Close the menu immediately (the plain Buttons are not DropdownMenuItems,
+  // so Radix would keep it open) and let the live goal.updated / StatusUpdate
+  // cycle drive the state change — no optimistic goal mutation here.
+  const handleControlGoal = (action: "pause" | "resume" | "cancel") => {
+    setGoalMenuOpen(false);
+    bridge.controlGoal(action).catch(() => {
+      // The handler already re-announced the engine truth; nothing to repair.
+    });
+  };
+
   return (
     <>
       <Tooltip>
@@ -131,18 +141,18 @@ export function ModeButtons({ compact = false }: { compact?: boolean }) {
               </div>
               <div className="mt-1 flex gap-1 pl-6">
                 {goal.status === "active" && (
-                  <Button variant="outline" size="xs" onClick={() => void bridge.controlGoal("pause")}>
+                  <Button variant="outline" size="xs" onClick={() => handleControlGoal("pause")}>
                     <IconPlayerPause />
                     {t("modes.goalPause")}
                   </Button>
                 )}
                 {(goal.status === "paused" || goal.status === "blocked") && (
-                  <Button variant="outline" size="xs" onClick={() => void bridge.controlGoal("resume")}>
+                  <Button variant="outline" size="xs" onClick={() => handleControlGoal("resume")}>
                     <IconPlayerPlay />
                     {t("modes.goalResume")}
                   </Button>
                 )}
-                <Button variant="outline" size="xs" onClick={() => void bridge.controlGoal("cancel")}>
+                <Button variant="outline" size="xs" onClick={() => handleControlGoal("cancel")}>
                   <IconX />
                   {t("modes.goalCancel")}
                 </Button>

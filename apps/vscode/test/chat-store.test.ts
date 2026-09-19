@@ -311,14 +311,60 @@ describe("Webview streaming text batching", () => {
     expect(last?.steps?.at(-1)?.items.map((item) => item.type)).toEqual(["text", "tool_use"]);
   });
 
-  it("applies thinking deltas immediately without waiting for the window", () => {
-    useChatStore.getState().sendMessage("do the thing");
-    beginTurn();
+  it("batches thinking deltas into the same window as text", () => {
+    vi.useFakeTimers();
+    try {
+      useChatStore.getState().sendMessage("do the thing");
+      beginTurn();
 
-    useChatStore.getState().processEvent({ type: "ContentPart", payload: { type: "think", think: "hmm" } });
+      const listener = vi.fn();
+      const unsubscribe = useChatStore.subscribe(listener);
+      try {
+        useChatStore.getState().processEvent({ type: "ContentPart", payload: { type: "think", think: "hmm" } });
+        useChatStore.getState().processEvent({ type: "ContentPart", payload: { type: "think", think: "…" } });
+        // Buffered: nothing was applied yet, not even a no-op state update.
+        expect(listener).not.toHaveBeenCalled();
 
-    const items = useChatStore.getState().messages.at(-1)?.steps?.at(-1)?.items ?? [];
-    expect(items).toEqual([{ type: "thinking", content: "hmm" }]);
+        vi.advanceTimersByTime(50);
+
+        expect(listener).toHaveBeenCalledTimes(1);
+        const items = useChatStore.getState().messages.at(-1)?.steps?.at(-1)?.items ?? [];
+        expect(items).toEqual([{ type: "thinking", content: "hmm…" }]);
+      } finally {
+        unsubscribe();
+      }
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("batches tool-call argument deltas into the same window", () => {
+    vi.useFakeTimers();
+    try {
+      useChatStore.getState().sendMessage("do the thing");
+      beginTurn();
+      useChatStore.getState().processEvent({ type: "ToolCall", payload: { id: "call-1", function: { name: "Write", arguments: "" } } });
+
+      const listener = vi.fn();
+      const unsubscribe = useChatStore.subscribe(listener);
+      try {
+        useChatStore.getState().processEvent({ type: "ToolCallPart", payload: { tool_call_id: "call-1", arguments_part: '{"path":' } });
+        useChatStore.getState().processEvent({ type: "ToolCallPart", payload: { tool_call_id: "call-1", arguments_part: '"a.txt"}' } });
+        // Buffered: nothing was applied yet, not even a no-op state update.
+        expect(listener).not.toHaveBeenCalled();
+
+        vi.advanceTimersByTime(50);
+
+        expect(listener).toHaveBeenCalledTimes(1);
+        const items = useChatStore.getState().messages.at(-1)?.steps?.at(-1)?.items ?? [];
+        const tool = items.find((item) => item.type === "tool_use");
+        expect(tool).toMatchObject({ call: { arguments: '{"path":"a.txt"}' } });
+      } finally {
+        unsubscribe();
+      }
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("flushes replayed text when loading a session, before items are marked finished", async () => {

@@ -178,30 +178,46 @@ function unwrapParagraphs(children: React.ReactNode): React.ReactNode {
   });
 }
 
+/** Stable empty map: keeps the components memo (and with it the whole
+ *  rendered markdown tree) from being rebuilt when a message has no paths. */
+const EMPTY_FILE_MAP: Record<string, boolean> = {};
+
+function isSameFileMap(a: Record<string, boolean>, b: Record<string, boolean>): boolean {
+  const aKeys = Object.keys(a);
+  const bKeys = Object.keys(b);
+  return aKeys.length === bKeys.length && aKeys.every((key) => b[key] === a[key]);
+}
+
 export const Markdown = memo(function Markdown({ content, className, enableEnrichment = true, enableLocalImageRender = true }: MarkdownProps) {
   const isDark = useIsDark();
-  const [fileMap, setFileMap] = useState<Record<string, boolean>>({});
+  const [fileMap, setFileMap] = useState<Record<string, boolean>>(EMPTY_FILE_MAP);
   const [previewSrc, setPreviewSrc] = useState<string | null>(null);
 
   useEffect(() => {
     // When enableEnrichment is false, skip enrichment process
     if (!enableEnrichment || !content) {
-      setFileMap({});
+      setFileMap((prev) => (prev === EMPTY_FILE_MAP ? prev : EMPTY_FILE_MAP));
       return;
     }
-    const paths = extractPaths(content);
-    if (!paths.length) {
-      setFileMap({});
-      return;
-    }
+    // Debounce: streamed content changes every flush window, and each change
+    // would otherwise fire an extractPaths scan plus a checkFilesExist RPC.
     let cancelled = false;
-    void checkFilesExist(paths).then((map) => {
-      if (!cancelled) {
-        setFileMap(map);
+    const timer = setTimeout(() => {
+      const paths = extractPaths(content);
+      if (!paths.length) {
+        setFileMap((prev) => (prev === EMPTY_FILE_MAP ? prev : EMPTY_FILE_MAP));
+        return;
       }
-    });
+      void checkFilesExist(paths).then((map) => {
+        if (cancelled) return;
+        // Same content → keep the previous map identity so the components
+        // memo survives and ReactMarkdown does not remount the tree.
+        setFileMap((prev) => (isSameFileMap(prev, map) ? prev : map));
+      });
+    }, 200);
     return () => {
       cancelled = true;
+      clearTimeout(timer);
     };
   }, [content, enableEnrichment]);
 

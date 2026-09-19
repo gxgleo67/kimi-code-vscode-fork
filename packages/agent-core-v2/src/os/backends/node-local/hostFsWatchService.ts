@@ -1,5 +1,5 @@
-import { watch as fsWatch } from 'node:fs';
-import { basename, isAbsolute, join, relative } from 'node:path';
+import { watch as fsWatch, realpathSync } from 'node:fs';
+import { basename, dirname, isAbsolute, join, relative, sep } from 'node:path';
 
 import { FSWatcher } from 'chokidar';
 
@@ -30,6 +30,7 @@ interface NativeFsWatcher {
 
 interface HostFsWatchRuntime {
   readonly platform: NodeJS.Platform;
+  readonly resolvePath?: (path: string) => string;
   watchNative(
     root: string,
     listener: (eventType: string, filename: string | null) => void,
@@ -39,6 +40,8 @@ interface HostFsWatchRuntime {
 
 const NODE_HOST_FS_WATCH_RUNTIME: HostFsWatchRuntime = {
   platform: process.platform,
+  resolvePath: (path) =>
+    process.platform === 'win32' && /~\d/.test(path) ? resolveLongPath(path) : path,
   watchNative: (root, listener) =>
     fsWatch(root, { persistent: false, recursive: true }, listener),
   scheduleRetry: (callback, delayMs) => {
@@ -91,7 +94,11 @@ class HostFsWatchHandle implements IHostFsWatchHandle {
   private readonly watcher: FSWatcher;
   private disposed = false;
 
-  constructor(path: string, options: HostFsWatchOptions | undefined) {
+  constructor(
+    path: string,
+    options: HostFsWatchOptions | undefined,
+    private readonly toRequestedPath: (path: string) => string = (p) => p,
+  ) {
     this.ready = this.readiness.promise;
     this.emitter = new Emitter<HostFsChange>();
     this.onDidChange = this.emitter.event;
@@ -103,7 +110,7 @@ class HostFsWatchHandle implements IHostFsWatchHandle {
       ignored: options?.ignored ?? DEFAULT_IGNORED,
     });
     this.watcher.on('all', (eventName: string, absPath: string) => {
-      const mapped = mapChokidarEvent(eventName, absPath);
+      const mapped = mapChokidarEvent(eventName, this.toRequestedPath(absPath));
       if (mapped !== undefined) this.emitter.fire(mapped);
     });
     this.watcher.on('error', (error: unknown) => {
@@ -141,6 +148,7 @@ class SignalWatchHandle implements IHostFsWatchHandle {
     private readonly root: string,
     options: HostFsWatchOptions | undefined,
     private readonly runtime: HostFsWatchRuntime,
+    private readonly toRequestedPath: (path: string) => string,
   ) {
     this.ready = this.readiness.promise;
     this.emitter = new Emitter<HostFsChange>();
@@ -198,7 +206,11 @@ class SignalWatchHandle implements IHostFsWatchHandle {
 
   private startChokidarLeg(): void {
     if (this.chokidarLeg !== undefined) return;
-    const leg = new HostFsWatchHandle(this.root, { recursive: true, ignored: this.ignored });
+    const leg = new HostFsWatchHandle(
+      this.root,
+      { recursive: true, ignored: this.ignored },
+      this.toRequestedPath,
+    );
     leg.onDidChange((event) => {
       if (!this.disposed) this.emitter.fire(event);
     });
@@ -210,7 +222,11 @@ class SignalWatchHandle implements IHostFsWatchHandle {
   }
 
   private fireInvalidation(): void {
-    this.emitter.fire({ path: this.root, action: 'modified', kind: 'directory' });
+    this.emitter.fire({
+      path: this.toRequestedPath(this.root),
+      action: 'modified',
+      kind: 'directory',
+    });
   }
 
   dispose(): void {
@@ -230,10 +246,18 @@ export class HostFsWatchService implements IHostFsWatchService {
   constructor(private readonly runtime: HostFsWatchRuntime = NODE_HOST_FS_WATCH_RUNTIME) {}
 
   watch(path: string, options?: HostFsWatchOptions): IHostFsWatchHandle {
-    if (useNativeRecursive(options, this.runtime.platform)) {
-      return new SignalWatchHandle(path, options, this.runtime);
+    const watched = this.runtime.resolvePath?.(path) ?? path;
+    const toRequestedPath = (changed: string): string =>
+      watched === path ? changed : requestedPath(watched, path, changed);
+    const ignored = options?.ignored;
+    const mappedOptions: HostFsWatchOptions | undefined =
+      ignored === undefined
+        ? options
+        : { ...options, ignored: (changed: string) => ignored(toRequestedPath(changed)) };
+    if (useNativeRecursive(mappedOptions, this.runtime.platform)) {
+      return new SignalWatchHandle(watched, mappedOptions, this.runtime, toRequestedPath);
     }
-    return new HostFsWatchHandle(path, options);
+    return new HostFsWatchHandle(watched, mappedOptions, toRequestedPath);
   }
 }
 
@@ -255,8 +279,34 @@ function resolveNativeSignalPath(root: string, filename: string | null): string 
 
 function clampToRoot(root: string, absPath: string): string {
   const rel = relative(root, absPath);
-  if (rel === '' || (!rel.startsWith('..') && !isAbsolute(rel))) return absPath;
+  if (rel === '' || !isOutside(rel)) return absPath;
   return root;
+}
+
+function resolveLongPath(path: string): string {
+  const missing: string[] = [];
+  let current = path;
+  for (;;) {
+    try {
+      return join(realpathSync.native(current), ...missing);
+    } catch {
+      const parent = dirname(current);
+      if (parent === current) return path;
+      missing.unshift(basename(current));
+      current = parent;
+    }
+  }
+}
+
+function requestedPath(watched: string, requested: string, changed: string): string {
+  const rel = relative(watched, changed);
+  if (rel === '') return requested;
+  if (isOutside(rel)) return changed;
+  return join(requested, rel);
+}
+
+function isOutside(rel: string): boolean {
+  return rel === '..' || rel.startsWith(`..${sep}`) || isAbsolute(rel);
 }
 
 function mapChokidarEvent(eventName: string, absPath: string): HostFsChange | undefined {

@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { isDeepStrictEqual } from 'node:util';
 
 import { BugIndicatingError } from '#/errors';
 
@@ -188,6 +189,20 @@ export class McpOAuthClientProvider implements OAuthClientProvider {
     if (scope === 'all') {
       this._codeVerifier = undefined;
     }
+  }
+
+  async clearTokensIfCurrent(expected: OAuthTokens): Promise<boolean> {
+    await this.ready;
+    const current = await this.store.read<StoredMcpOAuthTokens>(
+      `${this.storeKey}${TOKENS_SUFFIX}`,
+    );
+    if (!isDeepStrictEqual(current, expected)) {
+      this.tokensCache = current;
+      return false;
+    }
+    this.tokensCache = undefined;
+    await this.store.remove(`${this.storeKey}${TOKENS_SUFFIX}`);
+    return true;
   }
 
   private effectiveRedirectUri(): string {

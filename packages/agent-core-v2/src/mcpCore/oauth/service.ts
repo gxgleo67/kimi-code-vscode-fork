@@ -1,9 +1,10 @@
 import { auth, type OAuthClientProvider } from '@modelcontextprotocol/sdk/client/auth.js';
+import type { OAuthTokens } from '@modelcontextprotocol/sdk/shared/auth.js';
 
 import { ErrorCodes, Error2, isError2 } from '#/errors';
 
 import { startCallbackServer, type CallbackServer } from './callback-server';
-import { McpOAuthClientProvider } from './provider';
+import { McpOAuthClientProvider, type StoredMcpOAuthTokens } from './provider';
 import { mcpOAuthStoreKey, type McpOAuthStore } from './store';
 
 export interface McpOAuthServiceOptions {
@@ -160,6 +161,30 @@ export class McpOAuthService {
   ): Promise<void> {
     return this.getProvider(serverName, serverUrl).invalidateCredentials(scope);
   }
+
+  invalidateTokensIfCurrent(
+    serverName: string,
+    serverUrl: string | URL,
+    expected: OAuthTokens,
+  ): Promise<boolean> {
+    return this.getProvider(serverName, serverUrl).clearTokensIfCurrent(expected);
+  }
+
+  async peekRejectedGrant(
+    serverName: string,
+    serverUrl: string | URL,
+    connectedAt?: number,
+  ): Promise<{ readonly tokens: StoredMcpOAuthTokens; readonly concurrent: boolean } | undefined> {
+    const tokens = (await this.getProvider(serverName, serverUrl).tokens()) as
+      | StoredMcpOAuthTokens
+      | undefined;
+    if (tokens === undefined) return undefined;
+    return { tokens, concurrent: isConcurrentGrant(tokens, this.now(), connectedAt) };
+  }
+
+  now(): number {
+    return Date.now();
+  }
 }
 
 export class AlreadyAuthorizedError extends Error2 {
@@ -170,6 +195,19 @@ export class AlreadyAuthorizedError extends Error2 {
     );
     this.name = 'AlreadyAuthorizedError';
   }
+}
+
+const CONCURRENT_GRANT_GRACE_MS = 10_000;
+
+function isConcurrentGrant(
+  tokens: StoredMcpOAuthTokens,
+  now: number,
+  connectedAt?: number,
+): boolean {
+  if (typeof tokens.obtained_at !== 'number') return false;
+  const age = now - tokens.obtained_at;
+  if (age < 0 || age >= CONCURRENT_GRANT_GRACE_MS) return false;
+  return connectedAt === undefined || tokens.obtained_at >= connectedAt;
 }
 
 function wrapAuthError(prefix: string, error: unknown): Error2 {

@@ -93,6 +93,19 @@ export class OAuthTokenTransaction<T extends object> {
     });
   }
 
+  async clearIfCurrent(expected: T): Promise<boolean> {
+    return transactionLock.runExclusive(this.options.key, async () => {
+      const current = await this.options.read();
+      if (!isDeepStrictEqual(current, expected)) {
+        this.adopt(current);
+        return false;
+      }
+      await this.options.remove();
+      this.adopt(undefined);
+      return true;
+    });
+  }
+
   private async runTokenRequest(
     fetchFn: typeof fetch,
     input: Parameters<typeof fetch>[0],

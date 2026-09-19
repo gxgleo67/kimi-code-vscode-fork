@@ -736,6 +736,7 @@ export class AgentFullCompactionService extends Service implements IAgentFullCom
         throw compactionCancelledReason(active);
       }
 
+      signal.throwIfAborted();
       const summary = this.postProcessSummary(attempt.summary);
       const result = this.context.applyCompaction({
         summary,

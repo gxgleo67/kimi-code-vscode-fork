@@ -551,6 +551,24 @@ describe('AgentLifecycleService', () => {
     expect(removed).toBe(true);
   });
 
+  it('remove finishes once the settle deadline passes even if the agent loop never settles', async () => {
+    const svc = ix.get(IAgentLifecycleService);
+    await svc.create({ agentId: 'main' });
+    const disposed: string[] = [];
+    disposables.add(svc.onDidDispose((agentId) => disposed.push(agentId)));
+    loopSettled.mockImplementation(() => new Promise<void>(() => {}));
+    vi.useFakeTimers();
+    try {
+      const removal = svc.remove('main');
+      await vi.advanceTimersByTimeAsync(3_000);
+
+      expect(disposed).toEqual(['main']);
+      await removal;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('ignites the self-wiring toolDedupe plugin so its listeners exist before the first turn', async () => {
     const svc = ix.get(IAgentLifecycleService);
     await svc.create({ agentId: 'main' });

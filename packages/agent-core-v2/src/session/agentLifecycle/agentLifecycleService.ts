@@ -46,6 +46,8 @@ import {
   IAgentLifecycleService,
 } from './agentLifecycle';
 
+const REMOVE_SETTLE_TIMEOUT_MS = 3_000;
+
 let nextAgentId = 0;
 
 export class AgentLifecycleService extends Disposable implements IAgentLifecycleService {
@@ -275,7 +277,17 @@ export class AgentLifecycleService extends Disposable implements IAgentLifecycle
     if (compaction !== null && !compaction.abortController.signal.aborted) {
       compaction.abortController.abort(reason);
     }
-    await Promise.all([loop.settled(), compactionSettled, prompt.drain(reason)]);
+    let deadlineTimer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await Promise.race([
+        Promise.all([loop.settled(), compactionSettled, prompt.drain(reason)]),
+        new Promise<void>((resolve) => {
+          deadlineTimer = setTimeout(resolve, REMOVE_SETTLE_TIMEOUT_MS);
+        }),
+      ]);
+    } finally {
+      clearTimeout(deadlineTimer);
+    }
     await handle.dispose();
     this.onDidDisposeEmitter.fire(agentId);
   }

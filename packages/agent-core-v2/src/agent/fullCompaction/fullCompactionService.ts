@@ -12,7 +12,7 @@ import type { ContextMessage } from '#/agent/contextMemory/types';
 import { IAgentTokenCountingService } from '#/agent/tokenCounting/tokenCounting';
 import { IAgentLLMRequesterService, type AgentLLMRequestFinish } from '#/agent/llmRequester/llmRequester';
 import type { LLMRequestTrace } from '#/kosong/contract/requestTrace';
-import { retryBackoffDelays, sleepForRetry } from '#/_base/utils/retry';
+import { retryBackoffDelay, sleepForRetry } from '#/_base/utils/retry';
 import { IAgentLoopService, type LoopErrorContext } from '#/agent/loop/loop';
 import { TurnStarted } from '#/agent/loop/turnEvents';
 import { TurnEnded } from '#/agent/loop/turnOps';
@@ -633,12 +633,12 @@ export class AgentFullCompactionService extends Service implements IAgentFullCom
           customInstruction.length > 0 ? `\nOptional user instruction:\n${customInstruction}\n` : '',
       }).trimEnd();
 
-      const delays = retryBackoffDelays(MAX_COMPACTION_RETRY_ATTEMPTS);
+      const maxAttempts = resolvedModel.compactionMaxAttempts ?? MAX_COMPACTION_RETRY_ATTEMPTS;
       let attempt: CompactionAttemptResult | undefined;
       let historyForModel: readonly ContextMessage[] = stripDynamicToolContext(originalHistory);
       let droppedCount = 0;
       let overflowShrinkCount = 0;
-      let emptyOrTruncatedShrinkCount = 0;
+      let requestAttempts = 0;
       const preShrunkHistory = this.preShrinkHistoryToWindowBudget(
         historyForModel,
         instruction,
@@ -650,6 +650,7 @@ export class AgentFullCompactionService extends Service implements IAgentFullCom
         const messagesToCompact = historyForModel;
         const messages: Message[] = [...messagesToCompact, createUserMessage(instruction)];
         const estimatedCompactionRequestTokens = this.requestTokens(messages);
+        requestAttempts += 1;
 
         try {
           const request = this.llmRequester.start(
@@ -679,6 +680,7 @@ export class AgentFullCompactionService extends Service implements IAgentFullCom
             overflowShrinkCount += 1;
             if (
               overflowShrinkCount > MAX_COMPACTION_OVERFLOW_SHRINK_ATTEMPTS ||
+              requestAttempts >= maxAttempts ||
               messagesToCompact.length <= 1
             ) {
               throw error;
@@ -700,8 +702,7 @@ export class AgentFullCompactionService extends Service implements IAgentFullCom
                 unwrappedError.finishReason !== 'filtered')) &&
             messagesToCompact.length > 1
           ) {
-            emptyOrTruncatedShrinkCount += 1;
-            if (emptyOrTruncatedShrinkCount > MAX_COMPACTION_RETRY_ATTEMPTS) {
+            if (requestAttempts >= maxAttempts) {
               throw error;
             }
             const reduced = dropOldestMessageAndLeadingToolResults(messagesToCompact);
@@ -713,10 +714,10 @@ export class AgentFullCompactionService extends Service implements IAgentFullCom
           if (!isRetryableGenerateError(unwrappedError)) {
             throw error;
           }
-          if (retryCount + 1 >= MAX_COMPACTION_RETRY_ATTEMPTS) {
+          if (requestAttempts >= maxAttempts) {
             throw error;
           }
-          await sleepForRetry(delays[retryCount]!, signal);
+          await sleepForRetry(retryBackoffDelay(retryCount), signal);
           retryCount += 1;
         }
       }

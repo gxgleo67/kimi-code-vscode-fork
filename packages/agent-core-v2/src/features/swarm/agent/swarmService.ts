@@ -6,6 +6,7 @@ import { IAgentToolApprovalService } from '#/agent/toolApproval/toolApproval';
 import { denyToolExecution } from '#/agent/toolExecutor/beforeToolExecuteEvent';
 import { IAgentToolExecutorService } from '#/agent/toolExecutor/toolExecutor';
 import { IEventBus } from '#/app/event/eventBus';
+import { ITelemetryService } from '#/app/telemetry/telemetry';
 import { IAgentStateService } from '#/agent/state/agentState';
 import { IEventDispatcher } from '#/state/eventDispatcher';
 
@@ -24,6 +25,7 @@ export class AgentSwarmService extends Service implements IAgentSwarmService {
     @IAgentToolApprovalService private readonly toolApproval: IAgentToolApprovalService,
     @IAgentToolExecutorService toolExecutor: IAgentToolExecutorService,
     @IAgentStateService private readonly agentState: IAgentStateService,
+    @ITelemetryService private readonly telemetry: ITelemetryService,
   ) {
     super();
     this.agentState.contributeState(swarmKey);
@@ -63,12 +65,15 @@ export class AgentSwarmService extends Service implements IAgentSwarmService {
   enter(trigger: SwarmModeTrigger): void {
     if (this.agentState.get(swarmKey) !== null) return;
     void this.dispatcher.dispatch(new SwarmModeEnter({ trigger }));
+    this.telemetry.track2('swarm_mode_entered', { trigger });
   }
 
   exit(): void {
-    if (this.agentState.get(swarmKey) === null) return;
+    const trigger = this.agentState.get(swarmKey);
+    if (trigger === null) return;
     const history = this.context.get();
     void this.dispatcher.dispatch(new SwarmModeExit({}));
+    this.telemetry.track2('swarm_mode_exited', { trigger });
     this.context.publishTrailingRemoval(history);
   }
 

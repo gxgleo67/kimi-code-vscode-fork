@@ -10,6 +10,7 @@ import { denyToolExecution } from '#/agent/toolExecutor/beforeToolExecuteEvent';
 import { IAgentToolExecutorService } from '#/agent/toolExecutor/toolExecutor';
 import { LifecycleScope } from '#/app/scopes';
 import { IFlagService } from '#/app/flag/flag';
+import { ITelemetryService } from '#/app/telemetry/telemetry';
 import { IEventDispatcher } from '#/state/eventDispatcher';
 import { isWithinDirectory } from '#/tool/path-access';
 import type { ToolFileAccess } from '#/tool/toolContract';
@@ -34,6 +35,7 @@ export class AgentTowerService extends Disposable implements IAgentTowerService 
     @IAgentScopeContext private readonly agentCtx: IAgentScopeContext,
     @ISessionContext private readonly sessionCtx: ISessionContext,
     @IFlagService private readonly flags: IFlagService,
+    @ITelemetryService private readonly telemetry: ITelemetryService,
   ) {
     super();
     this.agentState.contributeState(towerKey);
@@ -91,14 +93,19 @@ export class AgentTowerService extends Disposable implements IAgentTowerService 
   }
 
   enter(): void {
-    if (!this.flags.enabled(TOWER_FLAG_ID)) return;
+    if (!this.flags.enabled(TOWER_FLAG_ID)) {
+      this.telemetry.track2('tower_mode_enter', { outcome: 'rejected', reason: 'experiment-off' });
+      return;
+    }
     if (this.isActive) return;
     void this.dispatcher.dispatch(new TowerModeEnter({}));
+    this.telemetry.track2('tower_mode_enter', { outcome: 'entered', reason: undefined });
   }
 
   exit(): void {
     if (!this.isActive) return;
     void this.dispatcher.dispatch(new TowerModeExit({}));
+    this.telemetry.track2('tower_mode_exit', { reason: 'user' });
   }
 
   get isActive(): boolean {

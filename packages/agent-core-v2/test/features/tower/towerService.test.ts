@@ -26,6 +26,7 @@ import { AgentStatusUpdated } from '#/agent/usage/usageEvents';
 import { IEventBus } from '#/app/event/eventBus';
 import { EventBusService } from '#/app/event/eventBusService';
 import { IFlagService } from '#/app/flag/flag';
+import { ITelemetryService } from '#/app/telemetry/telemetry';
 import type { ToolCall } from '#/kosong/contract/message';
 import { AppendLogStore } from '#/persistence/backends/node-fs/appendLogStore';
 import { InMemoryStorageService } from '#/persistence/backends/memory/inMemoryStorageService';
@@ -85,6 +86,7 @@ describe('AgentTowerService', () => {
   let executorEvents: ToolExecutorEventStubs;
   let permissionGateRan: boolean;
   let formatDenyMessage: Mock<(message: string) => string>;
+  let telemetryTrack2: Mock<(event: string, properties?: unknown) => void>;
   let towerFlagOn: boolean;
 
   beforeEach(() => {
@@ -98,6 +100,8 @@ describe('AgentTowerService', () => {
     ix.stub(IAgentToolExecutorService, executorEvents.executor);
     formatDenyMessage = vi.fn((message: string) => message);
     ix.stub(IAgentToolApprovalService, { formatDenyMessage });
+    telemetryTrack2 = vi.fn();
+    ix.stub(ITelemetryService, { track2: telemetryTrack2 });
     towerFlagOn = true;
     ix.stub(IFlagService, stubFlag((id) => towerFlagOn && id === TOWER_FLAG_ID));
     ix.stub(IAgentProfileService, {
@@ -149,6 +153,36 @@ describe('AgentTowerService', () => {
       { type: 'agent.status.updated', towerMode: true },
       { type: 'agent.status.updated', towerMode: false },
     ]);
+  });
+
+  it('tracks tower_mode_enter and tower_mode_exit on transitions only', () => {
+    const tower = ix.get(IAgentTowerService);
+
+    tower.enter();
+    expect(telemetryTrack2).toHaveBeenCalledWith('tower_mode_enter', {
+      outcome: 'entered',
+      reason: undefined,
+    });
+
+    telemetryTrack2.mockClear();
+    tower.exit();
+    expect(telemetryTrack2).toHaveBeenCalledWith('tower_mode_exit', { reason: 'user' });
+
+    telemetryTrack2.mockClear();
+    tower.exit();
+    expect(telemetryTrack2).not.toHaveBeenCalled();
+  });
+
+  it('tracks tower_mode_enter as rejected when the flag is off', () => {
+    towerFlagOn = false;
+    const tower = ix.get(IAgentTowerService);
+
+    tower.enter();
+    expect(tower.isActive).toBe(false);
+    expect(telemetryTrack2).toHaveBeenCalledWith('tower_mode_enter', {
+      outcome: 'rejected',
+      reason: 'experiment-off',
+    });
   });
 
   it('enter / exit are idempotent while already in that state', () => {

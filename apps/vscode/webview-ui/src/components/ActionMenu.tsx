@@ -304,7 +304,7 @@ export function ActionMenu({ className, onAuthAction }: ActionMenuProps) {
             const quota = account.loggedIn && usage !== undefined && usage !== null && usage !== "error"
               ? {
                   fiveHour: quotaWindowState(usage.fiveHour, null) ?? { ratio: null },
-                  weekly: quotaWindowState(usage.summary, null) ?? { ratio: null },
+                  weekly: quotaWindowState(usage.weekly, null) ?? { ratio: null },
                 }
               : undefined;
             return (

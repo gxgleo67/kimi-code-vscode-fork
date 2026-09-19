@@ -1,6 +1,6 @@
 /**
  * Scenario: managed (subscription) usage data is shaped for the webview usage status bar.
- * Responsibilities: verify hour-window picking, ratio/percent math, token formatting, and reset countdowns.
+ * Responsibilities: verify quota window mapping, ratio/percent math, token formatting, and reset countdowns.
  * Wiring: the pure helpers from shared/managed-usage are used directly; there are no stubs.
  * Run: pnpm --filter kimi-code exec vitest run --config vitest.config.ts test/managed-usage.test.ts
  */
@@ -15,38 +15,36 @@ import {
   usageRatio,
 } from "../shared/managed-usage";
 
-describe("toManagedUsageView (maps SDK usage rows into the bridge view)", () => {
-  it("picks the hour-based window out of the limits rows", () => {
-    const view = toManagedUsageView(
-      { used: 120, limit: 1000, resetAt: "2026-08-17T00:00:00.000Z" },
-      [
-        { window: { duration: 1, unit: "day" }, used: 5, limit: 50 },
-        { name: "5h", window: { duration: 5, unit: "hour" }, used: 30, limit: 100, resetAt: "2026-08-10T05:00:00.000Z" },
-      ],
-    );
+describe("toManagedUsageView (maps the SDK quota usages into the bridge view)", () => {
+  it("maps the platform entries onto the named windows", () => {
+    const view = toManagedUsageView({
+      limit5h: { usedRatio: 0.3, resetAt: "2026-09-11T18:00:00Z" },
+      limit7d: { usedRatio: 0.2, resetAt: "2026-09-17T00:00:00Z" },
+      monthTotal: { usedRatio: 0.4, resetAt: "2026-10-01T00:00:00Z" },
+      monthCode: { usedRatio: 0.25, resetAt: "2026-10-01T00:00:00Z" },
+    });
 
     expect(view).toEqual({
-      summary: { used: 120, limit: 1000, resetAt: "2026-08-17T00:00:00.000Z" },
-      fiveHour: { used: 30, limit: 100, resetAt: "2026-08-10T05:00:00.000Z" },
+      fiveHour: { usedRatio: 0.3, resetAt: "2026-09-11T18:00:00Z" },
+      weekly: { usedRatio: 0.2, resetAt: "2026-09-17T00:00:00Z" },
+      monthTotal: { usedRatio: 0.4, resetAt: "2026-10-01T00:00:00Z" },
+      monthCode: { usedRatio: 0.25, resetAt: "2026-10-01T00:00:00Z" },
     });
   });
 
-  it("ignores minute-based rows that were not folded into whole hours", () => {
-    const view = toManagedUsageView(null, [
-      { window: { duration: 30, unit: "minute" }, used: 1, limit: 10 },
-    ]);
+  it("omits windows the platform did not report", () => {
+    const view = toManagedUsageView({});
 
-    expect(view.summary).toBeUndefined();
     expect(view.fiveHour).toBeUndefined();
+    expect(view.weekly).toBeUndefined();
+    expect(view.monthTotal).toBeUndefined();
+    expect(view.monthCode).toBeUndefined();
   });
 
-  it("omits windows that are missing and drops the backend-only name field", () => {
-    const view = toManagedUsageView(null, [
-      { name: "custom", window: { duration: 5, unit: "hour" }, used: 3, limit: 10 },
-    ]);
+  it("passes entries without a reset time through", () => {
+    const view = toManagedUsageView({ limit7d: { usedRatio: 0.5 } });
 
-    expect(view.summary).toBeUndefined();
-    expect(view.fiveHour).toEqual({ used: 3, limit: 10 });
+    expect(view.weekly).toEqual({ usedRatio: 0.5 });
   });
 });
 

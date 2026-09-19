@@ -126,8 +126,9 @@ export function quotaWindowState(  window: ManagedUsageWindowView | undefined,
 ): QuotaWindowState | null {
   if (usageError !== null) return { ratio: null, error: usageError };
   if (window === undefined) return null;
+  const ratio = window.usedRatio;
   return {
-    ratio: usageRatio(window.used, window.limit),
+    ratio: Number.isFinite(ratio) ? Math.max(0, Math.min(ratio, 1)) : 0,
     resetAt: window.resetAt,
   };
 }
@@ -307,7 +308,7 @@ export function UsageStatusBar() {
       quota = { fiveHour: { ratio: null }, weekly: { ratio: null } };
     } else {
       const fiveHour = quotaWindowState(usage?.fiveHour, usageError);
-      const weekly = quotaWindowState(usage?.summary, usageError);
+      const weekly = quotaWindowState(usage?.weekly, usageError);
       if (fiveHour !== null || weekly !== null) {
         // A window missing from a successful response degrades to grey.
         quota = { fiveHour: fiveHour ?? { ratio: null }, weekly: weekly ?? { ratio: null } };

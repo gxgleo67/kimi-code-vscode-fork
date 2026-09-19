@@ -1,24 +1,28 @@
 /**
  * Managed (subscription) usage view shared by the extension host and the webview.
  *
- * The host maps the SDK's usage rows into these plain shapes so no
+ * The host maps the SDK's quota usages into these plain shapes so no
  * package-internal types leak across the bridge; the webview formats them
  * for the usage status bar. All helpers are pure so they can be unit-tested
  * from either side.
  */
 
 export interface ManagedUsageWindowView {
-  readonly used: number;
-  readonly limit: number;
+  /** Used fraction of the window quota as reported by the platform (0..1). */
+  readonly usedRatio: number;
   /** ISO timestamp at which the window resets. */
   readonly resetAt?: string;
 }
 
 export interface ManagedUsageView {
-  /** Weekly window (the backend summary row). */
-  readonly summary?: ManagedUsageWindowView;
-  /** Hour-based window (typically 5h) picked out of the limits rows. */
+  /** 5-hour window (platform limit_5h). */
   readonly fiveHour?: ManagedUsageWindowView;
+  /** 7-day window (platform limit_7d). */
+  readonly weekly?: ManagedUsageWindowView;
+  /** Monthly total window (platform limit_month_total). */
+  readonly monthTotal?: ManagedUsageWindowView;
+  /** Monthly code window (platform limit_month_code). */
+  readonly monthCode?: ManagedUsageWindowView;
 }
 
 export type ManagedUsageResult =
@@ -26,32 +30,23 @@ export type ManagedUsageResult =
   | { readonly ok: false; readonly error: string };
 
 /**
- * Structural mirror of the SDK's usage row; keeps shared/ free of
+ * Structural mirror of the SDK's quota usages map; keeps shared/ free of
  * package imports while staying assignable from the real type.
  */
-export interface ManagedUsageRowInput {
-  readonly name?: string;
-  readonly window?: { readonly duration: number; readonly unit: string };
-  readonly used: number;
-  readonly limit: number;
-  readonly resetAt?: string;
+export interface ManagedQuotaUsagesInput {
+  readonly limit5h?: ManagedUsageWindowView;
+  readonly limit7d?: ManagedUsageWindowView;
+  readonly monthTotal?: ManagedUsageWindowView;
+  readonly monthCode?: ManagedUsageWindowView;
 }
 
-function toWindowView(row: ManagedUsageRowInput): ManagedUsageWindowView {
-  return row.resetAt === undefined
-    ? { used: row.used, limit: row.limit }
-    : { used: row.used, limit: row.limit, resetAt: row.resetAt };
-}
-
-/** Maps the summary + limits rows into the bridge view, picking the hour-based window. */
-export function toManagedUsageView(
-  summary: ManagedUsageRowInput | null,
-  limits: readonly ManagedUsageRowInput[],
-): ManagedUsageView {
-  const fiveHour = limits.find((row) => row.window?.unit === "hour");
+/** Maps the SDK quota usages map into the bridge view. */
+export function toManagedUsageView(usages: ManagedQuotaUsagesInput): ManagedUsageView {
   return {
-    ...(summary !== null ? { summary: toWindowView(summary) } : {}),
-    ...(fiveHour !== undefined ? { fiveHour: toWindowView(fiveHour) } : {}),
+    ...(usages.limit5h !== undefined ? { fiveHour: usages.limit5h } : {}),
+    ...(usages.limit7d !== undefined ? { weekly: usages.limit7d } : {}),
+    ...(usages.monthTotal !== undefined ? { monthTotal: usages.monthTotal } : {}),
+    ...(usages.monthCode !== undefined ? { monthCode: usages.monthCode } : {}),
   };
 }
 

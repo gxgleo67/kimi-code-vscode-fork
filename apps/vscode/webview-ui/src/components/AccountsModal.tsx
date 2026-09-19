@@ -11,7 +11,7 @@ import { useT } from "@/i18n";
 import { KimiLogo } from "./KimiLogo";
 import { CustomProviderSection } from "./CustomProviderSection";
 import { resetCountdown } from "./UsageStatusBar";
-import { formatUsagePercent, usageRatio, type ManagedUsageView } from "shared/managed-usage";
+import { formatUsagePercent, type ManagedUsageView } from "shared/managed-usage";
 import type { ManagedAccountInfo } from "shared/types";
 
 interface AccountsModalProps {
@@ -54,10 +54,10 @@ function usageBrief(t: ReturnType<typeof useT>, usage: ManagedUsageView | null |
   if (usage === "error") return t("accounts.usageUnavailable");
   const parts: string[] = [];
   if (usage.fiveHour !== undefined) {
-    parts.push(`${t("usage.fiveHourLimit")} ${formatUsagePercent(usageRatio(usage.fiveHour.used, usage.fiveHour.limit))}%`);
+    parts.push(`${t("usage.fiveHourLimit")} ${formatUsagePercent(usage.fiveHour.usedRatio)}%`);
   }
-  if (usage.summary !== undefined) {
-    parts.push(`${t("usage.weeklyLimit")} ${formatUsagePercent(usageRatio(usage.summary.used, usage.summary.limit))}%`);
+  if (usage.weekly !== undefined) {
+    parts.push(`${t("usage.weeklyLimit")} ${formatUsagePercent(usage.weekly.usedRatio)}%`);
   }
   return parts.length > 0 ? parts.join(" · ") : null;
 }
@@ -68,7 +68,7 @@ function usageResetLine(t: ReturnType<typeof useT>, usage: ManagedUsageView): st
   const now = Date.now();
   const windows = [
     [t("usage.fiveHourLimit"), usage.fiveHour],
-    [t("usage.weeklyLimit"), usage.summary],
+    [t("usage.weeklyLimit"), usage.weekly],
   ] as const;
   const parts: string[] = [];
   for (const [label, window] of windows) {

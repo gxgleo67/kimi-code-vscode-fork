@@ -56,7 +56,7 @@ export const authHandlers: Record<string, Handler<any, any>> = {
     try {
       const result = await ctx.harness.auth.getManagedUsage(params?.provider);
       if (result.kind === "ok") {
-        return { ok: true, usage: toManagedUsageView(result.summary, result.limits) };
+        return { ok: true, usage: toManagedUsageView(result.quota.usages) };
       }
       return { ok: false, error: result.message };
     } catch (error) {

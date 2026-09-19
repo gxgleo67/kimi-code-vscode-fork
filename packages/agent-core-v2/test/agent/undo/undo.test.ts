@@ -47,6 +47,45 @@ describe('AgentConversationUndoService', () => {
     return ctx;
   }
 
+  it('runs transcript reconciliation after restored messages are persisted', async () => {
+    setup();
+    ctx.appendTurnExchange('kept', 'answer');
+    ctx.appendTurnExchange('removed', 'answer');
+    const participants = ctx.get(IAgentConversationUndoParticipantRegistry);
+    const observed: string[] = [];
+    let restored = false;
+    let persisted = false;
+    const wire = ctx.get(IWireService);
+    const originalFlush = wire.flush.bind(wire);
+    const flush = vi.spyOn(wire, 'flush').mockImplementation(async () => {
+      await originalFlush();
+      if (restored) persisted = true;
+    });
+    participants.register({
+      id: 'test.transcript',
+      phase: 'after-flush',
+      reconcileAfterUndo: async () => {
+        observed.push(persisted ? 'flushed' : 'not flushed');
+      },
+    });
+    participants.register({
+      id: 'test.notification',
+      reconcileAfterUndo: async () => {
+        await Promise.resolve();
+        ctx.get(IAgentContextMemoryService).append({
+          role: 'user',
+          content: [{ type: 'text', text: 'restored notification' }],
+          toolCalls: [],
+          origin: { kind: 'task', taskId: 'task-1', status: 'completed', notificationId: 'notification-1' },
+        });
+        restored = true;
+      },
+    });
+    await ctx.get(IAgentConversationUndoService).undo(1);
+    expect(observed).toEqual(['flushed']);
+    flush.mockRestore();
+  });
+
   it('exposes availability from context history', async () => {
     setup();
     const undo = ctx.get(IAgentConversationUndoService);

@@ -109,6 +109,7 @@ export class AgentConversationUndoService
       await this.flushAfterCommit('context cut');
       await this.reconcileParticipants();
       await this.flushAfterCommit('state reconciliation');
+      await this.reconcileParticipants('after-flush');
       await this.reconcileLastPromptSafely();
       this.telemetry.track2('conversation_undo', { count: turns });
       await this.dispatcher.dispatch(new ContextUndone({ turns }));
@@ -177,8 +178,8 @@ export class AgentConversationUndoService
     );
   }
 
-  private async reconcileParticipants(): Promise<void> {
-    const participants = this.participants.list();
+  private async reconcileParticipants(phase?: 'after-flush'): Promise<void> {
+    const participants = this.participants.list().filter((participant) => participant.phase === phase);
     const results = await Promise.allSettled(
       participants.map((participant) => participant.reconcileAfterUndo()),
     );

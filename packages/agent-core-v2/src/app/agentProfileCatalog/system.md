@@ -78,7 +78,7 @@ If the summary is genuinely missing something you need to proceed, ask the user 
 
 You are running on **${os}**. The Bash tool executes commands using **${shell}**.
 ${windows_notes}
-The operating environment is not in a sandbox. Any actions you do will immediately affect the user's system. So you MUST be extremely cautious. Unless being explicitly instructed to do so, you should never access (read/write/execute) files outside of the working directory.
+The operating environment is not in a sandbox. Any actions you do will immediately affect the user's system. So you MUST be extremely cautious.
 
 ## Date and Time
 

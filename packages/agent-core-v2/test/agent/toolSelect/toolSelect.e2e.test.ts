@@ -99,7 +99,9 @@ describe('progressive tool disclosure end-to-end', () => {
     ctx.configure({ modelCapabilities: DISCLOSURE_CAPABILITIES });
     await ctx.rpc.setPermission({ mode: 'yolo' });
     alpha = new StubMcpTool(MCP_ALPHA);
-    registration = ctx.get(IAgentToolRegistryService).register(alpha, { source: 'mcp' });
+    registration = ctx
+      .get(IAgentToolRegistryService)
+      .register(alpha, { source: 'mcp', disclosure: 'deferred' });
   });
 
   afterEach(async () => {

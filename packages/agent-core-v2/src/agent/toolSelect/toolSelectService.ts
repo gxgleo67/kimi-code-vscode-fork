@@ -254,7 +254,7 @@ export class AgentToolSelectService extends Service implements IAgentToolSelectS
   }
 
   private isDynamicallyLoadable(info: ToolInfo): boolean {
-    return info.source === 'mcp' || info.disclosure === 'deferred';
+    return info.disclosure === 'deferred';
   }
 
   private isStaticCallable(name: string, registryInfos: readonly ToolInfo[]): boolean {

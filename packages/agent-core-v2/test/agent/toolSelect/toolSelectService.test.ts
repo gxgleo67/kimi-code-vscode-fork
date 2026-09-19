@@ -396,8 +396,12 @@ function createExecutorHarness(): ExecutorHarness {
   };
 }
 
-function registerMcp(h: Harness, tool: StubMcpTool): IDisposable {
-  const registration = h.registry.register(tool, { source: 'mcp' });
+function registerMcp(
+  h: Harness,
+  tool: StubMcpTool,
+  disclosure: ToolDisclosure = 'deferred',
+): IDisposable {
+  const registration = h.registry.register(tool, { source: 'mcp', disclosure });
   disposables.add(registration);
   return registration;
 }
@@ -650,6 +654,21 @@ describe('AgentToolSelectService view shaping (gate open)', () => {
       MCP_ALPHA,
       SELECT_TOOLS_TOOL_NAME,
     ]);
+  });
+
+  it('keeps inline-disclosed MCP tools visible and out of the loadable manifest', () => {
+    const h = createHarness();
+    registerMcp(h, new StubMcpTool(MCP_ALPHA), 'inline');
+    registerMcp(h, new StubMcpTool(MCP_BETA));
+
+    const shaped = h.sut.shapeTools(h.registry.list());
+    const byName = new Map(shaped.map((entry) => [entry.name, entry]));
+    expect(byName.get(MCP_ALPHA)?.deferred).toBeUndefined();
+    expect(byName.has(MCP_BETA)).toBe(false);
+
+    const announcement = h.sut.loadableToolsAnnouncement();
+    expect(announcement).toContain(MCP_BETA);
+    expect(announcement).not.toContain(MCP_ALPHA);
   });
 
   it('hides select_tools when an explicit policy disables disclosure', () => {
@@ -1223,7 +1242,10 @@ describe('AgentToolSelectService loadable-tools announcements', () => {
   it('diffs registry additions and removals against the folded announcements', async () => {
     const h = createHarness();
     registerMcp(h, new StubMcpTool(MCP_ALPHA));
-    const betaRegistration = h.registry.register(new StubMcpTool(MCP_BETA), { source: 'mcp' });
+    const betaRegistration = h.registry.register(new StubMcpTool(MCP_BETA), {
+      source: 'mcp',
+      disclosure: 'deferred',
+    });
     disposables.add(betaRegistration);
 
     await announce(h);

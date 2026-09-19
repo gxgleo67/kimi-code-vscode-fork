@@ -147,6 +147,7 @@ export class DangerousCommandAskPermissionPolicyService implements PermissionPol
           'This Bash command could not be analyzed and is blocked in auto permission mode. Rewrite it with a literal command name and arguments, or ask the user to run it themselves.',
       };
     }
+    if (this.modeService.mode === 'yolo') return undefined;
     return { kind: 'ask', reason: { unanalyzable_command: true } };
   }
 }

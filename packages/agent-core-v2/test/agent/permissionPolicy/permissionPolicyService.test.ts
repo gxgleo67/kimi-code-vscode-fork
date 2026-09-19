@@ -343,7 +343,7 @@ describe('AgentPermissionPolicyService chain', () => {
   });
 
   it.each(['$CMD --force', 'bash -c "echo $HOME"', 'echo "unterminated'])(
-    'asks for unanalyzable command `%s` in yolo mode',
+    'approves unanalyzable command `%s` in yolo mode',
     async (command) => {
       mode = 'yolo';
 
@@ -351,8 +351,8 @@ describe('AgentPermissionPolicyService chain', () => {
         toolName: 'Bash',
         args: { command, timeout: 60 },
       })).resolves.toMatchObject({
-        policyName: 'dangerous-command-ask',
-        result: { kind: 'ask', reason: { unanalyzable_command: true } },
+        policyName: 'yolo-mode-approve',
+        result: { kind: 'approve' },
       });
     },
   );

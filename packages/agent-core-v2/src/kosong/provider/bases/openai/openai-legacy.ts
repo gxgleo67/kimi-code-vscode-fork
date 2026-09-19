@@ -254,7 +254,28 @@ function convertMessage(
     result.content = null;
   }
 
-  if (hasReasoningPart || (preserveThinking && message.role === 'assistant')) {
+  const stringFields = new Map<string, string>();
+  let unstamped = '';
+  let hasUnstamped = false;
+  for (const part of message.content) {
+    if (part.type !== 'think') continue;
+    if (part.reasoningKey !== undefined) {
+      stringFields.set(part.reasoningKey, (stringFields.get(part.reasoningKey) ?? '') + part.think);
+      continue;
+    }
+    hasUnstamped = true;
+    unstamped += part.think;
+  }
+  if (hasUnstamped) {
+    stringFields.set(reasoningKey, (stringFields.get(reasoningKey) ?? '') + unstamped);
+  }
+  for (const [key, value] of stringFields) {
+    result[key] = value;
+  }
+  if (
+    stringFields.size === 0 &&
+    (hasReasoningPart || (preserveThinking && message.role === 'assistant'))
+  ) {
     result[reasoningKey] = reasoningContent;
   }
 
@@ -414,9 +435,12 @@ export class OpenAILegacyStreamedMessage implements StreamedMessage {
     const message = response.choices[0]?.message;
     if (!message) return;
 
-    const reasoning = reasoningKeyDialect.observe(message);
-    if (reasoning !== undefined) {
-      yield { type: 'think', think: reasoning } satisfies StreamedMessagePart;
+    for (const reasoning of reasoningKeyDialect.observeAll(message)) {
+      yield {
+        type: 'think',
+        think: reasoning.value,
+        reasoningKey: reasoning.key,
+      } satisfies StreamedMessagePart;
     }
 
     if (message.content) {
@@ -463,9 +487,12 @@ export class OpenAILegacyStreamedMessage implements StreamedMessage {
 
         const delta = choice.delta;
 
-        const reasoning = reasoningKeyDialect.observe(delta);
-        if (reasoning !== undefined) {
-          yield { type: 'think', think: reasoning } satisfies StreamedMessagePart;
+        for (const reasoning of reasoningKeyDialect.observeAll(delta)) {
+          yield {
+            type: 'think',
+            think: reasoning.value,
+            reasoningKey: reasoning.key,
+          } satisfies StreamedMessagePart;
         }
 
         if (delta.content) {

@@ -881,9 +881,144 @@ describe('reasoning dialect (behavior probes)', () => {
       parts.push(part);
     }
     expect(parts).toEqual([
-      { type: 'think', think: 'hmm' },
+      { type: 'think', think: 'hmm', reasoningKey: 'reasoning' },
       { type: 'text', text: 'ok' },
     ]);
+  });
+
+  it('yields a stamped think part for every string reasoning field in one delta', async () => {
+    const provider = registry.createChatProvider({
+      protocol: 'openai',
+      providerType: 'kimi',
+      modelName: 'kimi-k2',
+      apiKey: 'sk-probe',
+    });
+
+    const client = sdkClient(provider) as { chat: { completions: { create: unknown } } };
+    client.chat.completions.create = vi.fn().mockImplementation(() => {
+      async function* chunks(): AsyncIterable<unknown> {
+        yield {
+          id: 'chatcmpl-probe',
+          choices: [
+            {
+              index: 0,
+              delta: {
+                reasoning_content: 'A',
+                reasoning: 'B',
+                reasoning_details: [{ index: 0, type: 'reasoning.text', text: 'B' }],
+              },
+            },
+          ],
+        };
+        yield {
+          id: 'chatcmpl-probe',
+          choices: [{ index: 0, delta: { content: 'ok' }, finish_reason: 'stop' }],
+        };
+      }
+      return {
+        withResponse: () =>
+          Promise.resolve({ data: chunks(), response: { headers: new Headers() } }),
+      };
+    });
+
+    const parts: unknown[] = [];
+    for await (const part of await provider.generate('', [], PROBE_HISTORY)) {
+      parts.push(part);
+    }
+    expect(parts).toEqual([
+      { type: 'think', think: 'A', reasoningKey: 'reasoning_content' },
+      { type: 'think', think: 'B', reasoningKey: 'reasoning' },
+      { type: 'text', text: 'ok' },
+    ]);
+  });
+
+  it('replays stamped think parts under their own keys on the next request', async () => {
+    const provider = registry.createChatProvider({
+      protocol: 'openai',
+      providerType: 'kimi',
+      modelName: 'kimi-k2',
+      apiKey: 'sk-probe',
+    });
+
+    const captured: Array<Record<string, unknown>> = [];
+    const client = sdkClient(provider) as { chat: { completions: { create: unknown } } };
+    client.chat.completions.create = vi.fn().mockImplementation((params: unknown) => {
+      captured.push(params as Record<string, unknown>);
+      async function* chunks(): AsyncIterable<unknown> {
+        yield {
+          id: 'chatcmpl-probe',
+          choices: [{ index: 0, delta: { reasoning_content: 'A', reasoning: 'B' } }],
+        };
+        yield {
+          id: 'chatcmpl-probe',
+          choices: [{ index: 0, delta: { content: 'ok' }, finish_reason: 'stop' }],
+        };
+      }
+      return {
+        withResponse: () =>
+          Promise.resolve({ data: chunks(), response: { headers: new Headers() } }),
+      };
+    });
+
+    await drain(await provider.generate('', [], PROBE_HISTORY));
+
+    const stampedHistory: Message[] = [
+      { role: 'user', content: [{ type: 'text', text: 'hi' }], toolCalls: [] },
+      {
+        role: 'assistant',
+        content: [
+          { type: 'think', think: 'A', reasoningKey: 'reasoning_content' },
+          { type: 'think', think: 'B', reasoningKey: 'reasoning' },
+          { type: 'text', text: 'ok' },
+        ],
+        toolCalls: [],
+      },
+    ];
+    await drain(await provider.generate('', [], stampedHistory));
+
+    const messages = captured[1]?.['messages'] as Array<Record<string, unknown>>;
+    expect(messages[1]).toMatchObject({
+      reasoning_content: 'A',
+      reasoning: 'B',
+      content: 'ok',
+    });
+  });
+
+  it('keeps the first detected reasoning key when later chunks use another', async () => {
+    const provider = registry.createChatProvider({
+      protocol: 'openai',
+      providerType: 'kimi',
+      modelName: 'kimi-k2',
+      apiKey: 'sk-probe',
+    });
+
+    const captured: Array<Record<string, unknown>> = [];
+    const client = sdkClient(provider) as { chat: { completions: { create: unknown } } };
+    client.chat.completions.create = vi.fn().mockImplementation((params: unknown) => {
+      captured.push(params as Record<string, unknown>);
+      async function* chunks(): AsyncIterable<unknown> {
+        yield { id: 'chatcmpl-probe', choices: [{ index: 0, delta: { reasoning: 'hmm' } }] };
+        yield {
+          id: 'chatcmpl-probe',
+          choices: [{ index: 0, delta: { reasoning_content: 'late' } }],
+        };
+        yield {
+          id: 'chatcmpl-probe',
+          choices: [{ index: 0, delta: { content: 'ok' }, finish_reason: 'stop' }],
+        };
+      }
+      return {
+        withResponse: () =>
+          Promise.resolve({ data: chunks(), response: { headers: new Headers() } }),
+      };
+    });
+
+    await drain(await provider.generate('', [], PROBE_HISTORY));
+    await drain(await provider.generate('', [], THINK_HISTORY));
+
+    const messages = captured[1]?.['messages'] as Array<Record<string, unknown>>;
+    expect(messages[0]).toMatchObject({ reasoning: 'earlier reasoning' });
+    expect(messages[0]).not.toHaveProperty('reasoning_content');
   });
 
   it('echoes thinking under `reasoning` after the endpoint spoke it', async () => {

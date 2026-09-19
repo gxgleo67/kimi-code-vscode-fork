@@ -156,18 +156,25 @@ describe('AgentPromptService', () => {
     const one = await prompt.enqueue({ message: { ...message('one'), origin: { kind: 'user', clientMetadata: [first] } } });
     const two = await prompt.enqueue({ message: { ...message('two'), origin: { kind: 'user', clientMetadata: [second] } } });
     await prompt.steer([two.id, one.id]);
+    expect(events).toHaveLength(0);
+    expect(steered[0]?.messageId).toEqual(expect.any(String));
+    expect(steered[0]?.promptIds).toEqual([one.id, two.id]);
     loop.drainNextBatch(context);
+    expect(events).toHaveLength(1);
     expect(events[0]?.origin).toMatchObject({ kind: 'user', clientMetadata: [first, second] });
     expect(queued.find((event) => event.promptId === one.id)?.clientMetadata).toEqual([first]);
     expect(queued.find((event) => event.promptId === two.id)?.clientMetadata).toEqual([second]);
-    expect(steered.map((event) => event.promptIds)).toEqual([[one.id, two.id]]);
     expect(events[0]?.input).toEqual([{ type: 'text', text: 'one' }, { type: 'text', text: 'two' }]);
+    expect(events[0]?.messageId).toBe(steered[0]?.messageId);
+    expect(events[0]?.promptIds).toEqual([one.id, two.id]);
   });
 
   it('keeps plain inputs beside composer metadata in a mixed steer', async () => {
     const { prompt, context, loop, eventBus } = harness();
     const events: TurnSteer[] = [];
+    const steered: PromptSteered[] = [];
     eventBus.subscribe(TurnSteer, (event) => events.push(event));
+    eventBus.subscribe(PromptSteered, (event) => steered.push(event));
     const active = await prompt.enqueue({ message: message('active') });
     await active.launched;
     const metadata = { display_text: 'Save button', kimi_code_composer: { version: 1 } };
@@ -175,9 +182,12 @@ describe('AgentPromptService', () => {
     const two = await prompt.enqueue({ message: { ...message('browser wire'), origin: { kind: 'user', clientMetadata: [metadata] } } });
     const three = await prompt.enqueue({ message: message('last instruction') });
     await prompt.steer([three.id, two.id, one.id]);
+    expect(events).toHaveLength(0);
     loop.drainNextBatch(context);
     expect(events[0]?.origin).toMatchObject({ clientMetadata: [{ display_text: '[literal](example.md)' }, metadata, { display_text: 'last instruction' }] });
     expect(events[0]?.input).toEqual([{ type: 'text', text: '[literal](example.md)' }, { type: 'text', text: 'browser wire' }, { type: 'text', text: 'last instruction' }]);
+    expect(events[0]?.messageId).toBe(steered[0]?.messageId);
+    expect(events[0]?.promptIds).toEqual([one.id, two.id, three.id]);
   });
 
   it('aborts pending prompts and settles completion', async () => {

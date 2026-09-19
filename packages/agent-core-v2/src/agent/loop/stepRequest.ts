@@ -59,6 +59,8 @@ export abstract class StepRequest {
 
   onWillMaterialize(): void {}
 
+  onDidMaterialize(): void {}
+
   abstract resolveContextMessages(): readonly ContextMessage[];
 
   markMaterialized(): void {

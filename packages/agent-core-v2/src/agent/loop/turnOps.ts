@@ -21,12 +21,12 @@ export interface TurnModelState {
   };
 }
 
-const turnInputShape = {
+const turnPromptSchema = z.object({
   input: z.custom<readonly ContentPart[]>(),
   origin: z.custom<PromptOrigin>(),
-};
-
-const turnPromptSchema = z.object(turnInputShape);
+  promptId: z.string().optional(),
+  turnId: z.number().optional(),
+});
 
 export class TurnPrompt extends Event2<z.infer<typeof turnPromptSchema>> {
   static override readonly type = 'turn.prompt';
@@ -35,7 +35,13 @@ export class TurnPrompt extends Event2<z.infer<typeof turnPromptSchema>> {
 }
 export interface TurnPrompt extends z.infer<typeof turnPromptSchema> {}
 
-const turnSteerSchema = z.object(turnInputShape);
+const turnSteerSchema = z.object({
+  input: z.custom<readonly ContentPart[]>(),
+  origin: z.custom<PromptOrigin>(),
+  messageId: z.string().optional(),
+  promptIds: z.array(z.string()).optional(),
+  turnId: z.number().optional(),
+});
 
 export class TurnSteer extends Event2<z.infer<typeof turnSteerSchema>> {
   static override readonly type = 'turn.steer';

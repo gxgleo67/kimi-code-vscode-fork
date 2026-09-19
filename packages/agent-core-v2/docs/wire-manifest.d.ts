@@ -484,6 +484,7 @@ interface PromptSteeredPayload {
   promptIds: string[];
   content: ContentPart[];
   steeredAt: string;
+  messageId?: string;
 }
 
 /**
@@ -708,6 +709,8 @@ interface TurnPromptPayload {
   input: readonly ContentPart[];
   /** PromptOrigin */
   origin: 'user' | 'skill_activation' | 'plugin_command' | 'injection' | 'shell_command' | 'compaction_summary' | 'system_trigger' | 'task' | 'cron_job' | 'cron_missed' | 'hook_result' | 'retry';
+  promptId?: string;
+  turnId?: number;
 }
 
 /**
@@ -719,6 +722,9 @@ interface TurnSteerPayload {
   input: readonly ContentPart[];
   /** PromptOrigin */
   origin: 'user' | 'skill_activation' | 'plugin_command' | 'injection' | 'shell_command' | 'compaction_summary' | 'system_trigger' | 'task' | 'cron_job' | 'cron_missed' | 'hook_result' | 'retry';
+  messageId?: string;
+  promptIds?: string[];
+  turnId?: number;
 }
 
 /**

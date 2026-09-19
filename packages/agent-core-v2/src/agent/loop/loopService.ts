@@ -450,7 +450,7 @@ export class AgentLoopService extends Disposable implements IAgentLoopService {
 
   private startTurn(job: TurnJob): void {
     const origin = job.seed.origin;
-    void this.dispatcher.dispatch(new TurnPrompt({ input: job.seed.input, origin }));
+    void this.dispatcher.dispatch(new TurnPrompt({ input: job.seed.input, origin, promptId: job.seed.promptId, turnId: job.turn.id }));
     job.turn.state = 'running';
     this.activeTurnJob = job;
     void this.dispatcher.dispatch(
@@ -817,6 +817,7 @@ export class AgentLoopService extends Disposable implements IAgentLoopService {
     if (messages.length > 0) {
       this.context.append(...messages);
     }
+    request.onDidMaterialize();
     request.markMaterialized();
   }
 

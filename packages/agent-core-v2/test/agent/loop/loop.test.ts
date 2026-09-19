@@ -71,7 +71,7 @@ describe('Agent loop', () => {
       [wire] tools.set_active_tools      { "names": [], "time": "<time>" }
       [wire] prompt.accepted             { "promptId": "<msg-1>", "content": [ { "type": "text", "text": "Hello" } ], "time": "<time>" }
       [emit] prompt.accepted             { "time": "<time>", "promptId": "<msg-1>", "content": [ { "type": "text", "text": "Hello" } ] }
-      [wire] turn.prompt                 { "input": [ { "type": "text", "text": "Hello" } ], "origin": { "kind": "user" }, "time": "<time>" }
+      [wire] turn.prompt                 { "input": [ { "type": "text", "text": "Hello" } ], "origin": { "kind": "user" }, "promptId": "<msg-1>", "turnId": 0, "time": "<time>" }
       [emit] turn.started                { "time": "<time>", "turnId": 0, "origin": { "kind": "user" }, "prompt": "Hello" }
       [emit] agent.activity.updated      { "time": "<time>", "lifecycle": "ready", "turn": { "turnId": 0, "origin": { "kind": "user" }, "phase": "running", "step": 0, "ending": false, "pendingApprovals": [], "activeToolCalls": [], "since": "<time>" }, "background": [] }
       [emit] context.spliced             { "time": "<time>", "start": 0, "deleteCount": 0, "messages": [ { "role": "user", "content": [ { "type": "text", "text": "Hello" } ], "toolCalls": [], "origin": { "kind": "user" }, "id": "<msg-1>" } ] }
@@ -129,7 +129,7 @@ describe('Agent loop', () => {
     expect(await ctx.untilTurnEnd()).toMatchInlineSnapshot(`
       [wire] prompt.accepted             { "promptId": "<msg-1>", "content": [ { "type": "text", "text": "Hello" } ], "time": "<time>" }
       [emit] prompt.accepted             { "time": "<time>", "promptId": "<msg-1>", "content": [ { "type": "text", "text": "Hello" } ] }
-      [wire] turn.prompt                 { "input": [ { "type": "text", "text": "Hello" } ], "origin": { "kind": "user" }, "time": "<time>" }
+      [wire] turn.prompt                 { "input": [ { "type": "text", "text": "Hello" } ], "origin": { "kind": "user" }, "promptId": "<msg-1>", "turnId": 0, "time": "<time>" }
       [emit] turn.started                { "time": "<time>", "turnId": 0, "origin": { "kind": "user" }, "prompt": "Hello" }
       [emit] agent.activity.updated      { "time": "<time>", "lifecycle": "ready", "turn": { "turnId": 0, "origin": { "kind": "user" }, "phase": "running", "step": 0, "ending": false, "pendingApprovals": [], "activeToolCalls": [], "since": "<time>" }, "background": [] }
       [emit] context.spliced             { "time": "<time>", "start": 0, "deleteCount": 0, "messages": [ { "role": "user", "content": [ { "type": "text", "text": "Hello" } ], "toolCalls": [], "origin": { "kind": "user" }, "id": "<msg-1>" } ] }
@@ -352,7 +352,7 @@ describe('Agent loop', () => {
       [wire] tools.set_active_tools          { "names": [ "Lookup" ], "time": "<time>" }
       [wire] prompt.accepted                 { "promptId": "<msg-1>", "content": [ { "type": "text", "text": "Look up moon" } ], "time": "<time>" }
       [emit] prompt.accepted                 { "time": "<time>", "promptId": "<msg-1>", "content": [ { "type": "text", "text": "Look up moon" } ] }
-      [wire] turn.prompt                     { "input": [ { "type": "text", "text": "Look up moon" } ], "origin": { "kind": "user" }, "time": "<time>" }
+      [wire] turn.prompt                     { "input": [ { "type": "text", "text": "Look up moon" } ], "origin": { "kind": "user" }, "promptId": "<msg-1>", "turnId": 0, "time": "<time>" }
       [emit] turn.started                    { "time": "<time>", "turnId": 0, "origin": { "kind": "user" }, "prompt": "Look up moon" }
       [emit] agent.activity.updated          { "time": "<time>", "lifecycle": "ready", "turn": { "turnId": 0, "origin": { "kind": "user" }, "phase": "running", "step": 0, "ending": false, "pendingApprovals": [], "activeToolCalls": [], "since": "<time>" }, "background": [] }
       [emit] context.spliced                 { "time": "<time>", "start": 0, "deleteCount": 0, "messages": [ { "role": "user", "content": [ { "type": "text", "text": "Look up moon" } ], "toolCalls": [], "origin": { "kind": "user" }, "id": "<msg-1>" } ] }

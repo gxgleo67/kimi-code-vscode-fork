@@ -102,6 +102,7 @@ export interface PromptSteeredPayload {
   readonly promptIds: string[];
   readonly content: ContentPart[];
   readonly steeredAt: string;
+  readonly messageId?: string;
 }
 
 const promptSteeredSchema = z.object({
@@ -109,6 +110,7 @@ const promptSteeredSchema = z.object({
   promptIds: z.array(z.string()),
   content: z.custom<ContentPart[]>(),
   steeredAt: z.string(),
+  messageId: z.string().optional(),
 });
 
 export class PromptSteered extends Event2<z.infer<typeof promptSteeredSchema>> {
@@ -353,24 +355,35 @@ export class AgentPromptService implements IAgentPromptService {
             : [{ display_text: promptDisplayTextFromContentParts(stripBundledSkillBlocks(item.message)) }];
         })
       : [];
+    const messageId = newMessageId();
     const message: ContextMessage = {
+      id: messageId,
       role: 'user',
       content: selected.flatMap((item) => item.message.content),
       toolCalls: [],
       origin: clientMetadata.length === 0 ? USER_PROMPT_ORIGIN : { kind: 'user', clientMetadata },
     };
     const { message: rerouted, captions } = this.extractCompressionCaptions(message);
+    const selectedIds = selected.map((x) => x.id);
+    let steeredTurnId: number | undefined;
     const request = new SteerStepRequest(rerouted, captions, this.reminders, this.profile.getModelProviderType(), (materialized) => {
       void this.dispatcher.dispatch(
-        new TurnSteer({ input: materialized.content, origin: materialized.origin ?? USER_PROMPT_ORIGIN }),
+        new TurnSteer({
+          input: materialized.content,
+          origin: materialized.origin ?? USER_PROMPT_ORIGIN,
+          messageId: materialized.id,
+          promptIds: [...selectedIds],
+          turnId: steeredTurnId,
+        }),
       );
     }, () => {});
     const turn = (await this.loop.enqueue(request).assigned).turn;
     if (turn === undefined) throw new Error2(ErrorCodes.PROMPT_NOT_FOUND, 'no active turn to steer into');
+    steeredTurnId = turn.id;
     for (const item of selected) { item.state = 'steered'; item.launchedDeferred.resolve(turn); }
     this.steered.set(this.active.id, [...(this.steered.get(this.active.id) ?? []), ...selected]);
     void this.dispatcher.dispatch(
-      new PromptSteered({ activePromptId: this.active.id, promptIds: selected.map((x) => x.id), content: rerouted.content as ContentPart[], steeredAt: new Date().toISOString() }),
+      new PromptSteered({ activePromptId: this.active.id, promptIds: selectedIds, content: rerouted.content as ContentPart[], steeredAt: new Date().toISOString(), messageId }),
     );
     return selected.map((item) => item.handle);
   }

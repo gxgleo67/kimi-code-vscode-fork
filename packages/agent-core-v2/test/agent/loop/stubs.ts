@@ -39,7 +39,7 @@ function registry(): { handlers: LoopErrorHandler[]; register: IAgentLoopService
   };
   return { handlers, register };
 }
-function materialize(request: StepRequest, context: { append(...messages: ContextMessage[]): void }): void { if (request.state !== 'pending') return; request.onWillMaterialize(); const messages = request.resolveContextMessages(); if (messages.length) context.append(...messages); request.markMaterialized(); }
+function materialize(request: StepRequest, context: { append(...messages: ContextMessage[]): void }): void { if (request.state !== 'pending') return; request.onWillMaterialize(); const messages = request.resolveContextMessages(); if (messages.length) context.append(...messages); request.onDidMaterialize(); request.markMaterialized(); }
 export function stubLoopWithHooks(options: StubLoopOptions = {}): StubLoop {
   const hooks = createHooks(['onWillBeginStep', 'onDidFinishStep']) as IAgentLoopService['hooks'];
   const queue = new StepRequestQueue(); const errorHandlers = registry(); const launches: number[] = []; const cancels: { turnId?: number; reason?: unknown }[] = [];

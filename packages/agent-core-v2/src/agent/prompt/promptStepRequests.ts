@@ -84,8 +84,11 @@ export class SteerStepRequest extends UserMessageStepRequest {
   }
 
   override onWillMaterialize(): void {
-    this.recordSteer(this.message);
     super.onWillMaterialize();
+  }
+
+  override onDidMaterialize(): void {
+    this.recordSteer(this.message);
   }
 
   protected override onSettled(): void {

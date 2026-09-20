@@ -212,17 +212,25 @@ scripts/              # postinstall (node-pty fix)
 
 ## 🕓 更新记录 | Changelog
 
-**2026-09-20（0.9.16 · 桌面端品牌 Logo + 眨眼彩蛋）**：
+**2026-09-20（0.9.17 · 文档/打包重发）**：
+
+README 头图换新（新品牌 Logo 风格），更新记录明确补充流畅性说明；无功能变更
+
+*English:* Docs/packaging re-release: new README hero image, release notes now spell out the fluency work; no functional changes
+
+**2026-09-20（0.9.16 · 桌面端品牌 Logo + 眨眼彩蛋 + 流畅性提升）**：
 
 1. 对话头像、面板顶部、账号兜底头像改用桌面端 Kimi Code CLI 品牌 Logo（圆角方块底板 + 蓝色渐变圆脸 + `>_` 终端条），替换旧的蓝色矩形头像图
 2. 移植桌面端彩蛋：Logo 眼睛每 16 秒左右瞟动、每 11 秒自动眨眼，点击任意 Logo 立即眨一次眼；纯 CSS/SVG，尊重「减少动态效果」
 3. 扩展市场图标与侧边栏图标换成桌面端官方应用图标
+4. 流畅性提升：面板动画已全面改为纯 CSS/SVG 实现——0.9.15 移除 Rive 运行时（webview 包体减小约 8MB，不再加载 WebAssembly、无 canvas 重绘循环），新 Logo 与工作指示器动画开销几乎为零；配合 0.9.12 的流式渲染优化与长对话卡死修复，面板整体更轻快
 
 *English:*
 
 1. Chat avatar, panel header, and account fallback avatar now use the desktop Kimi Code CLI brand logo (rounded tile + blue gradient face + `>_` terminal bar), replacing the old flat avatar image
 2. Ported the desktop easter egg: the logo's eyes glance around every 16 s, auto-blink every 11 s, and blink once when clicked; pure CSS/SVG, honors "reduced motion"
 3. Marketplace and activity-bar icons now match the desktop app icon
+4. Fluency: every panel animation is now pure CSS/SVG — 0.9.15 removed the Rive runtime (~8 MB smaller webview bundle, no WASM, no canvas repaint loop); combined with 0.9.12's streaming-render smoothing and long-session freeze fixes, the panel feels noticeably snappier
 
 **2026-09-20（0.9.15 · 工作指示器对齐桌面端现版）**：
 

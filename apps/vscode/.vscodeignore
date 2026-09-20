@@ -48,3 +48,6 @@ artifacts/**
 
 # Prevent parent directory traversal via symlinks
 ../**
+
+# Local ops notes — never ship in the vsix
+AGENTS.md

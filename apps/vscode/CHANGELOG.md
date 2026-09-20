@@ -4,17 +4,27 @@
 >
 > *中文:* 本文件只记录本 fork(Kimi Code (Fork))自身的更新,版本号独立编号。官方上游的更新记录请见 [MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code/blob/main/apps/vscode/CHANGELOG.md)。
 
+## 0.9.17(2026-09-20)
+
+1. Docs/packaging re-release: new README hero image matching the current Kimi Code brand logo, and the release notes now explicitly call out the fluency work (all panel animations are pure CSS/SVG; the Rive runtime was removed in 0.9.15 — ~8 MB smaller webview bundle, no WASM, no canvas repaint loop). No functional changes.
+
+*中文:*
+
+1. 文档/打包重发:README 头图换新(新品牌 Logo 风格),更新记录明确补充流畅性说明(面板动画已全面改为纯 CSS/SVG;0.9.15 起移除 Rive 运行时,webview 包体减小约 8MB,无 WebAssembly、无 canvas 重绘循环)。无功能变更
+
 ## 0.9.16(2026-09-20)
 
 1. Ported the desktop app's brand logo (BrandLogo): the chat avatar, panel header, and account fallback avatar now use the desktop's Kimi Code CLI logo — a rounded-square tile (black on light themes, white on dark) with the blue gradient face, eyes, and the tiny `>_` terminal bar — replacing the old flat blue-rectangle Kimi avatar image.
 2. Ported the desktop's eye easter egg: the logo's eyes look around every 16 s and blink every 11 s on their own, and clicking any logo (chat avatar, panel header) makes it blink once. Pure CSS/SVG, honors "reduced motion".
 3. The extension's marketplace icon and activity-bar icon now match the desktop app icon (ported from the desktop build's official `icon.ico` / brand SVG).
+4. Fluency: every animation in the panel is now pure CSS/SVG — 0.9.15 removed the Rive runtime (~8 MB smaller webview bundle, no WASM compilation, no canvas repaint loop), and the new brand logo / working indicator animate at negligible cost. Together with 0.9.12's streaming-render smoothing and long-session freeze fixes, the panel should feel noticeably snappier.
 
 *中文:*
 
 1. 移植桌面端品牌 Logo(BrandLogo):对话头像、面板顶部、账号兜底头像全部改用桌面端 Kimi Code CLI 标志——圆角方块底板(浅色主题黑底、深色主题白底)+ 蓝色渐变圆脸 + 眼睛 + 迷你 `>_` 终端条,替换旧的蓝色圆角矩形头像图片
 2. 移植桌面端彩蛋:Logo 眼睛每 16 秒会左右瞟动、每 11 秒自动眨一次眼,点击任意 Logo(对话头像、面板顶部)会立即眨一次眼。纯 CSS/SVG 实现,尊重系统「减少动态效果」设置
 3. 扩展的市场图标和侧边栏图标改用桌面端官方应用图标(来自桌面端安装包的 `icon.ico` / 品牌 SVG)
+4. 流畅性提升:面板动画已全部改为纯 CSS/SVG 实现——0.9.15 移除了 Rive 运行时(webview 包体减小约 8MB,不再加载 WebAssembly、没有 canvas 重绘循环),新品牌 Logo 与工作指示器的动画开销几乎为零;配合 0.9.12 的流式渲染优化与长对话卡死修复,面板整体更轻快
 
 ## 0.9.15(2026-09-20)
 

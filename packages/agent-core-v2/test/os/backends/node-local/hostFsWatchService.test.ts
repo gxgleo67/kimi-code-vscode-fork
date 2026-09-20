@@ -471,7 +471,7 @@ describe('host filesystem change notifications', () => {
 
   it('returns disabled handles when KIMI_CODE_WATCH is false', async () => {
     root = await longTempDir('hostfswatch-kill-');
-    process.env.KIMI_CODE_WATCH = '0';
+    process.env['KIMI_CODE_WATCH'] = '0';
     const plain = new HostFsWatchService().watch(root);
     try {
       const events: HostFsChange[] = [];
@@ -487,7 +487,7 @@ describe('host filesystem change notifications', () => {
       expect(events).toHaveLength(0);
     } finally {
       plain.dispose();
-      delete process.env.KIMI_CODE_WATCH;
+      delete process.env['KIMI_CODE_WATCH'];
     }
   });
 

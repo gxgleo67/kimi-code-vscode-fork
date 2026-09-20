@@ -216,6 +216,18 @@ scripts/              # postinstall (node-pty fix)
 
 ## 🕓 更新记录 | Changelog
 
+**2026-09-20（0.9.16 · 桌面端品牌 Logo + 眨眼彩蛋）**：
+
+1. 对话头像、面板顶部、账号兜底头像改用桌面端 Kimi Code CLI 品牌 Logo（圆角方块底板 + 蓝色渐变圆脸 + `>_` 终端条），替换旧的蓝色矩形头像图
+2. 移植桌面端彩蛋：Logo 眼睛每 16 秒左右瞟动、每 11 秒自动眨眼，点击任意 Logo 立即眨一次眼；纯 CSS/SVG，尊重「减少动态效果」
+3. 扩展市场图标与侧边栏图标换成桌面端官方应用图标
+
+*English:*
+
+1. Chat avatar, panel header, and account fallback avatar now use the desktop Kimi Code CLI brand logo (rounded tile + blue gradient face + `>_` terminal bar), replacing the old flat avatar image
+2. Ported the desktop easter egg: the logo's eyes glance around every 16 s, auto-blink every 11 s, and blink once when clicked; pure CSS/SVG, honors "reduced motion"
+3. Marketplace and activity-bar icons now match the desktop app icon
+
 **2026-09-20（0.9.15 · 工作指示器对齐桌面端现版）**：
 
 1. 工作指示器改为桌面端当前版本的纯 CSS「Kimi 小脸」：圆角矩形蓝色小脸，眼睛会左右瞟动 + 眨眼，状态文字呼吸（首个内容流出前「请求中…」，之后「工作中…」）；替换 0.9.14 的 Rive 版本（其静止状态是个蓝色圆球，与桌面端不符）

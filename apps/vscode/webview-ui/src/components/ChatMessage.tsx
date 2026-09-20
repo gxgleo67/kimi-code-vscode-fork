@@ -11,7 +11,7 @@ import { MediaThumbnail } from "./MediaThumbnail";
 import { MediaPreviewModal } from "./MediaPreviewModal";
 import { InlineError } from "./InlineError";
 import { PlanCard } from "./PlanCard";
-import { KimiLogo } from "./KimiLogo";
+import { BrandLogo } from "./BrandLogo";
 import { WorkingIndicator } from "./WorkingIndicator";
 import { StreamingConfirmDialog } from "./StreamingConfirmDialog";
 import { Button } from "@/components/ui/button";
@@ -369,8 +369,7 @@ function AssistantMessage({ message, turnIndex, isStreaming }: { message: ChatMe
     <div className="@container px-3 py-3 group/message">
       <div className="flex gap-3 flex-col">
         <div className="flex flex-row items-center justify-start gap-2">
-          {/* kimi-logo.png is 3:2 — object-contain keeps it unstretched in the square slot */}
-          <KimiLogo className="shrink-0 size-5 object-contain rounded-lg" />
+          <BrandLogo size={20} className="shrink-0" />
           <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Kimi</div>
           <span className="text-[10px] normal-case tracking-normal text-muted-foreground/60">{formatMessageTime(message.timestamp)}</span>
         </div>

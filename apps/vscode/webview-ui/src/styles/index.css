@@ -371,6 +371,92 @@ body {
   }
 }
 
+/* Brand logo (desktop BrandLogo port): theme-aware tile plus idle eye motion
+   — eyes look around every 16 s, blink every 11 s, and `.blink-now` plays a
+   single blink (the click easter egg). */
+.kimi-brand-logo {
+  display: block;
+  flex: none;
+  cursor: pointer;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.kimi-brand-tile-light {
+  display: block;
+}
+
+.kimi-brand-tile-dark {
+  display: none;
+}
+
+.dark .kimi-brand-tile-light {
+  display: none;
+}
+
+.dark .kimi-brand-tile-dark {
+  display: block;
+}
+
+.kimi-brand-eyes {
+  animation: kimi-eye-look 16s ease-in-out infinite;
+}
+
+.kimi-brand-eye {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: kimi-eye-blink 11s ease-in-out infinite;
+}
+
+.kimi-brand-logo.blink-now .kimi-brand-eye {
+  animation: kimi-eye-blink-once 0.24s ease-in-out;
+}
+
+@keyframes kimi-eye-look {
+  0%,
+  42% {
+    transform: translate(0);
+  }
+  47%,
+  53% {
+    transform: translate(2px);
+  }
+  58%,
+  80% {
+    transform: translate(0);
+  }
+  84%,
+  90% {
+    transform: translate(-2px);
+  }
+  95%,
+  100% {
+    transform: translate(0);
+  }
+}
+
+@keyframes kimi-eye-blink {
+  0%,
+  94%,
+  100% {
+    transform: scaleY(1);
+  }
+  96.5%,
+  98% {
+    transform: scaleY(0.12);
+  }
+}
+
+@keyframes kimi-eye-blink-once {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(0.1);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .kimi-eyes-logo-eyes,
   .kimi-eyes-logo-eye,
@@ -379,7 +465,9 @@ body {
   .kimi-think-breathe,
   .kimi-wi-eyes,
   .kimi-wi-eye,
-  .kimi-wi-label {
+  .kimi-wi-label,
+  .kimi-brand-eyes,
+  .kimi-brand-eye {
     animation: none;
   }
 }

@@ -8,7 +8,7 @@ import { useSettingsStore } from "@/stores";
 import { bridge } from "@/services";
 import { formatDateTime } from "@/lib/utils";
 import { useT } from "@/i18n";
-import { KimiLogo } from "./KimiLogo";
+import { BrandLogo } from "./BrandLogo";
 import { CustomProviderSection } from "./CustomProviderSection";
 import { resetCountdown } from "./UsageStatusBar";
 import { formatUsagePercent, type ManagedUsageView } from "shared/managed-usage";
@@ -34,7 +34,7 @@ function AccountAvatar({ src }: { src?: string }) {
   if (src === undefined || failed) {
     return (
       <span className="size-7 shrink-0 rounded-full bg-muted flex items-center justify-center overflow-hidden">
-        <KimiLogo className="size-4" />
+        <BrandLogo size={16} />
       </span>
     );
   }

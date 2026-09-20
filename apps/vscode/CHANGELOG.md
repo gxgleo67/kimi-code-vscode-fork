@@ -4,6 +4,18 @@
 >
 > *中文:* 本文件只记录本 fork(Kimi Code (Fork))自身的更新,版本号独立编号。官方上游的更新记录请见 [MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code/blob/main/apps/vscode/CHANGELOG.md)。
 
+## 0.9.16(2026-09-20)
+
+1. Ported the desktop app's brand logo (BrandLogo): the chat avatar, panel header, and account fallback avatar now use the desktop's Kimi Code CLI logo — a rounded-square tile (black on light themes, white on dark) with the blue gradient face, eyes, and the tiny `>_` terminal bar — replacing the old flat blue-rectangle Kimi avatar image.
+2. Ported the desktop's eye easter egg: the logo's eyes look around every 16 s and blink every 11 s on their own, and clicking any logo (chat avatar, panel header) makes it blink once. Pure CSS/SVG, honors "reduced motion".
+3. The extension's marketplace icon and activity-bar icon now match the desktop app icon (ported from the desktop build's official `icon.ico` / brand SVG).
+
+*中文:*
+
+1. 移植桌面端品牌 Logo(BrandLogo):对话头像、面板顶部、账号兜底头像全部改用桌面端 Kimi Code CLI 标志——圆角方块底板(浅色主题黑底、深色主题白底)+ 蓝色渐变圆脸 + 眼睛 + 迷你 `>_` 终端条,替换旧的蓝色圆角矩形头像图片
+2. 移植桌面端彩蛋:Logo 眼睛每 16 秒会左右瞟动、每 11 秒自动眨一次眼,点击任意 Logo(对话头像、面板顶部)会立即眨一次眼。纯 CSS/SVG 实现,尊重系统「减少动态效果」设置
+3. 扩展的市场图标和侧边栏图标改用桌面端官方应用图标(来自桌面端安装包的 `icon.ico` / 品牌 SVG)
+
 ## 0.9.15(2026-09-20)
 
 1. Working indicator reworked to match the current desktop app: the desktop no longer ships the Rive mascot — its working indicator is now a pure-CSS "Kimi face" (a small rounded-rect blue badge whose eyes glance sideways and blink). The fork ports that exact implementation, replacing 0.9.14's Rive version which rendered the mascot's resting state as a plain blue circle. This also drops the Rive runtime entirely: no `@rive-app/canvas-lite` dependency, no `kimi-mascot.riv`/`rive.wasm` assets, ~8 MB smaller webview bundle, and the temporary `wasm-unsafe-eval` CSP relaxation is reverted. Honors "reduced motion".

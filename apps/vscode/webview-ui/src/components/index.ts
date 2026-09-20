@@ -6,7 +6,7 @@ export { ChatArea } from "./ChatArea";
 export { ChatStatus } from "./ChatStatus";
 export { InputArea } from "./inputarea/InputArea";
 export { ActionMenu } from "./ActionMenu";
-export { KimiLogo } from "./KimiLogo";
+export { BrandLogo } from "./BrandLogo";
 export { KimiMascot } from "./KimiMascot";
 export { ToolCallCard } from "./ToolRenderers";
 export { ApprovalDialog } from "./ApprovalDialog";

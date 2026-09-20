@@ -4,13 +4,13 @@
 >
 > *中文:* 本文件只记录本 fork(Kimi Code (Fork))自身的更新,版本号独立编号。官方上游的更新记录请见 [MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code/blob/main/apps/vscode/CHANGELOG.md)。
 
-## 0.9.17(2026-09-20)
+## 0.9.18(2026-09-20)
 
-1. Docs/packaging re-release: new README hero image matching the current Kimi Code brand logo, and the release notes now explicitly call out the fluency work (all panel animations are pure CSS/SVG; the Rive runtime was removed in 0.9.15 — ~8 MB smaller webview bundle, no WASM, no canvas repaint loop). No functional changes.
+1. Brand sync only: README hero image updated to the current Kimi Code brand style, release notes tidied. No functional changes.
 
 *中文:*
 
-1. 文档/打包重发:README 头图换新(新品牌 Logo 风格),更新记录明确补充流畅性说明(面板动画已全面改为纯 CSS/SVG;0.9.15 起移除 Rive 运行时,webview 包体减小约 8MB,无 WebAssembly、无 canvas 重绘循环)。无功能变更
+1. 仅同步品牌信息:README 头图换新为新品牌风格,更新记录文案梳理。无功能变化
 
 ## 0.9.16(2026-09-20)
 

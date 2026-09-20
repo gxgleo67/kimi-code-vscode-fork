@@ -216,11 +216,11 @@ scripts/              # postinstall (node-pty fix)
 
 ## 🕓 更新记录 | Changelog
 
-**2026-09-20（0.9.17 · 文档/打包重发）**：
+**2026-09-20（0.9.18 · 同步品牌信息）**：
 
-README 头图换新（新品牌 Logo 风格），更新记录明确补充流畅性说明；无功能变更
+README 头图换新为新品牌风格，更新记录文案梳理；无功能变化
 
-*English:* Docs/packaging re-release: new README hero image, release notes now spell out the fluency work; no functional changes
+*English:* Brand sync only: new README hero image, release notes tidied; no functional changes
 
 **2026-09-20（0.9.16 · 桌面端品牌 Logo + 眨眼彩蛋 + 流畅性提升）**：
 

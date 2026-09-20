@@ -181,7 +181,7 @@ export class WireService extends Service implements IWireService {
 
   async flush(): Promise<void> {
     await this.persistQueue;
-    await this.log.flush();
+    await this.log.flushLog(this.wireScope, AGENT_WIRE_RECORD_KEY);
   }
 
   private reportSkippedRecord(type: string | undefined, index: number, malformed = false): void {

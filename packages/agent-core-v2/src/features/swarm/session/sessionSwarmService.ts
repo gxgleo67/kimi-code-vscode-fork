@@ -12,14 +12,23 @@ import { Event2 } from '#/app/event/event2';
 import { ISessionAgentProfileCatalog } from '#/session/sessionAgentProfileCatalog/sessionAgentProfileCatalog';
 import { applyProfilePromptPrefix } from '#/app/agentProfileCatalog/promptPrefix';
 import { IAgentLifecycleService } from '#/session/agentLifecycle/agentLifecycle';
+import { createAgentAwaitingClose } from '#/session/agentLifecycle/createAwaitingClose';
 import {
   isSubagentMeta,
+  labelsFromAgentMeta,
   subagentLabels,
   subagentParentAgentId,
   subagentSwarmItem,
 } from '#/session/agentLifecycle/subagentMetadata';
-import { emitAgentRunSpawned, mirrorAgentRun } from '#/session/subagent/mirrorAgentRun';
-import { ISessionSubagentService } from '#/session/subagent/subagent';
+import { hasPinnedPermissionMode } from '#/features/tower/tower';
+import {
+  classifyRunTermination,
+  emitAgentRunSpawned,
+  mirrorAgentRun,
+  SubagentCancelled,
+  SubagentFailed,
+} from '#/session/subagent/mirrorAgentRun';
+import { type AgentRunHandle, ISessionSubagentService } from '#/session/subagent/subagent';
 import { wrapSubagentModelError } from '#/session/subagent/configSection';
 import { ISessionContext } from '#/session/sessionContext/sessionContext';
 import { ISessionMetadata, type AgentMeta } from '#/session/sessionMetadata/sessionMetadata';
@@ -57,6 +66,8 @@ export interface SubagentSuspended extends SubagentSuspendedPayload {}
 
 const RESUMED_PROFILE_FALLBACK = 'subagent';
 
+type TerminalizeSubagent = (agentId: string, event: Event2) => void;
+
 export class SessionSwarmService implements ISessionSwarmService {
   declare readonly _serviceBrand: undefined;
 
@@ -92,17 +103,34 @@ export class SessionSwarmService implements ISessionSwarmService {
       if (task.signal !== undefined) unlinks.push(linkAbortSignal(task.signal, controller));
       return { ...task, signal: controller.signal };
     });
+    const terminalized = new Set<string>();
+    const terminalize: TerminalizeSubagent = (agentId, event) => {
+      if (terminalized.has(agentId)) return;
+      terminalized.add(agentId);
+      this.dispatchSubagentEvent(callerAgentId, event);
+    };
     const launcher: AgentRunBatchLauncher = {
-      spawn: (options) => this.spawnAttempt(callerAgentId, options),
-      resume: (agentId, options) => this.resumeAttempt(callerAgentId, agentId, options, false),
-      retry: (agentId, options) => this.resumeAttempt(callerAgentId, agentId, options, true),
+      spawn: (options) => this.spawnAttempt(callerAgentId, options, terminalize),
+      resume: (agentId, options) => this.resumeAttempt(callerAgentId, agentId, options, false, terminalize),
+      retry: (agentId, options) => this.resumeAttempt(callerAgentId, agentId, options, true, terminalize),
       suspended: (event) => {
-        const caller = this.lifecycle.get(callerAgentId);
-        void caller?.accessor.get(IEventDispatcher)?.dispatch(
+        this.dispatchSubagentEvent(
+          callerAgentId,
           new SubagentSuspended({
             subagentId: event.agentId,
             reason: event.reason,
           }),
+        );
+      },
+      abandoned: (event) => {
+        terminalize(
+          event.agentId,
+          event.outcome === 'failed'
+            ? new SubagentFailed({
+                subagentId: event.agentId,
+                error: event.error ?? 'Provider rate limit',
+              })
+            : new SubagentCancelled({ subagentId: event.agentId }),
         );
       },
     };
@@ -121,9 +149,15 @@ export class SessionSwarmService implements ISessionSwarmService {
     this.inFlight.get(callerAgentId)?.abort();
   }
 
+  private dispatchSubagentEvent(callerAgentId: string, event: Event2): void {
+    const caller = this.lifecycle.get(callerAgentId);
+    void caller?.accessor.get(IEventDispatcher)?.dispatch(event);
+  }
+
   private async spawnAttempt(
     callerAgentId: string,
     options: AgentSpawnAttemptOptions,
+    terminalize: TerminalizeSubagent,
   ): Promise<AgentRunAttemptHandle> {
     options.signal.throwIfAborted();
     const caller = this.requireHandle(callerAgentId, 'Caller agent');
@@ -191,7 +225,7 @@ export class SessionSwarmService implements ISessionSwarmService {
     return this.observe(caller, child.id, options.profileName, {
       kind: 'prompt',
       prompt: promptText,
-    }, options);
+    }, options, terminalize);
   }
 
   private async resumeAttempt(
@@ -199,11 +233,14 @@ export class SessionSwarmService implements ISessionSwarmService {
     agentId: string,
     options: AgentRunAttemptOptions,
     retryTurn: boolean,
+    terminalize: TerminalizeSubagent,
   ): Promise<AgentRunAttemptHandle> {
     options.signal.throwIfAborted();
-    await this.requireOwnedSubagent(callerAgentId, agentId);
+    const meta = await this.requireOwnedSubagent(callerAgentId, agentId);
     const caller = this.requireHandle(callerAgentId, 'Caller agent');
-    const child = this.requireHandle(agentId, 'Agent instance');
+    const child =
+      this.lifecycle.get(agentId) ??
+      (await this.rebuildSubagent(agentId, meta, caller, options.signal));
     this.requireIdleSubagent(agentId, child);
     const profileName =
       child.accessor.get(IAgentProfileService).data().profileName ?? RESUMED_PROFILE_FALLBACK;
@@ -222,7 +259,7 @@ export class SessionSwarmService implements ISessionSwarmService {
     const request = retryTurn
       ? ({ kind: 'retry' } as const)
       : ({ kind: 'prompt', prompt: options.prompt } as const);
-    return this.observe(caller, child.id, profileName, request, options);
+    return this.observe(caller, child.id, profileName, request, options, terminalize);
   }
 
   private async observe(
@@ -231,16 +268,24 @@ export class SessionSwarmService implements ISessionSwarmService {
     profileName: string,
     request: { kind: 'prompt'; prompt: string } | { kind: 'retry' },
     options: AgentRunAttemptOptions,
+    terminalize: TerminalizeSubagent,
   ): Promise<AgentRunAttemptHandle> {
-    const run = await this.subagents.run(agentId, request, {
-      signal: options.signal,
-      onReady: options.onReady,
-    });
+    let run: AgentRunHandle;
+    try {
+      run = await this.subagents.run(agentId, request, {
+        signal: options.signal,
+        onReady: options.onReady,
+      });
+    } catch (error) {
+      terminalize(agentId, runStartTerminalEvent(agentId, error, options.signal));
+      throw error;
+    }
     const mirrored = mirrorAgentRun(caller, run, {
       profileName,
       prompt: request.kind === 'prompt' ? request.prompt : undefined,
       suppressRateLimitFailureEvent: options.suppressRateLimitFailureEvent,
       signal: options.signal,
+      terminalize,
     });
     return {
       agentId,
@@ -273,9 +318,28 @@ export class SessionSwarmService implements ISessionSwarmService {
     }
   }
 
-  private async requireOwnedSubagent(callerAgentId: string, agentId: string): Promise<void> {
+  private async rebuildSubagent(
+    agentId: string,
+    meta: AgentMeta,
+    caller: IAgentScopeHandle,
+    signal: AbortSignal,
+  ): Promise<IAgentScopeHandle> {
+    const rebuilt = await createAgentAwaitingClose(
+      this.lifecycle,
+      { agentId, labels: labelsFromAgentMeta(meta), forkedFrom: meta.forkedFrom },
+      signal,
+    );
+    if (!hasPinnedPermissionMode(rebuilt.accessor.get(IAgentProfileService).data().profileName)) {
+      rebuilt.accessor
+        .get(IAgentPermissionModeService)
+        .setMode(caller.accessor.get(IAgentPermissionModeService).mode);
+    }
+    return rebuilt;
+  }
+
+  private async requireOwnedSubagent(callerAgentId: string, agentId: string): Promise<AgentMeta> {
     const meta = await this.agentMeta(agentId);
-    if (!isSubagentMeta(meta)) {
+    if (meta === undefined || !isSubagentMeta(meta)) {
       throw new Error2(ErrorCodes.AGENT_NOT_A_SUBAGENT, `Agent instance "${agentId}" is not a subagent`, {
         details: { agentId },
       });
@@ -287,6 +351,7 @@ export class SessionSwarmService implements ISessionSwarmService {
         { details: { agentId, callerAgentId } },
       );
     }
+    return meta;
   }
 
   private async agentMeta(agentId: string): Promise<AgentMeta | undefined> {
@@ -296,3 +361,13 @@ export class SessionSwarmService implements ISessionSwarmService {
 }
 
 export type _AgentRunUsage = TokenUsage;
+
+function runStartTerminalEvent(agentId: string, error: unknown, signal: AbortSignal): Event2 {
+  if (classifyRunTermination(error, signal) === 'cancelled') {
+    return new SubagentCancelled({ subagentId: agentId });
+  }
+  return new SubagentFailed({
+    subagentId: agentId,
+    error: error instanceof Error ? error.message : String(error),
+  });
+}

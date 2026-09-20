@@ -891,6 +891,11 @@ export interface SubagentFailedEvent {
   readonly error: string;
 }
 
+export interface SubagentCancelledEvent {
+  readonly type: 'subagent.cancelled';
+  readonly subagentId: string;
+}
+
 export interface CompactionStartedEvent {
   readonly type: 'compaction.started';
   readonly trigger: 'manual' | 'auto';
@@ -1035,6 +1040,7 @@ export type AgentEvent =
   | SubagentSuspendedEvent
   | SubagentCompletedEvent
   | SubagentFailedEvent
+  | SubagentCancelledEvent
   | CompactionStartedEvent
   | CompactionBlockedEvent
   | CompactionCancelledEvent
@@ -1828,6 +1834,11 @@ export const subagentFailedEventSchema = z.object({
   error: z.string(),
 }) satisfies z.ZodType<SubagentFailedEvent>;
 
+export const subagentCancelledEventSchema = z.object({
+  type: z.literal('subagent.cancelled'),
+  subagentId: z.string(),
+}) satisfies z.ZodType<SubagentCancelledEvent>;
+
 export const compactionStartedEventSchema = z.object({
   type: z.literal('compaction.started'),
   trigger: z.enum(['manual', 'auto']),
@@ -1969,6 +1980,7 @@ export const agentEventSchema = z.discriminatedUnion('type', [
   subagentSuspendedEventSchema,
   subagentCompletedEventSchema,
   subagentFailedEventSchema,
+  subagentCancelledEventSchema,
   compactionStartedEventSchema,
   compactionBlockedEventSchema,
   compactionCancelledEventSchema,

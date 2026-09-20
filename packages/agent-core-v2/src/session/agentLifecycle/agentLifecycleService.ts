@@ -26,6 +26,7 @@ import { IAgentLoopService } from '#/agent/loop/loop';
 import { TurnEnded } from '#/agent/loop/turnOps';
 import { IAgentProfileService } from '#/agent/profile/profile';
 import { abortError } from '#/_base/utils/abort';
+import { onUnexpectedError } from '#/_base/errors/unexpectedError';
 import { IAgentPermissionModeService } from '#/agent/permissionMode/permissionMode';
 import { IAgentContextMemoryService } from '#/agent/contextMemory/contextMemory';
 import { IAgentRuntimeBindingSeed, IAgentRuntimeBindingService } from '#/agent/runtimeBinding/runtimeBinding';
@@ -53,6 +54,7 @@ let nextAgentId = 0;
 export class AgentLifecycleService extends Disposable implements IAgentLifecycleService {
   declare readonly _serviceBrand: undefined;
   private readonly handles = new Map<string, IAgentScopeHandle>();
+  private readonly closing = new Set<string>();
   private readonly onDidCreateEmitter = this._register(new Emitter<IAgentScopeHandle>());
   private readonly onDidDisposeEmitter = this._register(new Emitter<string>());
   private readonly interactionBusDisposables = new Map<string, IDisposable>();
@@ -112,6 +114,13 @@ export class AgentLifecycleService extends Disposable implements IAgentLifecycle
       if (inflight !== undefined) return inflight;
       const existing = this.handles.get(opts.agentId);
       if (existing !== undefined) return existing;
+      if (this.closing.has(opts.agentId)) {
+        throw new Error2(
+          ErrorCodes.AGENT_ALREADY_EXISTS,
+          `Agent "${opts.agentId}" already exists`,
+          { details: { agentId: opts.agentId } },
+        );
+      }
     }
     const agentId = opts.agentId ?? (await this.nextAvailableAgentId());
     const promise = this.doCreate(agentId, opts);
@@ -264,32 +273,44 @@ export class AgentLifecycleService extends Disposable implements IAgentLifecycle
     const handle = this.handles.get(agentId);
     if (handle === undefined) return;
     this.handles.delete(agentId);
-    await handle.accessor.get(IAgentTaskService).stopAllOnExit('Session closed');
-    const loop = handle.accessor.get(IAgentLoopService);
-    const compaction = handle.accessor.get(IAgentFullCompactionService).compacting;
-    const compactionSettled = compaction?.promise.catch(() => undefined) ?? Promise.resolve();
-    const reason = abortError('Agent removed');
-    const prompt = handle.accessor.get(IAgentPromptService);
-    for (const turnId of loop.status().pendingTurnIds) {
-      loop.cancel(turnId, reason);
-    }
-    loop.cancel(undefined, reason);
-    if (compaction !== null && !compaction.abortController.signal.aborted) {
-      compaction.abortController.abort(reason);
-    }
-    let deadlineTimer: ReturnType<typeof setTimeout> | undefined;
+    this.closing.add(agentId);
+    let stopError: Error | undefined;
     try {
-      await Promise.race([
-        Promise.all([loop.settled(), compactionSettled, prompt.drain(reason)]),
-        new Promise<void>((resolve) => {
-          deadlineTimer = setTimeout(resolve, REMOVE_SETTLE_TIMEOUT_MS);
-        }),
-      ]);
+      try {
+        await handle.accessor.get(IAgentTaskService).stopAllOnExit('Session closed');
+      } catch (error) {
+        stopError = error instanceof Error ? error : new Error(String(error));
+      }
+      const loop = handle.accessor.get(IAgentLoopService);
+      const compaction = handle.accessor.get(IAgentFullCompactionService).compacting;
+      const compactionSettled = compaction?.promise.catch(() => undefined) ?? Promise.resolve();
+      const reason = abortError('Agent removed');
+      const prompt = handle.accessor.get(IAgentPromptService);
+      for (const turnId of loop.status().pendingTurnIds) {
+        loop.cancel(turnId, reason);
+      }
+      loop.cancel(undefined, reason);
+      if (compaction !== null && !compaction.abortController.signal.aborted) {
+        compaction.abortController.abort(reason);
+      }
+      let deadlineTimer: ReturnType<typeof setTimeout> | undefined;
+      try {
+        await Promise.race([
+          Promise.all([loop.settled(), compactionSettled, prompt.drain(reason)]),
+          new Promise<void>((resolve) => {
+            deadlineTimer = setTimeout(resolve, REMOVE_SETTLE_TIMEOUT_MS);
+          }),
+        ]);
+      } finally {
+        clearTimeout(deadlineTimer);
+      }
+      await handle.accessor.get(IEventDispatcher).flush().catch(onUnexpectedError);
+      await handle.dispose();
     } finally {
-      clearTimeout(deadlineTimer);
+      this.closing.delete(agentId);
     }
-    await handle.dispose();
     this.onDidDisposeEmitter.fire(agentId);
+    if (stopError !== undefined) throw stopError;
   }
 }
 

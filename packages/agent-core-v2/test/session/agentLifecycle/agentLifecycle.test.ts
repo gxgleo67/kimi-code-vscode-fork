@@ -156,6 +156,7 @@ function recordingAppendLog(initial: readonly WireRecord[] = []): {
       return Promise.resolve();
     },
     flush: () => Promise.resolve(),
+    flushLog: () => Promise.resolve(),
     close: () => Promise.resolve(),
     acquire: () => ({ dispose: () => {} }),
     drainRetirements: () => Promise.resolve(),
@@ -469,6 +470,22 @@ describe('AgentLifecycleService', () => {
 
     expect(stopAllOnExit).toHaveBeenCalledWith('Session closed');
     expect(promptDrain).toHaveBeenCalledOnce();
+  });
+
+  it('remove finishes teardown instead of reactivating a partially torn-down scope', async () => {
+    const svc = ix.get(IAgentLifecycleService);
+    await svc.create({ agentId: 'main' });
+    const disposed: string[] = [];
+    disposables.add(svc.onDidDispose((agentId) => disposed.push(agentId)));
+    stopAllOnExit.mockRejectedValueOnce(new Error('stop failed'));
+
+    await expect(svc.remove('main')).rejects.toThrow('stop failed');
+
+    expect(svc.get('main')).toBeUndefined();
+    expect(disposed).toEqual(['main']);
+
+    await svc.remove('main');
+    expect(stopAllOnExit).toHaveBeenCalledTimes(1);
   });
 
   it('remove waits for prompt intake to drain before disposing the agent scope', async () => {

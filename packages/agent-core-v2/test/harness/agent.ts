@@ -986,6 +986,10 @@ class PersistenceAppendLogStore implements IAppendLogStore {
     return this.persistence.flush();
   }
 
+  flushLog(_scope: string, _key: string): Promise<void> {
+    return this.persistence.flush();
+  }
+
   close(): Promise<void> {
     return this.persistence.close();
   }

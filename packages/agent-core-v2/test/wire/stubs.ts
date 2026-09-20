@@ -35,6 +35,7 @@ const noopLog: IAppendLogStore = {
   read: async function* () {},
   rewrite: async () => {},
   flush: async () => {},
+  flushLog: async () => {},
   close: async () => {},
   acquire: () => toDisposable(() => {}),
   drainRetirements: () => Promise.resolve(),
@@ -176,6 +177,7 @@ export function recordingWireLog(
       records.splice(0, records.length, ...(next as readonly WireRecord[]));
     },
     flush: async () => {},
+    flushLog: async () => {},
     close: async () => {},
     acquire: () => toDisposable(() => {}),
     drainRetirements: () => Promise.resolve(),

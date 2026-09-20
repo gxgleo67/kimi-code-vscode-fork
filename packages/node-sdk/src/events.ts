@@ -87,6 +87,7 @@ export type {
   SubagentSuspendedEvent,
   SubagentCompletedEvent,
   SubagentFailedEvent,
+  SubagentCancelledEvent,
 } from '@moonshot-ai/agent-core';
 
 // Compaction lifecycle events and compaction result payload.

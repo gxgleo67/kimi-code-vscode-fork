@@ -25,6 +25,7 @@ export type {
   SessionStatusChangedEvent,
   SessionWorkChangedEvent,
   SkillActivatedEvent,
+  SubagentCancelledEvent,
   SubagentCompletedEvent,
   SubagentFailedEvent,
   SubagentSpawnedEvent,

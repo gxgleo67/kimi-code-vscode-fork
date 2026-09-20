@@ -102,7 +102,11 @@
 
 **Logo 与视觉**：复刻 Kimi Code CLI 蓝色标识、对话框头像、状态栏布局调整；所有开关 开 = 蓝色 / 关 = 灰色，状态一眼可辨。
 
+**流式动效（桌面端同款）**：正在输出的正文末尾显示闪烁的打字机光标；思考块标签在推理期间以 1.6 秒呼吸动画提示进行中（均尊重系统「减少动态效果」设置）。
+
 **Logo & visuals**: the Kimi Code CLI blue logo, chat avatars, and an adjusted status-bar layout; every toggle is blue when on and gray when off — state at a glance.
+
+**Streaming motion (same as the desktop app)**: a blinking typewriter cursor follows the tail of in-flight text, and the thinking label breathes while reasoning streams (both honor reduced motion).
 
 **Web 同款输入区**：状态行左侧保留队列 / 文件修改，右侧为后台 Bash / 子 Agent / 当前进度（待办）/ 上下文查看器（仅在本对话调用过后显示）；模式与模型选择器（参考 kimi code web 界面）；有待发消息时队列按钮蓝色高亮。
 
@@ -207,6 +211,18 @@ scripts/              # postinstall (node-pty fix)
 ```
 
 ## 🕓 更新记录 | Changelog
+
+**2026-09-20（0.9.12 · 桌面端流式动效 + 目标模式修复 + 官方同步）**：
+
+1. 流式体验对齐 Kimi 桌面端：正在输出的正文末尾显示闪烁的打字机光标；思考块标签在推理期间改为呼吸动画，不再转圈（尊重系统「减少动态效果」）
+2. 目标模式修复：目标更新实时渲染；长对话下取消/停止不再卡死弹窗；流式渲染更顺滑
+3. 同步官方上游修复（截至九月中旬）：#3889 大仓库会话恢复与索引提速（扫描缓存 + O(1) 会话定位 + 会话索引自动压缩）；#3778 子代理作用域 LRU 缓存；#3892 监视器洪水修复；#3840 Windows 8.3 短路径监听崩溃；#3887 会话删除/归档卡死；#3837 撤销后重建对话记录；#3911 压缩前预裁剪历史；#3869 yolo 放行无法分析的 bash；#3879 系统提示不再禁止目录外路径；#3667 MCP 工具延迟披露；#3787 托管用量配额模型等 20 余项
+
+*English:*
+
+1. Streaming UX from the Kimi desktop app: blinking typewriter cursor at the tail of in-flight text; the thinking label breathes instead of spinning (honors reduced motion)
+2. Goal mode fixes: live goal updates in chat; cancel/stop no longer freezes the dialog on long sessions; smoother streaming
+3. Synced 20+ upstream fixes (through mid-September): #3889 large-workspace resume & index speedup (scan cache + O(1) session lookup + session-index compaction); #3778 subagent scope LRU; #3892 watcher flood; #3840 Windows 8.3 short-path watch crash; #3887 session delete/archive hang; #3837 transcript rebuilt after undo; #3911 compaction pre-shrink; #3869 yolo approves unanalyzable bash; #3879 no outside-dir ban in system prompt; #3667 deferred MCP tool disclosure; #3787 managed-usage quota model; and more
 
 **2026-09-14（0.9.11 · 重新发布）**：
 

@@ -4,6 +4,18 @@
 >
 > *中文:* 本文件只记录本 fork(Kimi Code (Fork))自身的更新,版本号独立编号。官方上游的更新记录请见 [MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code/blob/main/apps/vscode/CHANGELOG.md)。
 
+## 0.9.12(2026-09-20)
+
+1. Streaming UX ported from the Kimi desktop app: a blinking typewriter cursor is now pinned to the tail of in-flight text, and the thinking block's label breathes (1.6s opacity loop) instead of spinning while reasoning streams. Both honor "reduced motion".
+2. Goal mode fixes: goal updates now render live in the chat, goal control (cancel/stop) no longer freezes the dialog on long sessions, and streaming rendering is smoother.
+3. Synced upstream fixes from MoonshotAI/kimi-code through mid-September: #3889 large-workspace session resume & index speedup (scan cache skips unchanged `state.json` reads, O(1) session lookup via the session-index mapping, automatic `session_index.jsonl` compaction); #3778 finished subagent scopes move to an LRU cache (memory bounded on long sessions); #3892 workspace watcher flood fix; #3891/#3906 steer queue message pairing; #3840 Windows 8.3 short-path watch crash; #3887 session delete/archive occasionally never finishing; #3907 turn trace ids; #3837 chat transcript rebuilt after undo; #3911 compaction pre-shrinks history to the effective model window; #3750 configurable compaction attempt limit; #3787 managed-usage quota model; #3869 yolo mode approves unanalyzable bash commands; #3879 system prompt no longer bans paths outside the working directory; #3878 subagent tool menu hides unusable media tools with clearer Read errors; #3785 early error when `secondary_model.default_effort` is unsupported; #3752 tower roster identity conflicts; #3846 MCP 401 marks needs-auth; #3667 deferred MCP tool disclosure for official models; #3764 client metadata on prompts and skill activation; plus smaller batch ports (#3459-class fixes through #3749 auto session title GA).
+
+*中文:*
+
+1. 流式体验对齐 Kimi 桌面端:正在输出的正文末尾显示闪烁的打字机光标;思考块的标签在推理流式期间改为呼吸动画(1.6 秒透明度循环),不再转圈。两者都尊重系统「减少动态效果」设置
+2. 目标模式修复:目标更新在对话里实时渲染;长对话下目标的取消/停止不再卡死弹窗;流式渲染更顺滑
+3. 同步官方上游修复(MoonshotAI/kimi-code,截至九月中旬):#3889 大仓库会话恢复与索引提速(扫描缓存跳过未变更的 state.json、经会话索引映射 O(1) 定位会话、自动压缩 session_index.jsonl);#3778 已完成的子代理作用域改用 LRU 缓存(长会话内存有界);#3892 工作区监视器洪水修复;#3891/#3906 插队消息配对;#3840 Windows 8.3 短路径监听崩溃;#3887 会话删除/归档偶发卡死;#3837 撤销后重建对话记录;#3911 压缩前按模型实际窗口预裁剪历史;#3750 压缩重试次数可配置;#3787 托管用量配额模型;#3869 yolo 模式放行无法分析的 bash 命令;#3879 系统提示不再禁止工作目录外路径;#3878 子代理菜单隐藏不可用媒体工具;#3785 secondary_model.default_effort 不支持时提前报错;#3752 tower 名册身份冲突;#3846 MCP 401 标记需重新授权;#3667 官方模型的 MCP 工具延迟披露;#3764 提示词与技能激活携带客户端元数据;以及批次 0 等更早的小项(含 #3749 自动会话标题转正)
+
 ## 0.9.11(2026-09-14)
 
 1. Re-release of 0.9.10 with a bumped version number to work around a silent marketplace upload rejection (no functional changes).

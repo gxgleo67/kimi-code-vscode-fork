@@ -164,7 +164,7 @@ export class KimiWebviewProvider implements vscode.WebviewViewProvider {
       `media-src ${webview.cspSource} data: blob:`,
       `connect-src ${webview.cspSource}`,
       `worker-src ${webview.cspSource} blob:`,
-      `script-src 'nonce-${nonce}' 'wasm-unsafe-eval' ${webview.cspSource}`,
+      `script-src 'nonce-${nonce}' ${webview.cspSource}`,
     ].join("; ");
 
     return `<!DOCTYPE html>

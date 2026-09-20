@@ -216,6 +216,16 @@ scripts/              # postinstall (node-pty fix)
 
 ## 🕓 更新记录 | Changelog
 
+**2026-09-20（0.9.15 · 工作指示器对齐桌面端现版）**：
+
+1. 工作指示器改为桌面端当前版本的纯 CSS「Kimi 小脸」：圆角矩形蓝色小脸，眼睛会左右瞟动 + 眨眼，状态文字呼吸（首个内容流出前「请求中…」，之后「工作中…」）；替换 0.9.14 的 Rive 版本（其静止状态是个蓝色圆球，与桌面端不符）
+2. 完全移除 Rive 运行时：webview 包体减小约 8 MB，撤回 0.9.14 临时加入的 `wasm-unsafe-eval` CSP 放宽；尊重系统「减少动态效果」设置
+
+*English:*
+
+1. The working indicator now matches the current desktop app: a pure-CSS "Kimi face" — a rounded-rect blue badge with glancing, blinking eyes plus a breathing status label — replacing 0.9.14's Rive mascot (whose resting state rendered as a plain blue circle)
+2. Rive runtime removed entirely: ~8 MB smaller webview bundle, and 0.9.14's temporary `wasm-unsafe-eval` CSP relaxation is reverted; honors "reduced motion"
+
 **2026-09-20（0.9.14 · 桌面端吉祥物工作指示）**：
 
 1. 对话进行中显示桌面端同款 Kimi 吉祥物动画 + 呼吸状态文字（首个内容流出前「请求中…」，之后「工作中…」），替换原来的转圈「处理中...」；吉祥物用桌面端 Rive 动画，加载前显示静态备用图

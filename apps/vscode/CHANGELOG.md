@@ -4,6 +4,14 @@
 >
 > *中文:* 本文件只记录本 fork(Kimi Code (Fork))自身的更新,版本号独立编号。官方上游的更新记录请见 [MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code/blob/main/apps/vscode/CHANGELOG.md)。
 
+## 0.9.15(2026-09-20)
+
+1. Working indicator reworked to match the current desktop app: the desktop no longer ships the Rive mascot — its working indicator is now a pure-CSS "Kimi face" (a small rounded-rect blue badge whose eyes glance sideways and blink). The fork ports that exact implementation, replacing 0.9.14's Rive version which rendered the mascot's resting state as a plain blue circle. This also drops the Rive runtime entirely: no `@rive-app/canvas-lite` dependency, no `kimi-mascot.riv`/`rive.wasm` assets, ~8 MB smaller webview bundle, and the temporary `wasm-unsafe-eval` CSP relaxation is reverted. Honors "reduced motion".
+
+*中文:*
+
+1. 工作状态指示器重做,对齐桌面端现版:桌面端已不再使用 Rive 吉祥物,其工作指示器改为纯 CSS 的「Kimi 小脸」(圆角矩形蓝色小脸,眼睛会左右瞟动和眨眼)。本 fork 原样移植该实现,替换 0.9.14 的 Rive 版本(其静止状态渲染成一个蓝色圆球)。同时完全移除 Rive 运行时:去掉 `@rive-app/canvas-lite` 依赖与 `kimi-mascot.riv`/`rive.wasm` 资源,webview 包体减小约 8 MB,并撤回 0.9.14 临时加入的 `wasm-unsafe-eval` CSP 放宽。尊重系统「减少动态效果」设置
+
 ## 0.9.14(2026-09-20)
 
 1. Desktop-style working indicator in the chat: while a turn is in flight, the animated Kimi mascot (the desktop app's Rive avatar animation, with its static fallback while loading) appears under the last message with a breathing status label — "请求中…" until the first content streams, then "工作中…". The old spinner + "处理中..." row is gone.

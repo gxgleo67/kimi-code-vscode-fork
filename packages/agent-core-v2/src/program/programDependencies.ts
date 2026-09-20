@@ -10,6 +10,7 @@ import type { IMcpOAuthStore } from '#/app/mcpConfig/oauthStore';
 import type { IPluginService } from '#/app/plugin/plugin';
 import type { ISessionManager } from '#/app/sessionManager/sessionManager';
 import type { IBuiltinSkillSource } from '#/app/skillCatalog/builtinSkillSource';
+import type { IUserFileSkillSource } from '#/app/skillCatalog/userFileSkillSource';
 import type { IAppStateService } from '#/app/state/appState';
 import type { ITelemetryService } from '#/app/telemetry/telemetry';
 import type { IHostFileSystem } from '#/os/interface/hostFileSystem';
@@ -54,6 +55,7 @@ export interface ProgramDependencies {
   readonly agentProfiles: IAgentProfileRegistry;
   readonly builtinAgentProfiles: IBuiltinAgentProfileLoader;
   readonly builtinSkills: IBuiltinSkillSource;
+  readonly userSkills: IUserFileSkillSource;
   readonly telemetry: ITelemetryService;
   readonly docs: IAtomicDocumentStore;
   createSessionController(input: ProgramSessionControllerInput): SessionLifecycleService;

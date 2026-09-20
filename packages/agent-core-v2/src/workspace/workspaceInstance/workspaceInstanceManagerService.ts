@@ -16,6 +16,7 @@ import { IPluginService } from '#/app/plugin/plugin';
 import { ISessionIndex, ISessionIndexMirror } from '#/app/sessionIndex/sessionIndex';
 import { ISessionManager } from '#/app/sessionManager/sessionManager';
 import { IBuiltinSkillSource } from '#/app/skillCatalog/builtinSkillSource';
+import { IUserFileSkillSource } from '#/app/skillCatalog/userFileSkillSource';
 import { IAppStateService } from '#/app/state/appState';
 import { ITelemetryService } from '#/app/telemetry/telemetry';
 import { LifecycleScope } from '#/app/scopes';
@@ -72,6 +73,7 @@ export class WorkspaceInstanceManager implements IWorkspaceInstanceManager {
     @IAgentProfileRegistry private readonly agentProfiles: IAgentProfileRegistry,
     @IBuiltinAgentProfileLoader private readonly builtinAgentProfiles: IBuiltinAgentProfileLoader,
     @IBuiltinSkillSource private readonly builtinSkills: IBuiltinSkillSource,
+    @IUserFileSkillSource private readonly userSkills: IUserFileSkillSource,
     @ITelemetryService private readonly telemetry: ITelemetryService,
     @IAppendLogStore private readonly appendLogStore: IAppendLogStore,
     @IAtomicDocumentStore private readonly docs: IAtomicDocumentStore,
@@ -139,7 +141,7 @@ export class WorkspaceInstanceManager implements IWorkspaceInstanceManager {
     this.instances.delete(workspaceId);
     const attachments = this.attachments.get(workspaceId);
     this.attachments.delete(workspaceId);
-    if (attachments !== undefined) for (const attachment of [...attachments.values()].reverse()) await attachment.dispose();
+    if (attachments !== undefined) for (const attachment of [...attachments.values()].toReversed()) await attachment.dispose();
     await instance.dispose();
     this.changeEmitter.fire({ workspaceId });
   }
@@ -155,18 +157,18 @@ export class WorkspaceInstanceManager implements IWorkspaceInstanceManager {
       }
     } catch (error) {
       this.providers.delete(factory.id);
-      for (const instance of attached.reverse()) await this.detach(instance.id, factory.id);
+      for (const instance of attached.toReversed()) await this.detach(instance.id, factory.id);
       throw error;
     }
     return { dispose: async () => {
       if (this.providers.get(factory.id) !== factory) return;
       this.providers.delete(factory.id);
-      for (const workspaceId of [...this.attachments.keys()].reverse()) await this.detach(workspaceId, factory.id);
+      for (const workspaceId of [...this.attachments.keys()].toReversed()) await this.detach(workspaceId, factory.id);
     } };
   }
 
   async dispose(): Promise<void> {
-    for (const workspaceId of [...this.instances.keys()].reverse()) await this.close(workspaceId);
+    for (const workspaceId of [...this.instances.keys()].toReversed()) await this.close(workspaceId);
     this.changeEmitter.dispose();
   }
 
@@ -199,6 +201,7 @@ export class WorkspaceInstanceManager implements IWorkspaceInstanceManager {
         agentProfiles: this.agentProfiles,
         builtinAgentProfiles: this.builtinAgentProfiles,
         builtinSkills: this.builtinSkills,
+        userSkills: this.userSkills,
         telemetry: this.telemetry,
         docs: this.docs,
         createSessionController: (input) => new SessionLifecycleService(
@@ -244,7 +247,7 @@ export class WorkspaceInstanceManager implements IWorkspaceInstanceManager {
       const attachments = this.attachments.get(instance.id);
       this.attachments.delete(instance.id);
       if (attachments !== undefined) {
-        for (const attachment of [...attachments.values()].reverse()) await attachment.dispose();
+        for (const attachment of [...attachments.values()].toReversed()) await attachment.dispose();
       }
       await instance.dispose();
       throw error;

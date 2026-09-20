@@ -10,11 +10,14 @@ import {
   registerScopedService,
 } from '#/_base/di/scope';
 import { createScopedTestHost, stubPair } from '#/_base/di/test';
+import { ILogService } from '#/_base/log/log';
 import { encodeWorkDirKey } from '#/_base/utils/workdir-slug';
 import { HostFileSystem } from '#/os/backends/node-local/hostFsService';
 import { IHostFileSystem } from '#/os/interface/hostFileSystem';
+import { AppendLogStore } from '#/persistence/backends/node-fs/appendLogStore';
 import { JsonAtomicDocumentStore } from '#/persistence/backends/node-fs/atomicDocumentStore';
 import { FileStorageService } from '#/persistence/backends/node-fs/fileStorageService';
+import { IAppendLogStore } from '#/persistence/interface/appendLogStore';
 import { IAtomicDocumentStore } from '#/persistence/interface/atomicDocumentStore';
 import { IFileSystemStorageService } from '#/persistence/interface/storage';
 import { IWorkspaceService } from '#/app/workspace/workspace';
@@ -74,6 +77,13 @@ describe('WorkspaceAliasesService (file-backed)', () => {
     const host = createScopedTestHost([
       stubPair(IFileSystemStorageService, fileStorage),
       stubPair(IAtomicDocumentStore, new JsonAtomicDocumentStore(fileStorage)),
+      stubPair(IAppendLogStore, new AppendLogStore(fileStorage)),
+      stubPair(ILogService, {
+        error: () => {},
+        warn: () => {},
+        info: () => {},
+        debug: () => {},
+      } as unknown as ILogService),
       stubPair(IHostFileSystem, hostFs),
     ]);
     currentHost = host;

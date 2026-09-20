@@ -1,4 +1,4 @@
-import { applyPatches, produceWithPatches } from 'immer';
+import { applyPatches, freeze, Immer, produceWithPatches } from 'immer';
 
 import { BugIndicatingError } from '#/_base/errors/errors';
 import { onUnexpectedError } from '#/_base/errors/unexpectedError';
@@ -32,6 +32,8 @@ import {
 } from './stateContribution';
 
 const MAX_DRAIN = 100;
+
+const replayImmer = new Immer({ autoFreeze: false });
 const HISTORY_TAIL = 500;
 
 export class CycleError extends StateError {
@@ -227,13 +229,14 @@ export class EventDispatcherService extends Service implements IEventDispatcher 
   }
 
   private executeEvent(event: Event2<any>, silent: boolean): void {
+    const produceFor = silent ? replayImmer.produceWithPatches : produceWithPatches;
     const folds = this.folded.folds.get(event.type);
     const prepared: PreparedFold[] = [];
     if (folds !== undefined) {
       for (const { key, fold } of folds) {
         const meta = this.ensureMeta(key);
         const ctx = new FoldContextImpl(this, silent);
-        const [next, patches, inversePatches] = produceWithPatches<any>(
+        const [next, patches, inversePatches] = produceFor<any>(
           this.agentState.get(key),
           (draft: any) => fold(draft, event, ctx) as any,
         );
@@ -366,6 +369,7 @@ export class EventDispatcherService extends Service implements IEventDispatcher 
         this.executeEvent(event, true);
         recordIndex++;
       }
+      this.freezeReplayedStates();
       await this.rehydrateStates();
       this.restorePhase = 'ready';
       await this.hooks.onDidRestore.run({});
@@ -385,6 +389,12 @@ export class EventDispatcherService extends Service implements IEventDispatcher 
         { details: { type, index } },
       ),
     );
+  }
+
+  private freezeReplayedStates(): void {
+    for (const key of this.metas.keys()) {
+      this.agentState.set(key, freeze(this.agentState.get(key), true));
+    }
   }
 
   private async rehydrateStates(): Promise<void> {

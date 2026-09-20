@@ -17,12 +17,17 @@ import {
   listSessionIds,
   listWorkspaceIds,
   mapBounded,
+  readSessionScanCache,
   readSessionSummary,
+  statSessionStateFile,
   summaryEquals,
+  writeSessionScanCache,
+  type SessionScanCacheEntry,
 } from './sessionIndexSource';
 
-const WRITE_CHUNK = 500;
+const WRITE_CHUNK = 4096;
 const SCAN_CONCURRENCY = 16;
+const STAT_CONCURRENCY = 64;
 const SHARED_SCAN_REUSE_MS = 30_000;
 
 export interface SessionIndexProjectorDeps {
@@ -206,20 +211,53 @@ export class SessionIndexProjector {
 
   private async scanAuthoritative(): Promise<AuthoritativeScan> {
     const { storage, docs, sessionsScope } = this.deps;
+    const cache = await readSessionScanCache(storage, sessionsScope);
+    const nextCache = new Map<string, SessionScanCacheEntry>();
     const summaries: SessionSummary[] = [];
     const counts = new Map<string, { active: number; archived: number }>();
     for (const workspaceId of await listWorkspaceIds(storage, sessionsScope)) {
       const sessionIds = await listSessionIds(storage, sessionsScope, workspaceId);
-      const found = await mapBounded(sessionIds, SCAN_CONCURRENCY, (sessionId) =>
-        readSessionSummary(docs, sessionsScope, workspaceId, sessionId),
-      );
+      const checks = await mapBounded(sessionIds, STAT_CONCURRENCY, async (sessionId) => {
+        const cached = cache.get(sessionId);
+        const stat = await statSessionStateFile(storage, sessionsScope, workspaceId, sessionId);
+        if (stat === undefined) return undefined;
+        const hit =
+          cached !== undefined &&
+          cached.ws === workspaceId &&
+          cached.meta === stat.meta &&
+          cached.mtimeMs === stat.mtimeMs &&
+          cached.size === stat.size;
+        return { sessionId, stat, cached: hit ? cached : undefined };
+      });
       const entry = counts.get(workspaceId) ?? { active: 0, archived: 0 };
+      const found = await mapBounded(checks, SCAN_CONCURRENCY, async (check) => {
+        if (check === undefined) return undefined;
+        if (check.cached !== undefined) {
+          nextCache.set(check.sessionId, check.cached);
+          return check.cached.summary;
+        }
+        const summary = await readSessionSummary(docs, sessionsScope, workspaceId, check.sessionId);
+        if (summary === undefined) return undefined;
+        nextCache.set(check.sessionId, {
+          ws: workspaceId,
+          meta: check.stat.meta,
+          mtimeMs: check.stat.mtimeMs,
+          size: check.stat.size,
+          summary,
+        });
+        return summary;
+      });
       for (const summary of found) {
         summaries.push(summary);
         if (summary.archived) entry.archived += 1;
         else entry.active += 1;
       }
       counts.set(workspaceId, entry);
+    }
+    try {
+      await writeSessionScanCache(storage, sessionsScope, nextCache);
+    } catch (error) {
+      this.deps.log.warn('session index scan cache write failed', { error: String(error) });
     }
     return { summaries, counts };
   }

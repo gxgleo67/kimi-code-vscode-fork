@@ -19,6 +19,8 @@ interface MarkdownProps {
   className?: string;
   enableEnrichment?: boolean;
   enableLocalImageRender?: boolean;
+  /** In-flight text: pins the blinking typewriter cursor to the tail block. */
+  streaming?: boolean;
 }
 
 function useIsDark(): boolean {
@@ -188,7 +190,7 @@ function isSameFileMap(a: Record<string, boolean>, b: Record<string, boolean>): 
   return aKeys.length === bKeys.length && aKeys.every((key) => b[key] === a[key]);
 }
 
-export const Markdown = memo(function Markdown({ content, className, enableEnrichment = true, enableLocalImageRender = true }: MarkdownProps) {
+export const Markdown = memo(function Markdown({ content, className, enableEnrichment = true, enableLocalImageRender = true, streaming = false }: MarkdownProps) {
   const isDark = useIsDark();
   const [fileMap, setFileMap] = useState<Record<string, boolean>>(EMPTY_FILE_MAP);
   const [previewSrc, setPreviewSrc] = useState<string | null>(null);
@@ -282,7 +284,7 @@ export const Markdown = memo(function Markdown({ content, className, enableEnric
   if (!content) return null;
 
   return (
-    <div className={className}>
+    <div className={streaming ? `${className ?? ""} kimi-md-streaming`.trim() : className}>
       <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]} components={components}>
         {content}
       </ReactMarkdown>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { IconChevronDown, IconLoader3, IconBulb } from "@tabler/icons-react";
+import { IconChevronDown, IconBulb } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 import { Markdown } from "./Markdown";
 import { useSettingsStore } from "@/stores";
@@ -28,8 +28,7 @@ export function ThinkingBlock({ content, finished, compact }: ThinkingBlockProps
         >
           <div className="inline-flex items-center gap-2">
             <IconBulb className={cn("text-zinc-500", compact ? "size-3" : "size-3.5")} />
-            <span className={cn("font-medium text-zinc-700 dark:text-zinc-300", compact ? "text-[0.75rem]" : "text-xs")}>{t("thinking.label")}</span>
-            {isStreaming && <IconLoader3 className={cn("text-zinc-400 ml-auto animate-spin", compact ? "size-3" : "size-3.5")} />}
+            <span className={cn("font-medium text-zinc-700 dark:text-zinc-300", compact ? "text-[0.75rem]" : "text-xs", isStreaming && "kimi-think-breathe")}>{t("thinking.label")}</span>
           </div>
         </div>
       </div>
@@ -49,8 +48,7 @@ export function ThinkingBlock({ content, finished, compact }: ThinkingBlockProps
       >
         <div className="inline-flex items-center gap-2">
           <IconBulb className={cn("text-zinc-500", compact ? "size-3" : "size-3.5")} />
-          <span className={cn("font-medium text-zinc-700 dark:text-zinc-300", compact ? "text-[0.75rem]" : "text-xs")}>{t("thinking.label")}</span>
-          {isStreaming && <IconLoader3 className={cn("text-zinc-400 ml-auto animate-spin", compact ? "size-3" : "size-3.5")} />}
+          <span className={cn("font-medium text-zinc-700 dark:text-zinc-300", compact ? "text-[0.75rem]" : "text-xs", isStreaming && "kimi-think-breathe")}>{t("thinking.label")}</span>
         </div>
         <IconChevronDown className={cn("text-zinc-400 ml-auto transition-transform", compact ? "size-3" : "size-3.5", expanded && "rotate-180")} />
       </button>

@@ -236,10 +236,55 @@ body {
   animation: kimi-loading-pop 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* --- Streaming cursor & thinking breathe (from the Kimi desktop app) ----- */
+
+/* Typewriter cursor pinned to the tail of in-flight markdown — the desktop's
+   markstream "simple cursor": a currentColor bar blinking on a 1s step loop. */
+@keyframes kimi-typewriter-cursor-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.kimi-md-streaming > :is(p, ul, ol, blockquote, h1, h2, h3):last-child::after {
+  content: "";
+  display: inline-block;
+  width: 0.55em;
+  height: 1em;
+  margin-left: 0.08em;
+  vertical-align: -0.12em;
+  border-right: 2px solid currentColor;
+  pointer-events: none;
+  animation: kimi-typewriter-cursor-blink 1s steps(1, end) infinite;
+}
+
+/* The thinking label breathes while streaming — the desktop's think-breathe
+   (1.6s ease-in-out opacity loop on the think title). */
+@keyframes kimi-think-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.kimi-think-breathe {
+  animation: kimi-think-breathe 1.6s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .kimi-eyes-logo-eyes,
   .kimi-eyes-logo-eye,
-  .kimi-loading-pop {
+  .kimi-loading-pop,
+  .kimi-md-streaming > :is(p, ul, ol, blockquote, h1, h2, h3):last-child::after,
+  .kimi-think-breathe {
     animation: none;
   }
 }

@@ -22,7 +22,7 @@
 
 **市场地址 / Marketplace:[marketplace.visualstudio.com/items?itemName=GXGLEO.kimicode-vscode-fork](https://marketplace.visualstudio.com/items?itemName=GXGLEO.kimicode-vscode-fork)(缓存看不到最新版本时请以此为准 / Check here if a cached page hides the latest release)**
 
-**最后更新：2026-09-02 | Last updated: 2026-09-02**
+**最后更新：2026-09-20 | Last updated: 2026-09-20**
 
 **⚠️ 注意：该插件项目由 K3 MAX 自主修改并同步，界面尽可能还原 Web 端界面功能。**
 
@@ -107,6 +107,10 @@
 **Web 同款输入区**：状态行左侧保留队列 / 文件修改，右侧为后台 Bash / 子 Agent / 当前进度（待办）/ 上下文查看器（仅在本对话调用过后显示）；模式与模型选择器（参考 kimi code web 界面）；有待发消息时队列按钮蓝色高亮。
 
 **Web-style input area**: the status row keeps queue / file-changes on the left, and background Bash / sub-agents / current progress (todos) / context viewer on the right (each shown only after use in the current conversation); mode & model pickers modeled on the Kimi Code Web UI; the queue button highlights blue while messages are pending.
+
+**流式动效（桌面端同款）**：正在输出的正文末尾显示闪烁的打字机光标；思考块标签在推理期间以 1.6 秒呼吸动画提示进行中（均尊重系统「减少动态效果」设置）。
+
+**Streaming motion (same as the desktop app)**: a blinking typewriter cursor follows the tail of in-flight text, and the thinking label breathes while reasoning streams (both honor reduced motion).
 
 ### ⚡ 性能与稳定性 | Performance & Stability
 
@@ -212,7 +216,77 @@ scripts/              # postinstall (node-pty fix)
 
 ## 🕓 更新记录 | Changelog
 
-**2026-09-02（0.9.6 · 账号额度展示）**：
+**2026-09-20（0.9.13 · 修复对话无法打开）**：
+
+1. 修复 0.9.12 引入的回归：上游 #3785 让引擎在每次创建/恢复会话时严格校验子代理 `[secondary_model]` 配方，配方里残留失效模型别名（如自定义供应商被删/改名后）会导致**所有**对话打不开。现在扩展启动时自动校验该配方，发现失效别名就重置为「跟随主模型」并弹警告提示
+
+*English:*
+
+1. Fixed a 0.9.12 regression: upstream #3785 made the engine fail-fast validate the `[secondary_model]` recipe on every session create/resume, so a stale model alias (e.g. left by a removed/renamed custom provider) blocked **every** conversation. The extension now validates the recipe at startup and resets it to "follow the main model" (with a warning) when it references undefined models
+
+**2026-09-20（0.9.12 · 桌面端流式动效 + 目标模式修复 + 官方同步）**：
+
+1. 流式体验对齐 Kimi 桌面端：正在输出的正文末尾显示闪烁的打字机光标；思考块标签在推理期间改为呼吸动画，不再转圈（尊重系统「减少动态效果」）
+2. 目标模式修复：目标更新实时渲染；长对话下取消/停止不再卡死弹窗；流式渲染更顺滑
+3. 同步官方上游修复（截至九月中旬）：#3889 大仓库会话恢复与索引提速（扫描缓存 + O(1) 会话定位 + 会话索引自动压缩）；#3778 子代理作用域 LRU 缓存；#3892 监视器洪水修复；#3840 Windows 8.3 短路径监听崩溃；#3887 会话删除/归档卡死；#3837 撤销后重建对话记录；#3911 压缩前预裁剪历史；#3869 yolo 放行无法分析的 bash；#3879 系统提示不再禁止目录外路径；#3667 MCP 工具延迟披露；#3787 托管用量配额模型等 20 余项
+
+*English:*
+
+1. Streaming UX from the Kimi desktop app: blinking typewriter cursor at the tail of in-flight text; the thinking label breathes instead of spinning (honors reduced motion)
+2. Goal mode fixes: live goal updates in chat; cancel/stop no longer freezes the dialog on long sessions; smoother streaming
+3. Synced 20+ upstream fixes (through mid-September): #3889 large-workspace resume & index speedup (scan cache + O(1) session lookup + session-index compaction); #3778 subagent scope LRU; #3892 watcher flood; #3840 Windows 8.3 short-path watch crash; #3887 session delete/archive hang; #3837 transcript rebuilt after undo; #3911 compaction pre-shrink; #3869 yolo approves unanalyzable bash; #3879 no outside-dir ban in system prompt; #3667 deferred MCP tool disclosure; #3787 managed-usage quota model; and more
+
+**2026-09-14（0.9.11 · 重新发布）**：
+
+1. 0.9.10 内容不变，仅递增版本号重新发布，绕过市场网页端静默上传失败（无功能变更）
+
+*English:*
+
+1. Re-release of 0.9.10 with a bumped version number to work around a silent marketplace upload rejection (no functional changes)
+
+**2026-09-14（0.9.10 · 变更胶囊悬停 + 切账号保持模型 + 官方同步）**：
+
+1. 顶部「变更」胶囊不再内联显示 `+N/-N` 行数，只显示变更数量（`[N]个变更`），鼠标悬停才显示具体增删行数
+2. 切换账号不再把模型重置为该账号按字母序的第一个别名：现在按当前模型 id 跨账号匹配（例如保持 K3-256K，不再跳回 K3），目标模型支持时还会恢复原有思考强度
+3. 同步官方上游修复（MoonshotAI/kimi-code）：#3459 停止交接步骤与子代理 stop_reason；#3734 重试时作废上一段流式残留（修复重试后文本乱码/重复）；#3654 MCP 结构化工具结果；#3649 支持 HEIC/HEIF/BMP 图片；#3652 按供应商能力做图片格式门控；#3645 大文件分页读取；#3658 glob 结果分页；#3688 MCP 工具结果附件；#3657 目标时间预算（部分移植）。#3697（插队打断后台等待）经评审不可移植：依赖本 fork 没有的上游 machine/WaitFor 层
+
+*English:*
+
+1. The file-changes pill in the top bar no longer shows inline `+N -N` line counts — it shows only the changed-file count (`[N] changes`), and hovering reveals the exact added/deleted lines
+2. Switching accounts no longer resets the session model to the account's first alphabetical alias: the switch matches the current model id across accounts (e.g. staying on K3-256K instead of jumping back to K3), and the previous thinking effort is restored when the target model supports it
+3. Synced upstream fixes from MoonshotAI/kimi-code: #3459 stop-handoff steps & subagent `stop_reason`; #3734 discard a retried attempt's partial stream state (fixes duplicated/garbled text after retries); #3654 MCP structured tool results; #3649 HEIC/HEIF/BMP image support; #3652 image-format gating by provider capability; #3645 paged reads for large files; #3658 glob result pagination; #3688 MCP tool-result attachments; #3657 goal time budgets (partial). Upstream #3697 (steer interrupts background waits) is not portable: it depends on upstream's machine/WaitFor layer that this fork does not have
+
+**2026-09-12（0.9.9 · 移除 V1 引擎 + 计划模式思考强度）**：
+
+1. 移除 v1 旧引擎回退开关（`kimifork.useAgentCoreV1` 设置与 `KIMI_CODE_LEGACY_FLAG` 环境变量已删除）：扩展固定运行 v2 引擎，启动失败的报错不再提示回退；SDK 内的 v1 包仍保留用于会话互通
+2. 新增设置项「计划模式最高思考强度」（默认关闭）：开启后进入计划模式时自动把思考强度提升到当前模型支持的最高档，退出计划模式（执行/拒绝/手动关闭）时恢复原有强度；窗口重载后退出计划模式也能从会话元数据中恢复
+
+*English:*
+
+1. Removed the legacy v1 engine rollback switch (the `kimifork.useAgentCoreV1` setting and the `KIMI_CODE_LEGACY_FLAG` env var are gone): the extension always runs the v2 engine, and engine startup errors no longer suggest rolling back; the v1 harness package remains inside the SDK for session interop
+2. New setting "Max thinking in plan mode" (default off): entering plan mode raises thinking effort to the current model's highest supported level, and exiting plan mode (approve / revise / manual toggle) restores the previous effort — restored from session metadata even after a window reload mid-plan
+
+**2026-09-12（0.9.8 · 计划审批界面重做）**：
+
+1. 计划审批参考 Claude Code：计划正文在审批对话框内以完整 Markdown 格式渲染（标题/加粗/列表/表格/代码高亮），不再自动打开原始 `.md` 源码标签页、不再退化为无格式纯文本
+2. 新增设置项「在编辑器中打开计划」（默认关闭）：开启后计划审批出现时自动在 VS Code 中以渲染预览（Markdown Preview，不再是源码）打开计划文档；审批对话框计划路径旁保留手动「在编辑器中打开」入口
+
+*English:*
+
+1. Plan review redesigned to match Claude Code: the plan renders inline in the approval dialog with full Markdown formatting (headings, bold, lists, tables, code highlighting) instead of auto-opening the raw `.md` source in an editor tab or falling back to unformatted plain text
+2. New setting "Open plan in editor" (default off): when enabled, a plan review also opens the plan document in VS Code as a rendered Markdown preview (`markdown.showPreview`, no longer the raw source); a manual "Open in editor" link remains next to the plan path
+
+**2026-09-12（0.9.7 · 插队消息修复）**：
+
+1. 修复队列「立即插入（插队）」消息被静默丢弃：插队回显落在没有活动步骤的时间窗时（如 TurnBegin 与 StepBegin 之间、刚附着到忙碌会话时）不再丢弃——自动补建步骤或退化为普通用户气泡，插队的文字和图片都会显示在对话里
+2. 队列「立即插入」失败不再静默：请求被拒绝时弹出错误提示，消息保留在队列中
+
+*English:*
+
+1. Fixed queue "Insert now (steer)" silently dropping the message: the steer echo landing outside a live step (between TurnBegin and StepBegin, or right after attaching to a busy session) is no longer discarded — it attaches to a created step or falls back to a plain user bubble, so steered text and images always show up in the conversation
+2. Queue "Insert now" failures are no longer silent: a rejected steer request surfaces an error toast and keeps the message in the queue
+
+**2026-09-04（0.9.6 · 账号额度展示）**：
 
 1. 账号管理弹窗：额度行下方常显各窗口的重置倒计时 + 精确重置时间，无需悬停
 2. 设置菜单账号行：文字额度改为与输入框状态栏一致的同心圆环（外环 5 小时、内环 7 天），悬停显示已用百分比与重置倒计时
@@ -224,7 +298,7 @@ scripts/              # postinstall (node-pty fix)
 2. Settings menu account rows: the text quota is replaced by the same concentric ring indicator as the composer status bar (outer = 5h, inner = 7d); hover for percent used and reset countdowns
 3. Settings menu account rows: the default badge and current-account check moved right after the account name, keeping the quota rings right-aligned
 
-**2026-09-02（0.9.5 · 官方上游同步）**：
+**2026-09-03（0.9.5 · 官方上游同步）**：
 
 1. 会话中断恢复后队列消息不再卡死——prompt 决议事件持久化到会话日志（官方 PR #3371）
 2. 危险 bash 命令（如 `rm -rf`、磁盘/格式化操作）在所有权限模式下都需批准，YOLO 也不例外；auto 模式直接拒绝，可通过配置关闭（官方 PR #3290）

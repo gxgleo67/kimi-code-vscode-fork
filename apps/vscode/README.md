@@ -212,6 +212,14 @@ scripts/              # postinstall (node-pty fix)
 
 ## 🕓 更新记录 | Changelog
 
+**2026-09-20（0.9.13 · 修复对话无法打开）**：
+
+1. 修复 0.9.12 引入的回归：上游 #3785 让引擎在每次创建/恢复会话时严格校验子代理 `[secondary_model]` 配方，配方里残留失效模型别名（如自定义供应商被删/改名后）会导致**所有**对话打不开。现在扩展启动时自动校验该配方，发现失效别名就重置为「跟随主模型」并弹警告提示
+
+*English:*
+
+1. Fixed a 0.9.12 regression: upstream #3785 made the engine fail-fast validate the `[secondary_model]` recipe on every session create/resume, so a stale model alias (e.g. left by a removed/renamed custom provider) blocked **every** conversation. The extension now validates the recipe at startup and resets it to "follow the main model" (with a warning) when it references undefined models
+
 **2026-09-20（0.9.12 · 桌面端流式动效 + 目标模式修复 + 官方同步）**：
 
 1. 流式体验对齐 Kimi 桌面端：正在输出的正文末尾显示闪烁的打字机光标；思考块标签在推理期间改为呼吸动画，不再转圈（尊重系统「减少动态效果」）

@@ -15,7 +15,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { Methods, validateRpcMessage } from "../shared/bridge";
 import type { SessionConfig } from "../shared/types";
-import { removeSecondaryModelSection, stripTomlSection } from "../src/config/secondary-model";
+import {
+  findStaleSecondaryModelRefs,
+  removeSecondaryModelSection,
+  stripStaleSecondaryModelRecipe,
+  stripTomlSection,
+} from "../src/config/secondary-model";
 import { configHandlers, toWebviewConfig } from "../src/handlers/config.handler";
 import type { HandlerContext } from "../src/handlers/types";
 
@@ -292,5 +297,71 @@ describe("removeSecondaryModelSection", () => {
     const text = await readFile(configPath, "utf8");
     expect(text).not.toContain("[secondary_model]");
     expect(text).toContain("[models.main]");
+  });
+});
+
+describe("findStaleSecondaryModelRefs", () => {
+  it("returns nothing when every referenced alias is defined", () => {
+    expect(findStaleSecondaryModelRefs(CONFIG_TOML)).toEqual([]);
+  });
+
+  it("flags a model pointer with no [models] entry", () => {
+    const text = '[models.main]\nprovider = "local"\n\n[secondary_model]\nmodel = "deepseek"\n';
+    expect(findStaleSecondaryModelRefs(text)).toEqual(["deepseek"]);
+  });
+
+  it("flags default_model and pool table keys, deduplicated", () => {
+    const text = [
+      '[models."deepseek/deepseek-flash"]',
+      'provider = "deepseek"',
+      "",
+      "[secondary_model]",
+      'default_model = "deepseek/deepseek-flash"',
+      "",
+      "[secondary_model.models]",
+      '"deepseek/deepseek-flash" = "fast"',
+      'gone = "removed provider"',
+      'gone = "duplicate key would be invalid TOML but parser tolerance aside"',
+    ].join("\n");
+    expect(findStaleSecondaryModelRefs(text)).toEqual(["gone"]);
+  });
+
+  it("reads quoted [models] aliases and ignores sub-table headers", () => {
+    const text = [
+      '[models."deepseek/deepseek-flash"]',
+      'provider = "deepseek"',
+      "",
+      '[models."deepseek/deepseek-flash".source]',
+      'managed_by = "vscode-custom"',
+      "",
+      "[secondary_model]",
+      'model = "deepseek/deepseek-flash"',
+    ].join("\n");
+    expect(findStaleSecondaryModelRefs(text)).toEqual([]);
+  });
+
+  it("returns nothing when no [secondary_model] section exists", () => {
+    expect(findStaleSecondaryModelRefs('[models.main]\nprovider = "local"\n')).toEqual([]);
+  });
+});
+
+describe("stripStaleSecondaryModelRecipe", () => {
+  it("strips a recipe pointing at an undefined model and keeps the rest", async () => {
+    const configPath = await tempConfig(
+      CONFIG_TOML.replace('model = "cheap"', 'model = "deepseek"'),
+    );
+    const stale = await stripStaleSecondaryModelRecipe(configPath);
+    expect(stale).toEqual(["deepseek"]);
+    const text = await readFile(configPath, "utf8");
+    expect(text).not.toContain("[secondary_model]");
+    expect(text).toContain("[models.cheap]");
+    expect(text).toContain("[thinking]");
+  });
+
+  it("leaves a healthy recipe untouched", async () => {
+    const configPath = await tempConfig();
+    const stale = await stripStaleSecondaryModelRecipe(configPath);
+    expect(stale).toEqual([]);
+    expect(await readFile(configPath, "utf8")).toBe(CONFIG_TOML);
   });
 });

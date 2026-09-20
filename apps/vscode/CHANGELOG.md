@@ -4,6 +4,14 @@
 >
 > *中文:* 本文件只记录本 fork(Kimi Code (Fork))自身的更新,版本号独立编号。官方上游的更新记录请见 [MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code/blob/main/apps/vscode/CHANGELOG.md)。
 
+## 0.9.13(2026-09-20)
+
+1. Fixed a regression introduced by the 0.9.12 upstream sync (#3785): the engine now fail-fast validates the `[secondary_model]` subagent recipe on every session create/resume, so one stale alias (e.g. left behind after a custom provider was removed or renamed) made **every** conversation fail to open with `[secondary_model.models] entry "..." could not be resolved`. The extension now checks the recipe at startup against the `[models]` sections in config.toml and silently resets it to "follow the main model" (with a warning notification) when it points at undefined models.
+
+*中文:*
+
+1. 修复 0.9.12 同步上游(#3785)引入的回归:引擎现在每次创建/恢复会话都会对子代理 `[secondary_model]` 配置做快速失败校验,只要配方里残留一个失效的模型别名(例如自定义供应商被删除或改名后留下的),**所有**对话都会打不开,报 `[secondary_model.models] entry "..." could not be resolved`。现在扩展启动时会用 config.toml 里的 `[models]` 段落校验该配方,发现指向未定义模型时自动重置为「跟随主模型」并弹出警告提示
+
 ## 0.9.12(2026-09-20)
 
 1. Streaming UX ported from the Kimi desktop app: a blinking typewriter cursor is now pinned to the tail of in-flight text, and the thinking block's label breathes (1.6s opacity loop) instead of spinning while reasoning streams. Both honor "reduced motion".

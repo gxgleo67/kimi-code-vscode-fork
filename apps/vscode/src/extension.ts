@@ -7,6 +7,7 @@ import {
   SECRET_KEY_PREFIX,
   syncProviderSecret,
 } from "./config/custom-providers";
+import { stripStaleSecondaryModelRecipe } from "./config/secondary-model";
 import { onSettingsChange, VSCodeSettings } from "./config/vscode-settings";
 import {
   LegacyMigrationManager,
@@ -50,6 +51,23 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     (message) => log(message),
   );
   context.subscriptions.push(provider, outputChannel);
+
+  // The engine fail-fast validates [secondary_model] on every session
+  // create/resume; a stale alias (e.g. left by a removed custom provider)
+  // would brick every conversation, so reset the recipe before any webview
+  // can open a session.
+  try {
+    const stale = await stripStaleSecondaryModelRecipe(provider.harness.configPath);
+    if (stale.length > 0) {
+      log(`Reset [secondary_model] recipe: undefined model(s): ${stale.join(", ")}`);
+      await provider.harness.getConfig({ reload: true });
+      void vscode.window.showWarningMessage(
+        `Kimi Code: the subagent model recipe referenced undefined model(s) (${stale.join(", ")}) and was reset to follow the main model. Reconfigure it under Settings → Subagent Model.`,
+      );
+    }
+  } catch (error) {
+    logError("Unable to sanitize the secondary model recipe", error);
+  }
 
   let isLoggedIn = false;
   try {

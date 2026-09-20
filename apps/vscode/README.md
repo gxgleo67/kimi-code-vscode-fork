@@ -212,6 +212,16 @@ scripts/              # postinstall (node-pty fix)
 
 ## 🕓 更新记录 | Changelog
 
+**2026-09-20（0.9.14 · 桌面端吉祥物工作指示）**：
+
+1. 对话进行中显示桌面端同款 Kimi 吉祥物动画 + 呼吸状态文字（首个内容流出前「请求中…」，之后「工作中…」），替换原来的转圈「处理中...」；吉祥物用桌面端 Rive 动画，加载前显示静态备用图
+2. 助手消息头像改为圆角
+
+*English:*
+
+1. While a turn is in flight, the desktop app's animated Kimi mascot (Rive) shows under the last message with a breathing status label ("Requesting…" until first content, then "Working…"), replacing the old spinner row; a static fallback shows until the runtime loads
+2. The assistant message avatar now renders with rounded corners
+
 **2026-09-20（0.9.13 · 修复对话无法打开）**：
 
 1. 修复 0.9.12 引入的回归：上游 #3785 让引擎在每次创建/恢复会话时严格校验子代理 `[secondary_model]` 配方，配方里残留失效模型别名（如自定义供应商被删/改名后）会导致**所有**对话打不开。现在扩展启动时自动校验该配方，发现失效别名就重置为「跟随主模型」并弹警告提示

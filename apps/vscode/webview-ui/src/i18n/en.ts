@@ -277,7 +277,8 @@ export const en = {
   "session.showMore": "Show more ({count})",
 
   // ── ChatMessage ─────────────────────────────────────────────────────────
-  "chat.processing": "Processing...",
+  "chat.requesting": "Requesting…",
+  "chat.working": "Working…",
   "chat.showEarlier": "Show earlier messages ({count})",
   "chat.loadingHistory": "Loading conversation…",
   "context.label": "Context",

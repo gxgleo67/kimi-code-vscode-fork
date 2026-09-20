@@ -1,5 +1,5 @@
 import { useState, Fragment, memo } from "react";
-import { IconLoader3, IconGitFork, IconPencil, IconTrash, IconCopy, IconCheck } from "@tabler/icons-react";
+import { IconGitFork, IconPencil, IconTrash, IconCopy, IconCheck } from "@tabler/icons-react";
 import { cn, formatMessageTime } from "@/lib/utils";
 import { Content } from "@/lib/content";
 import { Markdown } from "./Markdown";
@@ -12,6 +12,7 @@ import { MediaPreviewModal } from "./MediaPreviewModal";
 import { InlineError } from "./InlineError";
 import { PlanCard } from "./PlanCard";
 import { KimiLogo } from "./KimiLogo";
+import { WorkingIndicator } from "./WorkingIndicator";
 import { StreamingConfirmDialog } from "./StreamingConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "@/components/ui/context-menu";
@@ -31,16 +32,6 @@ interface ChatMessageProps {
   /** Total visible turns in the transcript; undo count = totalTurns - userTurnIndex. */
   totalTurns?: number;
   isStreaming?: boolean;
-}
-
-function ThinkingIndicator() {
-  const t = useT();
-  return (
-    <div className="flex items-center gap-2 mt-1 text-blue-500/80 py-1">
-      <IconLoader3 className="size-3.5 animate-spin" />
-      <span className="text-[11px] font-medium tracking-wide">{t("chat.processing")}</span>
-    </div>
-  );
 }
 
 function SteerBubble({ content }: { content: string | ContentPart[] }) {
@@ -344,6 +335,7 @@ function UserMessage({ message, userTurnIndex, totalTurns }: { message: ChatMess
 }
 
 function AssistantMessage({ message, turnIndex, isStreaming }: { message: ChatMessageType; turnIndex?: number; isStreaming?: boolean }) {
+  const t = useT();
   const [previewMedia, setPreviewMedia] = useState<string | null>(null);
   const isCompacting = useChatStore((s) => s.isCompacting);
 
@@ -378,7 +370,7 @@ function AssistantMessage({ message, turnIndex, isStreaming }: { message: ChatMe
       <div className="flex gap-3 flex-col">
         <div className="flex flex-row items-center justify-start gap-2">
           {/* kimi-logo.png is 3:2 — object-contain keeps it unstretched in the square slot */}
-          <KimiLogo className="shrink-0 size-5 object-contain" />
+          <KimiLogo className="shrink-0 size-5 object-contain rounded-lg" />
           <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Kimi</div>
           <span className="text-[10px] normal-case tracking-normal text-muted-foreground/60">{formatMessageTime(message.timestamp)}</span>
         </div>
@@ -419,7 +411,14 @@ function AssistantMessage({ message, turnIndex, isStreaming }: { message: ChatMe
               </div>
             )}
             <div className="flex flex-row items-center space-between">
-              <div className="inline-flex flex-1">{isStreaming && !isShowingInlineError && !isCompacting && <ThinkingIndicator />}</div>
+              <div className="inline-flex flex-1">
+                {isStreaming && !isShowingInlineError && !isCompacting && (
+                  <WorkingIndicator
+                    className="mt-1 py-1"
+                    label={hasMessageContent(message) ? t("chat.working") : t("chat.requesting")}
+                  />
+                )}
+              </div>
               <div className="inline-flex flex-1" />
               {!isStreaming && contentToCopy.trim().length > 0 && (
                 <div className="flex justify-start pt-1 gap-1 opacity-0 group-hover/message:opacity-100 transition-opacity duration-100">

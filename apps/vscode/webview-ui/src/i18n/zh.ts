@@ -268,7 +268,8 @@ export const zh: Record<TranslationKey, string> = {
   "session.showMore": "显示更多({count})",
 
   // ── 聊天消息 ────────────────────────────────────────────────────────────
-  "chat.processing": "处理中...",
+  "chat.requesting": "请求中…",
+  "chat.working": "工作中…",
   "chat.showEarlier": "显示更早的消息({count})",
   "chat.loadingHistory": "正在加载对话…",
   "context.label": "上下文",

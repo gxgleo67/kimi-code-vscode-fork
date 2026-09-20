@@ -4,6 +4,18 @@
 >
 > *中文:* 本文件只记录本 fork(Kimi Code (Fork))自身的更新,版本号独立编号。官方上游的更新记录请见 [MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code/blob/main/apps/vscode/CHANGELOG.md)。
 
+## 0.9.14(2026-09-20)
+
+1. Desktop-style working indicator in the chat: while a turn is in flight, the animated Kimi mascot (the desktop app's Rive avatar animation, with its static fallback while loading) appears under the last message with a breathing status label — "请求中…" until the first content streams, then "工作中…". The old spinner + "处理中..." row is gone.
+2. The assistant message avatar (Kimi logo) now renders with rounded corners.
+3. Webview CSP gains `wasm-unsafe-eval` so the Rive runtime can instantiate its WebAssembly module.
+
+*中文:*
+
+1. 对话区内上线桌面端同款工作状态指示:回合进行中,最后一条消息下方显示 Kimi 吉祥物动画(桌面端 Rive 头像动画,加载完成前用静态备用图),旁边是呼吸状态文字——首个内容流出前显示「请求中…」,之后变为「工作中…」。原来的转圈 + 「处理中...」移除
+2. 助手消息头像(Kimi 图标)改为圆角显示
+3. Webview CSP 增加 `wasm-unsafe-eval`,允许 Rive 运行时实例化 WebAssembly 模块
+
 ## 0.9.13(2026-09-20)
 
 1. Fixed a regression introduced by the 0.9.12 upstream sync (#3785): the engine now fail-fast validates the `[secondary_model]` subagent recipe on every session create/resume, so one stale alias (e.g. left behind after a custom provider was removed or renamed) made **every** conversation fail to open with `[secondary_model.models] entry "..." could not be resolved`. The extension now checks the recipe at startup against the `[models]` sections in config.toml and silently resets it to "follow the main model" (with a warning notification) when it points at undefined models.

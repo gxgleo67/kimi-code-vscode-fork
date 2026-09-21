@@ -1,4 +1,4 @@
-import { KimiMascot } from "./KimiMascot";
+import { BrandLogo } from "./BrandLogo";
 import { useWelcomeHint } from "@/hooks/useWelcomeHint";
 
 export function WelcomeScreen() {
@@ -6,7 +6,10 @@ export function WelcomeScreen() {
 
   return (
     <div className="flex flex-col items-center gap-3 px-4">
-      <KimiMascot className="h-12" />
+      <div className="flex items-center gap-2.5">
+        <BrandLogo size={44} round float />
+        <span className="text-sm font-bold tracking-[0.2em] text-foreground">KIMI CODE</span>
+      </div>
       {hint.component ? (
         hint.component
       ) : (

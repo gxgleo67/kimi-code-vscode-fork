@@ -4,6 +4,16 @@
 >
 > *中文:* 本文件只记录本 fork(Kimi Code (Fork))自身的更新,版本号独立编号。官方上游的更新记录请见 [MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code/blob/main/apps/vscode/CHANGELOG.md)。
 
+## 0.9.19(2026-09-20)
+
+1. Brand refresh: the logo tile is now always black (previously white on dark themes) everywhere it appears — header, chat avatars, account dialog.
+2. The welcome screen's static square banner is replaced by a round, animated brand logo (idle eye motion, blink, gentle bob) next to a KIMI CODE wordmark; honors "reduced motion".
+
+*中文:*
+
+1. 品牌更新:logo 底色统一为黑色(此前深色主题下为白色),覆盖顶栏、对话头像、账号弹窗等所有出现位置
+2. 欢迎页的静态方形横幅换成圆形动态品牌 Logo(眼睛自动巡视/眨眼 + 轻微漂浮),旁边配 KIMI CODE 文字标;尊重系统「减少动态效果」设置
+
 ## 0.9.18(2026-09-20)
 
 1. Brand sync only: README hero image updated to the current Kimi Code brand style, release notes tidied. No functional changes.

@@ -371,9 +371,10 @@ body {
   }
 }
 
-/* Brand logo (desktop BrandLogo port): theme-aware tile plus idle eye motion
+/* Brand logo (desktop BrandLogo port): black tile plus idle eye motion
    — eyes look around every 16 s, blink every 11 s, and `.blink-now` plays a
-   single blink (the click easter egg). */
+   single blink (the click easter egg). `.kimi-brand-float` adds a gentle bob
+   for hero placements like the welcome screen. */
 .kimi-brand-logo {
   display: block;
   flex: none;
@@ -382,20 +383,18 @@ body {
   touch-action: manipulation;
 }
 
-.kimi-brand-tile-light {
-  display: block;
+.kimi-brand-float {
+  animation: kimi-brand-bob 3.2s ease-in-out infinite;
 }
 
-.kimi-brand-tile-dark {
-  display: none;
-}
-
-.dark .kimi-brand-tile-light {
-  display: none;
-}
-
-.dark .kimi-brand-tile-dark {
-  display: block;
+@keyframes kimi-brand-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
 }
 
 .kimi-brand-eyes {
@@ -467,7 +466,8 @@ body {
   .kimi-wi-eye,
   .kimi-wi-label,
   .kimi-brand-eyes,
-  .kimi-brand-eye {
+  .kimi-brand-eye,
+  .kimi-brand-float {
     animation: none;
   }
 }

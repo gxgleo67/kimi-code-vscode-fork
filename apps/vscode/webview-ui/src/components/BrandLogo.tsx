@@ -3,14 +3,25 @@ import { useCallback, useEffect, useId, useRef } from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * The Kimi Code brand logo, ported from the desktop app's BrandLogo: a
- * rounded-square tile (black on light themes, white on dark) holding the blue
- * gradient face with two eyes above a tiny terminal bar (`>_`). The eyes look
- * around every 16 s and blink every 11 s on their own; clicking the logo
- * blinks once (the desktop titlebar easter egg). All motion is pure CSS and
- * honors "reduced motion".
+ * The Kimi Code brand logo, ported from the desktop app's BrandLogo: a tile
+ * (rounded square by default, circle with `round`) with a black background
+ * holding the blue gradient face with two eyes above a tiny terminal bar
+ * (`>_`). The eyes look around every 16 s and blink every 11 s on their own;
+ * clicking the logo blinks once (the desktop titlebar easter egg). `float`
+ * adds a gentle bob on top. All motion is pure CSS and honors
+ * "reduced motion".
  */
-export function BrandLogo({ size = 20, className }: { size?: number; className?: string }) {
+export function BrandLogo({
+  size = 20,
+  className,
+  round = false,
+  float = false,
+}: {
+  size?: number;
+  className?: string;
+  round?: boolean;
+  float?: boolean;
+}) {
   const gradientId = useId();
   const rootRef = useRef<SVGSVGElement>(null);
   const timerRef = useRef<number | undefined>(undefined);
@@ -31,7 +42,7 @@ export function BrandLogo({ size = 20, className }: { size?: number; className?:
   return (
     <svg
       ref={rootRef}
-      className={cn("kimi-brand-logo", className)}
+      className={cn("kimi-brand-logo", float && "kimi-brand-float", className)}
       style={{ width: size, height: size }}
       viewBox="0 0 120 120"
       fill="none"
@@ -39,8 +50,7 @@ export function BrandLogo({ size = 20, className }: { size?: number; className?:
       aria-label="Kimi Code"
       onClick={blink}
     >
-      <rect className="kimi-brand-tile kimi-brand-tile-light" width="120" height="120" rx="27" fill="black" />
-      <rect className="kimi-brand-tile kimi-brand-tile-dark" width="120" height="120" rx="27" fill="white" />
+      <rect width="120" height="120" rx={round ? 60 : 27} fill="black" />
       <defs>
         <radialGradient
           id={gradientId}

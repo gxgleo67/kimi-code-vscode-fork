@@ -216,6 +216,16 @@ scripts/              # postinstall (node-pty fix)
 
 ## 🕓 更新记录 | Changelog
 
+**2026-09-20（0.9.22 · 修复面板整体崩溃）**：
+
+1. 修复 0.9.20 引入的崩溃：设置菜单的账号额度行仍按旧参数调用额度环组件，额度加载成功即白屏，只能重启 VS Code；已改用新参数（7 天/月度自适应 + 套餐名）
+2. 构建打包前强制跑 `tsc --noEmit` 类型检查，此类问题以后构建即失败，不再流出
+
+*English:*
+
+1. Fixed a full-panel crash from 0.9.20: the settings menu's quota rows still used the old quota-ring props, so a successful quota load blanked the whole webview until a VS Code restart; now on the new props (weekly/monthly adaptation + plan name)
+2. `pnpm build` now runs `tsc --noEmit` over host and webview first, so this class of mismatch fails the build instead of shipping
+
 **2026-09-20（0.9.21 · 账号排序）**：
 
 1. 账号管理支持手动排序：账号行新增上移/下移按钮，顺序跨重启保留；新登录账号默认排末尾

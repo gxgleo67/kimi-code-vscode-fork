@@ -7,6 +7,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { Methods } from "../shared/bridge";
+import type { ManagedAccountInfo } from "../shared/types";
 import { accountHandlers } from "../src/handlers/accounts.handler";
 import type { HandlerContext } from "../src/handlers/types";
 
@@ -141,7 +142,7 @@ describe("reorderAccounts", () => {
     const { ctx } = fakeContext(THREE);
     await reorderAccounts({ providers: ["managed:kimi-code-3", "managed:kimi-code"] }, ctx);
 
-    const accounts = await getAccounts(undefined, ctx);
+    const accounts = await getAccounts(undefined, ctx) as ManagedAccountInfo[];
     expect(accounts.map((account) => account.provider)).toEqual([
       "managed:kimi-code-3",
       "managed:kimi-code",
@@ -152,7 +153,7 @@ describe("reorderAccounts", () => {
   it("getAccounts falls back to slot order with no stored order", async () => {
     const { ctx } = fakeContext(THREE);
 
-    const accounts = await getAccounts(undefined, ctx);
+    const accounts = await getAccounts(undefined, ctx) as ManagedAccountInfo[];
     expect(accounts.map((account) => account.provider)).toEqual([
       "managed:kimi-code",
       "managed:kimi-code-2",

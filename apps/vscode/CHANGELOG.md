@@ -4,6 +4,16 @@
 >
 > *中文:* 本文件只记录本 fork(Kimi Code (Fork))自身的更新,版本号独立编号。官方上游的更新记录请见 [MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code/blob/main/apps/vscode/CHANGELOG.md)。
 
+## 0.9.22(2026-09-20)
+
+1. Fixed a full-panel crash introduced in 0.9.20: the settings menu's account quota rows still called the quota-ring component with its old props, so once an account's quota loaded successfully, rendering threw and the whole webview went blank until VS Code was restarted. The menu now uses the new props (with the same weekly/monthly adaptation and plan name as the status bar).
+2. The build now runs `tsc --noEmit` over both the extension host and the webview before bundling (`pnpm build` includes `typecheck`), so a props mismatch like this fails the build instead of shipping as a runtime crash.
+
+*中文:*
+
+1. 修复 0.9.20 引入的整个面板崩溃:设置菜单里的账号额度行仍按旧参数调用额度环组件,账号额度一旦加载成功,渲染就会抛异常导致整个 webview 白屏,只能重启 VS Code。菜单已改用新参数(与状态栏一致的 7 天/月度自适应和套餐名)
+2. 构建流程在打包前新增 `tsc --noEmit` 类型检查(宿主 + webview,`pnpm build` 内含 `typecheck`),这类参数不匹配以后直接构建失败,不会再以运行时崩溃的形式流出
+
 ## 0.9.21(2026-09-20)
 
 1. The account manager now supports manual ordering: each account row has up/down buttons, the arrangement is persisted across restarts, and accounts added later append at the end until you move them.

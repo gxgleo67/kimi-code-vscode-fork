@@ -9,7 +9,7 @@ import { bridge } from "@/services";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import { useT } from "@/i18n";
-import { type ManagedUsageView } from "shared/managed-usage";
+import { type ManagedUsageView, secondaryQuotaWindow } from "shared/managed-usage";
 import { QuotaRings, quotaWindowState } from "./UsageStatusBar";
 
 interface ActionMenuProps {
@@ -301,10 +301,14 @@ export function ActionMenu({ className, onAuthAction }: ActionMenuProps) {
         <MenuSection title={t("menu.manageAccounts")}>
           {accounts.map((account) => {
             const usage = usageByProvider[account.provider];
-            const quota = account.loggedIn && usage !== undefined && usage !== null && usage !== "error"
+            const usageView = account.loggedIn && usage !== undefined && usage !== null && usage !== "error" ? usage : undefined;
+            const secondarySel = usageView !== undefined ? secondaryQuotaWindow(usageView) : undefined;
+            const quota = usageView !== undefined
               ? {
-                  fiveHour: quotaWindowState(usage.fiveHour, null) ?? { ratio: null },
-                  weekly: quotaWindowState(usage.weekly, null) ?? { ratio: null },
+                  fiveHour: quotaWindowState(usageView.fiveHour, null) ?? { ratio: null },
+                  secondary: secondarySel !== undefined ? quotaWindowState(secondarySel.window, null) ?? { ratio: null } : { ratio: null },
+                  secondaryLabel: secondarySel?.kind === "monthly" ? t("usage.monthlyLimit") : t("usage.weeklyLimit"),
+                  planName: usageView.planName,
                 }
               : undefined;
             return (
@@ -320,7 +324,13 @@ export function ActionMenu({ className, onAuthAction }: ActionMenuProps) {
                 <span className="flex-1" />
                 {quota !== undefined && (
                   <span onClick={(e) => e.stopPropagation()} className="shrink-0 flex items-center">
-                    <QuotaRings fiveHour={quota.fiveHour} weekly={quota.weekly} now={now} />
+                    <QuotaRings
+                      fiveHour={quota.fiveHour}
+                      secondary={quota.secondary}
+                      secondaryLabel={quota.secondaryLabel}
+                      planName={quota.planName}
+                      now={now}
+                    />
                   </span>
                 )}
               </MenuItem>

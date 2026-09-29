@@ -4,6 +4,16 @@
 >
 > *中文:* 本文件只记录本 fork(Kimi Code (Fork))自身的更新,版本号独立编号。官方上游的更新记录请见 [MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code/blob/main/apps/vscode/CHANGELOG.md)。
 
+## 0.9.20(2026-09-20)
+
+1. The quota indicator adapts to the new plans without a weekly cap: when the platform reports no 7-day window, the inner ring and its tooltip switch to the monthly quota (code window first, total as fallback). Classic plans keep the 7-day ring unchanged.
+2. The usage tooltip now shows the subscription plan name (e.g. Allegretto / Pro) from the account's user info; the plan-name lookup is best-effort and never blocks or fails the quota fetch.
+
+*中文:*
+
+1. 额度指示适配没有 7 天上限的新套餐:平台不再返回 7 天窗口时,内圈和悬浮提示自动切换为月度额度(优先 Code 窗口,缺省回退月度总额);老套餐的 7 天环显示不变
+2. 用量悬浮提示顶部新增套餐名(如 Allegretto / Pro),取自账号用户信息;套餐名查询失败不影响额度显示
+
 ## 0.9.19(2026-09-20)
 
 1. Brand refresh: the logo tile is now always black (previously white on dark themes) everywhere it appears — header, chat avatars, account dialog.

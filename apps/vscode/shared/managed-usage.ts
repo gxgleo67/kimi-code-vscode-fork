@@ -17,12 +17,14 @@ export interface ManagedUsageWindowView {
 export interface ManagedUsageView {
   /** 5-hour window (platform limit_5h). */
   readonly fiveHour?: ManagedUsageWindowView;
-  /** 7-day window (platform limit_7d). */
+  /** 7-day window (platform limit_7d); newer plans drop it entirely. */
   readonly weekly?: ManagedUsageWindowView;
   /** Monthly total window (platform limit_month_total). */
   readonly monthTotal?: ManagedUsageWindowView;
   /** Monthly code window (platform limit_month_code). */
   readonly monthCode?: ManagedUsageWindowView;
+  /** Plan name from the user-info endpoint (user_level_name), e.g. "Allegretto" / "Pro". */
+  readonly planName?: string;
 }
 
 export type ManagedUsageResult =
@@ -48,6 +50,24 @@ export function toManagedUsageView(usages: ManagedQuotaUsagesInput): ManagedUsag
     ...(usages.monthTotal !== undefined ? { monthTotal: usages.monthTotal } : {}),
     ...(usages.monthCode !== undefined ? { monthCode: usages.monthCode } : {}),
   };
+}
+
+export interface SecondaryQuotaWindow {
+  readonly kind: "weekly" | "monthly";
+  readonly window: ManagedUsageWindowView;
+}
+
+/**
+ * Picks the long-window quota the status bar should display next to the 5h
+ * ring: the 7-day window when the plan still reports one, otherwise the
+ * monthly code window (falling back to the monthly total) used by newer
+ * plans that dropped the weekly cap.
+ */
+export function secondaryQuotaWindow(view: ManagedUsageView): SecondaryQuotaWindow | undefined {
+  if (view.weekly !== undefined) return { kind: "weekly", window: view.weekly };
+  const month = view.monthCode ?? view.monthTotal;
+  if (month !== undefined) return { kind: "monthly", window: month };
+  return undefined;
 }
 
 /** Usage as a [0, 1] ratio; a non-positive or non-finite limit reports 0. */

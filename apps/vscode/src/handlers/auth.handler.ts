@@ -56,7 +56,14 @@ export const authHandlers: Record<string, Handler<any, any>> = {
     try {
       const result = await ctx.harness.auth.getManagedUsage(params?.provider);
       if (result.kind === "ok") {
-        return { ok: true, usage: toManagedUsageView(result.quota.usages) };
+        // Best-effort plan name for the usage tooltip; a failure here must
+        // not fail the whole usage fetch.
+        const userInfo = await ctx.harness.auth.getManagedUserInfo(params?.provider).catch(() => undefined);
+        const planName =
+          userInfo?.kind === "ok" && userInfo.userInfo.userLevelName.length > 0
+            ? userInfo.userInfo.userLevelName
+            : undefined;
+        return { ok: true, usage: { ...toManagedUsageView(result.quota.usages), planName } };
       }
       return { ok: false, error: result.message };
     } catch (error) {

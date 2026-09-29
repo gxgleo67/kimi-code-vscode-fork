@@ -11,6 +11,7 @@ import {
   formatResetCountdown,
   formatTokenCount,
   formatUsagePercent,
+  secondaryQuotaWindow,
   toManagedUsageView,
   usageRatio,
 } from "../shared/managed-usage";
@@ -45,6 +46,38 @@ describe("toManagedUsageView (maps the SDK quota usages into the bridge view)", 
     const view = toManagedUsageView({ limit7d: { usedRatio: 0.5 } });
 
     expect(view.weekly).toEqual({ usedRatio: 0.5 });
+  });
+});
+
+describe("secondaryQuotaWindow (picks the long-window quota for the status bar)", () => {
+  it("prefers the 7-day window when the plan reports one", () => {
+    const view = toManagedUsageView({
+      limit7d: { usedRatio: 0.2 },
+      monthCode: { usedRatio: 0.1 },
+    });
+
+    expect(secondaryQuotaWindow(view)).toEqual({ kind: "weekly", window: { usedRatio: 0.2 } });
+  });
+
+  it("falls back to the monthly code window on plans without a weekly cap", () => {
+    const view = toManagedUsageView({
+      limit5h: { usedRatio: 0.09 },
+      monthTotal: { usedRatio: 0.3 },
+      monthCode: { usedRatio: 0.1 },
+    });
+
+    expect(secondaryQuotaWindow(view)).toEqual({ kind: "monthly", window: { usedRatio: 0.1 } });
+  });
+
+  it("uses the monthly total when no code-specific window exists", () => {
+    const view = toManagedUsageView({ monthTotal: { usedRatio: 0.3 } });
+
+    expect(secondaryQuotaWindow(view)).toEqual({ kind: "monthly", window: { usedRatio: 0.3 } });
+  });
+
+  it("returns undefined when only the 5h window exists", () => {
+    expect(secondaryQuotaWindow(toManagedUsageView({ limit5h: { usedRatio: 0.5 } }))).toBeUndefined();
+    expect(secondaryQuotaWindow(toManagedUsageView({}))).toBeUndefined();
   });
 });
 

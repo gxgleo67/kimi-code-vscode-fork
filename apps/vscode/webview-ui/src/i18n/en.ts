@@ -199,6 +199,8 @@ export const en = {
   "usage.tokenCount": "{used} / {limit} tokens",
   "usage.fiveHourLimit": "5h quota",
   "usage.weeklyLimit": "7-day quota",
+  "usage.monthlyLimit": "Monthly quota",
+  "usage.plan": "Plan: {name}",
   "usage.unavailable": "Usage unavailable: {error}",
   "usage.loading": "Loading usage...",
   "usage.percentUsed": "{percent}% used",

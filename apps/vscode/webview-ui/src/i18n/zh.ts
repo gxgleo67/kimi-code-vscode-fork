@@ -192,6 +192,8 @@ export const zh: Record<TranslationKey, string> = {
   "usage.tokenCount": "{used} / {limit} tokens",
   "usage.fiveHourLimit": "5小时额度",
   "usage.weeklyLimit": "7天额度",
+  "usage.monthlyLimit": "月度额度",
+  "usage.plan": "套餐:{name}",
   "usage.unavailable": "用量不可用:{error}",
   "usage.loading": "正在加载用量...",
   "usage.percentUsed": "已用 {percent}%",

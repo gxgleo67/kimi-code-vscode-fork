@@ -216,6 +216,16 @@ scripts/              # postinstall (node-pty fix)
 
 ## 🕓 更新记录 | Changelog
 
+**2026-09-20（0.9.20 · 额度显示适配新套餐）**：
+
+1. 新套餐（无 7 天上限）的额度指示自动切换：平台不返回 7 天窗口时，内圈改显示月度额度（优先 Code 窗口，缺省回退月度总额）；老套餐 7 天环不变
+2. 用量悬浮提示顶部新增套餐名（如 Allegretto / Pro）；套餐名查询失败不影响额度显示
+
+*English:*
+
+1. The quota indicator adapts to plans without a weekly cap: when no 7-day window is reported, the inner ring switches to the monthly quota (code window first, total as fallback); classic plans keep the 7-day ring
+2. The usage tooltip now shows the plan name (e.g. Allegretto / Pro); a plan-name lookup failure never breaks the quota display
+
 **2026-09-20（0.9.19 · 黑底 Logo + 欢迎页圆形动效）**：
 
 1. Logo 底色统一为黑色（此前深色主题下为白色），覆盖顶栏、对话头像、账号弹窗等所有出现位置

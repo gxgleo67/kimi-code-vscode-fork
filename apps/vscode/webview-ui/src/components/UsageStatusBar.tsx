@@ -6,6 +6,7 @@ import { useT } from "@/i18n";
 import {
   formatTokenCount,
   formatUsagePercent,
+  secondaryQuotaWindow,
   usageRatio,
   type ManagedUsageView,
   type ManagedUsageWindowView,
@@ -27,8 +28,8 @@ function quotaRingColor(ratio: number): string | undefined {
   return `hsl(${hue} 95% 50%)`;
 }
 
-/** Weekly quota ring: blue (#3B82F6 ≈ hsl 217) at 0% ramping to red (hsl 0) at 100%. */
-function weeklyRingColor(ratio: number): string {
+/** Long-window (7d / monthly) quota ring: blue (#3B82F6 ≈ hsl 217) at 0% ramping to red (hsl 0) at 100%. */
+function longWindowRingColor(ratio: number): string {
   const hue = Math.round(217 * (1 - Math.min(1, ratio)));
   return `hsl(${hue} 90% 55%)`;
 }
@@ -177,11 +178,25 @@ function QuotaTooltipSection({ label, state, now }: { label: string; state: Quot
 }
 
 /**
- * The managed plan's 5h and weekly quotas as one concentric indicator: the
- * outer ring tracks the 5h window (muted below 70%, yellow → red above), the
- * inner ring tracks the weekly window (blue → red over the full range).
+ * The managed plan's 5h and long-window quotas as one concentric indicator:
+ * the outer ring tracks the 5h window (muted below 70%, yellow → red above),
+ * the inner ring tracks the long window (blue → red over the full range) —
+ * the 7-day quota on classic plans, the monthly quota on plans that dropped
+ * the weekly cap. The plan name heads the tooltip when known.
  */
-export function QuotaRings({ fiveHour, weekly, now }: { fiveHour: QuotaWindowState; weekly: QuotaWindowState; now: number }) {
+export function QuotaRings({
+  fiveHour,
+  secondary,
+  secondaryLabel,
+  planName,
+  now,
+}: {
+  fiveHour: QuotaWindowState;
+  secondary: QuotaWindowState;
+  secondaryLabel: string;
+  planName?: string;
+  now: number;
+}) {
   const t = useT();
   const size = 18;
   const strokeWidth = 2;
@@ -190,7 +205,7 @@ export function QuotaRings({ fiveHour, weekly, now }: { fiveHour: QuotaWindowSta
   const innerRadius = outerRadius - strokeWidth - 1;
 
   const outerColor = fiveHour.ratio !== null ? quotaRingColor(fiveHour.ratio) : undefined;
-  const innerColor = weekly.ratio !== null ? weeklyRingColor(weekly.ratio) : undefined;
+  const innerColor = secondary.ratio !== null ? longWindowRingColor(secondary.ratio) : undefined;
 
   return (
     <Tooltip>
@@ -207,15 +222,16 @@ export function QuotaRings({ fiveHour, weekly, now }: { fiveHour: QuotaWindowSta
               className={innerColor !== undefined ? undefined : "text-muted-foreground/50"}
               style={innerColor !== undefined ? { color: innerColor } : undefined}
             >
-              <RingCircles center={size / 2} radius={innerRadius} strokeWidth={strokeWidth} ratio={weekly.ratio} />
+              <RingCircles center={size / 2} radius={innerRadius} strokeWidth={strokeWidth} ratio={secondary.ratio} />
             </g>
           </svg>
         </span>
       </TooltipTrigger>
       <TooltipContent>
         <div className="flex flex-col gap-1.5">
+          {planName !== undefined && <span className="font-medium">{t("usage.plan", { name: planName })}</span>}
           <QuotaTooltipSection label={t("usage.fiveHourLimit")} state={fiveHour} now={now} />
-          <QuotaTooltipSection label={t("usage.weeklyLimit")} state={weekly} now={now} />
+          <QuotaTooltipSection label={secondaryLabel} state={secondary} now={now} />
         </div>
       </TooltipContent>
     </Tooltip>
@@ -225,11 +241,12 @@ export function QuotaRings({ fiveHour, weekly, now }: { fiveHour: QuotaWindowSta
 /**
  * Compact usage indicators inlined into the input box's button row: a Claude
  * Code style ring for the context window plus one concentric ring pair for
- * the managed plan's 5h (outer) / weekly (inner) quotas. Percentages stay in
- * the tooltip so the row fits a narrow sidebar. The quota rings only appear
- * while a managed:kimi-code model is selected and degrade to a grey error
- * state when the fetch fails; the context ring is driven by the session's
- * status updates and is unaffected.
+ * the managed plan's 5h (outer) / long-window (inner) quotas — the 7-day
+ * window on classic plans, the monthly window on plans without a weekly cap.
+ * Percentages and the plan name stay in the tooltip so the row fits a narrow
+ * sidebar. The quota rings only appear while a managed:kimi-code model is
+ * selected and degrade to a grey error state when the fetch fails; the
+ * context ring is driven by the session's status updates and is unaffected.
  */
 export function UsageStatusBar() {
   const t = useT();
@@ -301,17 +318,20 @@ export function UsageStatusBar() {
       ? t("usage.tokenCount", { used: formatTokenCount(contextTokens), limit: formatTokenCount(maxContextTokens) })
       : undefined;
 
-  let quota: { fiveHour: QuotaWindowState; weekly: QuotaWindowState } | null = null;
+  let quota: { fiveHour: QuotaWindowState; secondary: QuotaWindowState; secondaryLabel: string } | null = null;
   if (managedProvider !== undefined) {
     if (usageError === null && usage === null) {
       // First fetch still in flight: show both rings as grey placeholders.
-      quota = { fiveHour: { ratio: null }, weekly: { ratio: null } };
+      quota = { fiveHour: { ratio: null }, secondary: { ratio: null }, secondaryLabel: t("usage.weeklyLimit") };
     } else {
       const fiveHour = quotaWindowState(usage?.fiveHour, usageError);
-      const weekly = quotaWindowState(usage?.weekly, usageError);
-      if (fiveHour !== null || weekly !== null) {
+      const secondarySel = usage !== null ? secondaryQuotaWindow(usage) : undefined;
+      const secondary = quotaWindowState(secondarySel?.window, usageError);
+      const secondaryLabel =
+        secondarySel?.kind === "monthly" ? t("usage.monthlyLimit") : t("usage.weeklyLimit");
+      if (fiveHour !== null || secondary !== null) {
         // A window missing from a successful response degrades to grey.
-        quota = { fiveHour: fiveHour ?? { ratio: null }, weekly: weekly ?? { ratio: null } };
+        quota = { fiveHour: fiveHour ?? { ratio: null }, secondary: secondary ?? { ratio: null }, secondaryLabel };
       }
     }
   }
@@ -321,7 +341,15 @@ export function UsageStatusBar() {
   return (
     <div className="flex h-6 items-center gap-1.5 select-none">
       {contextRatio !== undefined && <ContextRing ratio={contextRatio} label={t("usage.contextWindow")} detail={contextDetail} />}
-      {quota !== null && <QuotaRings fiveHour={quota.fiveHour} weekly={quota.weekly} now={now} />}
+      {quota !== null && (
+        <QuotaRings
+          fiveHour={quota.fiveHour}
+          secondary={quota.secondary}
+          secondaryLabel={quota.secondaryLabel}
+          planName={usage?.planName}
+          now={now}
+        />
+      )}
     </div>
   );
 }

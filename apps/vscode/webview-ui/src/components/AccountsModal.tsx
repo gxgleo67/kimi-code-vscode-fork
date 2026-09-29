@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { IconLoader2, IconUserCircle, IconPlus, IconX, IconPencil, IconCheck, IconStar, IconStarFilled } from "@tabler/icons-react";
+import { IconLoader2, IconUserCircle, IconPlus, IconX, IconPencil, IconCheck, IconStar, IconStarFilled, IconChevronUp, IconChevronDown } from "@tabler/icons-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -191,6 +191,27 @@ export function AccountsModal({ onAuthAction }: AccountsModalProps) {
     }
   };
 
+  /** Swap the account with its neighbor and persist the new order. */
+  const moveAccount = async (provider: string, direction: -1 | 1) => {
+    const index = accounts.findIndex((account) => account.provider === provider);
+    const target = index + direction;
+    if (index < 0 || target < 0 || target >= accounts.length) return;
+    const next = [...accounts];
+    [next[index], next[target]] = [next[target]!, next[index]!];
+    setAccounts(next);
+    setError(null);
+    try {
+      const result = await bridge.reorderAccounts(next.map((account) => account.provider));
+      if (!result.success) {
+        setError(result.error ?? t("accounts.reorderFailed"));
+        await refresh();
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      await refresh();
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-40 flex flex-col bg-background">
       <div className="flex items-center justify-between px-3 py-2 border-b">
@@ -211,7 +232,7 @@ export function AccountsModal({ onAuthAction }: AccountsModalProps) {
           )}
 
           <div className="space-y-1.5">
-            {accounts.map((account) => {
+            {accounts.map((account, index) => {
               const isBusy = busy === account.provider;
               const usage = usageByProvider[account.provider];
               const usageText = account.loggedIn ? usageBrief(t, usage ?? null) : null;
@@ -280,6 +301,26 @@ export function AccountsModal({ onAuthAction }: AccountsModalProps) {
                     {resetLine !== null && (
                       <div className="text-[10px] text-muted-foreground/80 truncate">{resetLine}</div>
                     )}
+                  </div>
+                  <div className="flex flex-col shrink-0">
+                    <button
+                      type="button"
+                      className="text-muted-foreground hover:text-foreground cursor-pointer disabled:opacity-30 disabled:cursor-default"
+                      title={t("accounts.moveUp")}
+                      disabled={index === 0 || busy !== null}
+                      onClick={() => void moveAccount(account.provider, -1)}
+                    >
+                      <IconChevronUp className="size-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      className="text-muted-foreground hover:text-foreground cursor-pointer disabled:opacity-30 disabled:cursor-default"
+                      title={t("accounts.moveDown")}
+                      disabled={index === accounts.length - 1 || busy !== null}
+                      onClick={() => void moveAccount(account.provider, 1)}
+                    >
+                      <IconChevronDown className="size-3.5" />
+                    </button>
                   </div>
                   {account.loggedIn && (
                     <button

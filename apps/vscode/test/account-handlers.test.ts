@@ -1,7 +1,7 @@
 /**
- * Scenario: account display names (globalState decoration) and the default
- * account pointer (config default_model) behind Methods.RenameAccount /
- * Methods.SetDefaultAccount.
+ * Scenario: account display names and ordering (globalState decoration) and
+ * the default account pointer (config default_model) behind
+ * Methods.RenameAccount / Methods.ReorderAccounts / Methods.SetDefaultAccount.
  * Wiring: fake HandlerContext — in-memory harness config + memento; no engine.
  */
 import { describe, expect, it, vi } from "vitest";
@@ -104,6 +104,60 @@ describe("renameAccount", () => {
     const result = await renameAccount({ provider: "managed:kimi-code-9", name: "x" }, ctx);
     expect(result.success).toBe(false);
     expect(names.size).toBe(0);
+  });
+});
+
+describe("reorderAccounts", () => {
+  const reorderAccounts = accountHandlers[Methods.ReorderAccounts]!;
+  const getAccounts = accountHandlers[Methods.GetAccounts]!;
+
+  // Extra accounts need the managed_by marker for listExtraAccounts to see them.
+  const THREE: FakeConfig = {
+    defaultModel: "kimi-code/kimi-for-coding",
+    providers: {
+      "managed:kimi-code": {},
+      "managed:kimi-code-2": { source: { managed_by: "vscode-kimi-account" } },
+      "managed:kimi-code-3": { source: { managed_by: "vscode-kimi-account" } },
+    },
+    models: {
+      "kimi-code/kimi-for-coding": { provider: "managed:kimi-code", model: "kimi-for-coding" },
+      "kimi-code-2/kimi-for-coding": { provider: "managed:kimi-code-2", model: "kimi-for-coding" },
+      "kimi-code-3/kimi-for-coding": { provider: "managed:kimi-code-3", model: "kimi-for-coding" },
+    },
+  };
+
+  it("stores the given order, dropping unknown providers", async () => {
+    const { ctx, names } = fakeContext(THREE);
+
+    const result = await reorderAccounts(
+      { providers: ["managed:kimi-code-3", "managed:kimi-code-9", "managed:kimi-code"] },
+      ctx,
+    );
+    expect(result).toEqual({ success: true });
+    expect(names.get("kimi.accountOrder")).toEqual(["managed:kimi-code-3", "managed:kimi-code"]);
+  });
+
+  it("getAccounts follows the stored order, appending unlisted accounts at the end", async () => {
+    const { ctx } = fakeContext(THREE);
+    await reorderAccounts({ providers: ["managed:kimi-code-3", "managed:kimi-code"] }, ctx);
+
+    const accounts = await getAccounts(undefined, ctx);
+    expect(accounts.map((account) => account.provider)).toEqual([
+      "managed:kimi-code-3",
+      "managed:kimi-code",
+      "managed:kimi-code-2",
+    ]);
+  });
+
+  it("getAccounts falls back to slot order with no stored order", async () => {
+    const { ctx } = fakeContext(THREE);
+
+    const accounts = await getAccounts(undefined, ctx);
+    expect(accounts.map((account) => account.provider)).toEqual([
+      "managed:kimi-code",
+      "managed:kimi-code-2",
+      "managed:kimi-code-3",
+    ]);
   });
 });
 

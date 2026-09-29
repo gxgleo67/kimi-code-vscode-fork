@@ -23,6 +23,7 @@ export const Methods = {
   LoginAccount: "loginAccount",
   LogoutAccount: "logoutAccount",
   RenameAccount: "renameAccount",
+  ReorderAccounts: "reorderAccounts",
   SetDefaultAccount: "setDefaultAccount",
   SwitchAccount: "switchAccount",
   SaveConfig: "saveConfig",
@@ -194,6 +195,10 @@ function validateParams(method: RpcMethod, params: unknown): boolean {
       return isPlainObject(params)
         && isNonEmptyString(params["provider"])
         && typeof params["name"] === "string";
+    case Methods.ReorderAccounts:
+      return isPlainObject(params)
+        && Array.isArray(params["providers"])
+        && params["providers"].every((p) => isNonEmptyString(p));
     case Methods.SetDefaultAccount:
       return isPlainObject(params) && isNonEmptyString(params["provider"]);
     case Methods.SwitchAccount:

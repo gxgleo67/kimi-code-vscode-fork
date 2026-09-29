@@ -31,6 +31,9 @@ const ACCOUNT_PROVIDER_ID = /^managed:kimi-code-(\d+)$/;
 /** Display names are extension-side decoration, stored globally in globalState. */
 const ACCOUNT_NAMES_KEY = "kimi.accountDisplayNames";
 
+/** User-arranged account order (provider ids), stored globally in globalState. */
+const ACCOUNT_ORDER_KEY = "kimi.accountOrder";
+
 function entryFromProviderId(provider: string): ManagedAccountEntry {
   const match = ACCOUNT_PROVIDER_ID.exec(provider);
   if (match === null) throw new Error(`Unknown managed account provider: ${provider}`);
@@ -112,7 +115,18 @@ const getAccounts: Handler<void, ManagedAccountInfo[]> = async (_, ctx) => {
   for (const entry of listExtraAccounts(config)) {
     accounts.push(await describeAccount(ctx, entry.provider, entry.slot, config));
   }
-  return accounts;
+  // Apply the user's manual arrangement; accounts missing from the stored
+  // order (new logins, stale entries) keep their slot order at the end.
+  const order = ctx.globalState.get<string[]>(ACCOUNT_ORDER_KEY) ?? [];
+  const rank = new Map(order.map((provider, index) => [provider, index]));
+  return accounts
+    .map((account, index) => ({ account, index }))
+    .sort((left, right) => {
+      const leftRank = rank.get(left.account.provider) ?? Number.MAX_SAFE_INTEGER;
+      const rightRank = rank.get(right.account.provider) ?? Number.MAX_SAFE_INTEGER;
+      return leftRank === rightRank ? left.index - right.index : leftRank - rightRank;
+    })
+    .map(({ account }) => account);
 };
 
 async function reportAuthError(
@@ -213,6 +227,14 @@ const renameAccount: Handler<{ provider: string; name: string }, AccountAuthResu
   return { success: true };
 };
 
+/** Persist the account order exactly as the webview arranged it. */
+const reorderAccounts: Handler<{ providers: string[] }, AccountAuthResult> = async (params, ctx) => {
+  const config = await ctx.harness.getConfig({ reload: true });
+  const known = params.providers.filter((provider) => isKnownAccountProvider(config, provider));
+  await ctx.globalState.update(ACCOUNT_ORDER_KEY, known);
+  return { success: true };
+};
+
 /** Point the config default model at the account, so new sessions start on it. */
 const setDefaultAccount: Handler<{ provider: string }, AccountAuthResult> = async (params, ctx) => {
   try {
@@ -292,6 +314,7 @@ export const accountHandlers: Record<string, Handler<any, any>> = {
   [Methods.LoginAccount]: loginAccount,
   [Methods.LogoutAccount]: logoutAccount,
   [Methods.RenameAccount]: renameAccount,
+  [Methods.ReorderAccounts]: reorderAccounts,
   [Methods.SetDefaultAccount]: setDefaultAccount,
   [Methods.SwitchAccount]: switchAccount,
 };

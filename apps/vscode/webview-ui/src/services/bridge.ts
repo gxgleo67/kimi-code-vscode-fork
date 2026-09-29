@@ -172,6 +172,10 @@ class Bridge {
     return this.call<AccountAuthResult>(Methods.RenameAccount, { provider, name });
   }
 
+  reorderAccounts(providers: string[]) {
+    return this.call<AccountAuthResult>(Methods.ReorderAccounts, { providers });
+  }
+
   setDefaultAccount(provider: string) {
     return this.call<AccountAuthResult>(Methods.SetDefaultAccount, { provider });
   }

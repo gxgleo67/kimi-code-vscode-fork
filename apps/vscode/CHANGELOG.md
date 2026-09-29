@@ -4,6 +4,14 @@
 >
 > *中文:* 本文件只记录本 fork(Kimi Code (Fork))自身的更新,版本号独立编号。官方上游的更新记录请见 [MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code/blob/main/apps/vscode/CHANGELOG.md)。
 
+## 0.9.21(2026-09-20)
+
+1. The account manager now supports manual ordering: each account row has up/down buttons, the arrangement is persisted across restarts, and accounts added later append at the end until you move them.
+
+*中文:*
+
+1. 账号管理支持手动排序:每个账号行新增上移/下移按钮,顺序跨重启保留;新登录的账号默认排在末尾,可再手动调整
+
 ## 0.9.20(2026-09-20)
 
 1. The quota indicator adapts to the new plans without a weekly cap: when the platform reports no 7-day window, the inner ring and its tooltip switch to the monthly quota (code window first, total as fallback). Classic plans keep the 7-day ring unchanged.

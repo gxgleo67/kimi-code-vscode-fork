@@ -216,6 +216,12 @@ scripts/              # postinstall (node-pty fix)
 
 ## 🕓 更新记录 | Changelog
 
+**2026-09-20（0.9.21 · 账号排序）**：
+
+1. 账号管理支持手动排序：账号行新增上移/下移按钮，顺序跨重启保留；新登录账号默认排末尾
+
+*English:* Account manager now supports manual ordering: up/down buttons per row, persisted across restarts; newly added accounts append at the end
+
 **2026-09-20（0.9.20 · 额度显示适配新套餐）**：
 
 1. 新套餐（无 7 天上限）的额度指示自动切换：平台不返回 7 天窗口时，内圈改显示月度额度（优先 Code 窗口，缺省回退月度总额）；老套餐 7 天环不变

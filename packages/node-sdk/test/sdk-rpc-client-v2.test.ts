@@ -660,6 +660,61 @@ key = "${titleOAuthRef.key}"
     }
   });
 
+  it('inherits the source titleKind when forking with a default title', async () => {
+    const { harness } = await makeHarness();
+    const workDir = await mkdtemp(join(tmpdir(), 'kimi-sdk-v2-work-'));
+    tempDirs.push(workDir);
+
+    try {
+      const session = await harness.createSession({ id: 'ses_fork_title_kind_source', workDir });
+      await harness.renameSession({ id: session.id, title: '我的标题' });
+      await session.close();
+
+      const forked = await harness.forkSession({ id: session.id });
+      expect(forked.summary?.title).toBe('Fork: 我的标题');
+      expect(forked.summary?.titleKind).toBe('custom');
+      await forked.close();
+    } finally {
+      await harness.close();
+    }
+  });
+
+  it('leaves the titleKind unset on a default fork of an untitled source', async () => {
+    const { harness } = await makeHarness();
+    const workDir = await mkdtemp(join(tmpdir(), 'kimi-sdk-v2-work-'));
+    tempDirs.push(workDir);
+
+    try {
+      const session = await harness.createSession({ id: 'ses_fork_title_kind_untitled', workDir });
+      await session.close();
+
+      const forked = await harness.forkSession({ id: session.id });
+      expect(forked.summary?.title).toBe('Fork: ses_fork_title_kind_untitled');
+      expect(forked.summary?.titleKind).toBeUndefined();
+      await forked.close();
+    } finally {
+      await harness.close();
+    }
+  });
+
+  it('marks a fork with an explicit title as custom regardless of the source titleKind', async () => {
+    const { harness } = await makeHarness();
+    const workDir = await mkdtemp(join(tmpdir(), 'kimi-sdk-v2-work-'));
+    tempDirs.push(workDir);
+
+    try {
+      const session = await harness.createSession({ id: 'ses_fork_named_title', workDir });
+      await session.close();
+
+      const forked = await harness.forkSession({ id: session.id, title: 'Named fork' });
+      expect(forked.summary?.title).toBe('Named fork');
+      expect(forked.summary?.titleKind).toBe('custom');
+      await forked.close();
+    } finally {
+      await harness.close();
+    }
+  });
+
   it('serves listWorkspaceSkills through the engineAccessor escape hatch', async () => {
     const { harness, homeDir } = await makeHarness();
     const workDir = await mkdtemp(join(tmpdir(), 'kimi-sdk-v2-work-'));
@@ -856,6 +911,21 @@ key = "${titleOAuthRef.key}"
         defaultModel: 'provider/fast',
         models: { 'provider/fast': 'fast and cheap' },
       });
+    } finally {
+      await harness.close();
+    }
+  });
+
+  it('round-trips autoSessionTitle to the auto_session_title config.toml field', async () => {
+    const { harness, homeDir } = await makeHarness();
+    try {
+      await harness.setConfig({ autoSessionTitle: false });
+
+      const toml = await readFile(join(homeDir, 'config.toml'), 'utf-8');
+      expect(toml).toContain('auto_session_title = false');
+
+      const reread = await harness.getConfig({ reload: true });
+      expect(reread.autoSessionTitle).toBe(false);
     } finally {
       await harness.close();
     }

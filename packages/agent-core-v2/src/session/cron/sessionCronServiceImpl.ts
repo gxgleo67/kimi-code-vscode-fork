@@ -25,6 +25,7 @@ import { IAgentLifecycleService } from '#/session/agentLifecycle/agentLifecycle'
 import type { ContextMessage } from '#/agent/contextMemory/types';
 import { IAgentPromptService } from '#/agent/prompt/prompt';
 import { IAgentStateService } from '#/agent/state/agentState';
+import { IAgentSystemReminderService } from '#/agent/systemReminder/systemReminder';
 import { IEventDispatcher } from '#/state/eventDispatcher';
 import { IAgentToolRegistryService } from '#/agent/toolRegistry/toolRegistry';
 import { IAgentLoopService, type Turn } from '#/agent/loop/loop';
@@ -41,6 +42,14 @@ export const CRON_SCHEDULED = 'cron_scheduled' as const;
 export const CRON_FIRED = 'cron_fired' as const;
 export const CRON_MISSED = 'cron_missed' as const;
 export const CRON_DELETED = 'cron_deleted' as const;
+
+const CRON_FORK_CLEARED_REMINDER = [
+  'This fork does not have any scheduled cron tasks.',
+  'Tasks from the source session continue to run in the source session.',
+  'Create new tasks here if needed.',
+].join(' ');
+
+const CRON_FORK_CLEARED_REMINDER_NAME = 'cron_fork_cleared';
 
 export const cronTasksKey = defineState<Map<string, CronTask>>('cron.tasks', () => new Map());
 export const cronParsedCacheKey = defineState<Map<string, ParsedCronExpression>>(
@@ -264,6 +273,20 @@ export class SessionCronServiceImpl extends Disposable implements ISessionCronSe
       }
       this.adopt(task);
     }
+  }
+
+  async notifySessionForked(sourceSessionId: string): Promise<void> {
+    const tasks = await this.store.list({ workspaceId: this.ctx.workspaceId });
+    const sourceTasks = tasks.filter(
+      (task) => task.tags?.[CRON_SESSION_TAG] === sourceSessionId,
+    );
+    if (sourceTasks.length === 0) return;
+    this.agentLifecycle.get('main')?.accessor
+      .get(IAgentSystemReminderService)
+      .appendSystemReminder(CRON_FORK_CLEARED_REMINDER, {
+        kind: 'injection',
+        variant: CRON_FORK_CLEARED_REMINDER_NAME,
+      });
   }
 
   async start(): Promise<void> {

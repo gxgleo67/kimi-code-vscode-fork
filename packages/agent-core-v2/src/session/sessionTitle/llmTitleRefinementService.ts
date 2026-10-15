@@ -3,6 +3,7 @@ import { ScopeActivation, registerScopedService } from '#/_base/di/scope';
 import { ILogService } from '#/_base/log/log';
 import { retryErrorFields, sleepForRetry } from '#/_base/utils/retry';
 import { IBootstrapService } from '#/app/bootstrap/bootstrap';
+import { IConfigService } from '#/app/config/config';
 import { IEventService } from '#/app/event/event';
 import { IEventBus } from '#/app/event/eventBus';
 import { LifecycleScope } from '#/app/scopes';
@@ -20,6 +21,7 @@ import { ISessionMetadata } from '#/session/sessionMetadata/sessionMetadata';
 import { SessionMetaUpdated } from '#/session/sessionMetadata/sessionMetaEvents';
 
 import { IAgentTitlePromptSource } from './agentTitlePromptSource';
+import { autoSessionTitleEnabled } from './configSection';
 import { ISessionLlmTitleRefinement } from './llmTitleRefinement';
 
 const VSCODE_HOST_PRODUCT_NAME = 'kimi-code-vscode';
@@ -59,6 +61,7 @@ export class SessionLlmTitleRefinementService
     @IAgentLifecycleService private readonly agents: IAgentLifecycleService,
     @IEventService private readonly eventService: IEventService,
     @IModelCatalog private readonly modelCatalog: IModelCatalog,
+    @IConfigService private readonly config: IConfigService,
     @IBootstrapService bootstrap: IBootstrapService,
     @ILogService private readonly log: ILogService,
   ) {
@@ -108,6 +111,7 @@ export class SessionLlmTitleRefinementService
   }
 
   private async captureEasyTitle(): Promise<void> {
+    if (!autoSessionTitleEnabled(this.config)) return;
     const meta = await this.metadata.read();
     const title = meta.title;
     const prompt = meta.lastPrompt;
@@ -132,6 +136,7 @@ export class SessionLlmTitleRefinementService
   }
 
   private async refine(pending: PendingRefinement): Promise<void> {
+    if (!autoSessionTitleEnabled(this.config)) return;
     const signal = this.abortController.signal;
     for (let attempt = 1; attempt <= LLM_TITLE_MAX_ATTEMPTS; attempt++) {
       if (signal.aborted) return;

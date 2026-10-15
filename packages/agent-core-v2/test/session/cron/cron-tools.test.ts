@@ -128,6 +128,7 @@ function createToolHarness(options: {
       deletedAgentIds.push(agentId);
     },
     loadFromStore: async () => {},
+    notifySessionForked: async () => {},
     start: () => Promise.resolve(),
     stop: async () => {},
     tick: () => Promise.resolve(),

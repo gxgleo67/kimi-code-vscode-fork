@@ -22,6 +22,11 @@ export interface ProtocolEndpoint {
   readonly defaultBaseUrl?: string;
 }
 
+export interface CompletionTokensWhenUnsetInput {
+  readonly maxContextSize: number;
+  readonly usedContextTokens?: number;
+}
+
 export interface ProtocolTrait {
   readonly strictThinkingValidation?: boolean;
 
@@ -69,6 +74,11 @@ export interface ProtocolTrait {
     maxCompletionTokens: number,
     ctx: TraitContext,
   ): Record<string, unknown> | undefined;
+
+  completionTokensWhenUnset?(
+    input: CompletionTokensWhenUnsetInput,
+    ctx: TraitContext,
+  ): number | undefined;
 
   cacheKey?(key: string, ctx: TraitContext): Record<string, unknown> | undefined;
 
@@ -127,6 +137,17 @@ export function traitAcceptedImageMimes(
     if (trait.acceptedImageMimes === undefined) continue;
     const declared = trait.acceptedImageMimes(context);
     if (declared !== undefined) return declared;
+  }
+  return undefined;
+}
+
+export function traitCompletionTokensWhenUnset(
+  traits: readonly ResolvedTrait[],
+): ((input: CompletionTokensWhenUnsetInput) => number | undefined) | undefined {
+  for (const { trait, context } of traits) {
+    if (trait.completionTokensWhenUnset === undefined) continue;
+    const declared = trait.completionTokensWhenUnset.bind(trait);
+    return (input) => declared(input, context);
   }
   return undefined;
 }

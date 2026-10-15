@@ -8,6 +8,7 @@ import type { Hooks } from '#/hooks';
 export interface PromptSubmitContext {
   readonly promptMessage: ContextMessage;
   readonly isSteer: boolean;
+  readonly hookParts: ContentPart[];
   block: boolean;
 }
 

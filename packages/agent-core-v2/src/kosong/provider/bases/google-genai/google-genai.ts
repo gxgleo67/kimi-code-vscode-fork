@@ -765,7 +765,7 @@ export class GoogleGenAIChatProvider implements ChatProvider {
       kwargs = { ...kwargs, thinkingConfig: this._encodeThinking(thinking.effort) };
     }
 
-    if (options?.maxCompletionTokens !== undefined) {
+    if (options?.maxCompletionTokens !== undefined && options.maxCompletionTokens > 0) {
       let cap = options.maxCompletionTokens;
       if (
         options.usedContextTokens !== undefined &&
@@ -826,7 +826,12 @@ export class GoogleGenAIChatProvider implements ChatProvider {
   private _encodeThinking(effort: ThinkingEffort): ThinkingConfig {
     const thinkingConfig: ThinkingConfig = { includeThoughts: true };
 
-    if (this._model.includes('gemini-3')) {
+    if (this._model.includes('gemini-3') || this._model.includes('gemini-4')) {
+      if (effort === 'off' && this._model.includes('gemini-4')) {
+        throw new ChatProviderError(
+          'thinking effort "off" is not supported for gemini-4 models: thinking cannot be disabled; use low/medium/high',
+        );
+      }
       switch (effort) {
         case 'off':
           thinkingConfig.thinkingLevel = 'MINIMAL';

@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { DisposableStore } from '#/_base/di/lifecycle';
 import { createServices, type TestInstantiationService } from '#/_base/di/test';
 import { IAgentContextMemoryService } from '#/agent/contextMemory/contextMemory';
+import { userPromptSubmitHookPart } from '#/agent/contextMemory/hookParts';
 import type { ContextMessage } from '#/agent/contextMemory/types';
 import { IAgentPromptService } from '#/agent/prompt/prompt';
 import type { ContentPart } from '#/kosong/contract/message';
@@ -214,6 +215,31 @@ describe('AgentTitlePromptSource', () => {
       firstUser: '唯一的问题',
       lastUser: undefined,
       assistant: undefined,
+    });
+  });
+
+  it('ignores folded UserPromptSubmit hook parts in titles, first turns and digests', async () => {
+    const hooked = (id: string, text: string): ContextMessage => ({
+      ...userMessage(id, text),
+      content: [
+        userPromptSubmitHookPart(
+          '<hook_result hook_event="UserPromptSubmit">\nhook note\n</hook_result>',
+        ),
+        { type: 'text', text },
+      ],
+    });
+    liveMessages = [
+      hooked('u1', '最初的目标'),
+      assistantMessage('a1', [{ type: 'text', text: '第一轮回答' }]),
+    ];
+
+    await expect(ix.get(IAgentTitlePromptSource).firstUserPrompts(3)).resolves.toEqual([
+      '最初的目标',
+    ]);
+    await expect(ix.get(IAgentTitlePromptSource).digestExcerpt()).resolves.toEqual({
+      firstUser: '最初的目标',
+      lastUser: undefined,
+      assistant: '第一轮回答',
     });
   });
 });

@@ -13,6 +13,8 @@ import {
   convertKimiTool,
   kimiAnthropicTrait,
   kimiOpenAITrait,
+  kimiResponsesTrait,
+  kimiUnsetCompletionTokens,
 } from '#/kosong/provider/providers/kimi/kimi.contrib';
 
 const context: TraitContext = {
@@ -198,6 +200,25 @@ describe('kimiOpenAITrait request params', () => {
     });
   });
 
+  it('derives the unset completion budget from the remaining window', () => {
+    expect(kimiUnsetCompletionTokens({ maxContextSize: 1000, usedContextTokens: 40 })).toBe(960);
+    expect(call(kimiOpenAITrait.completionTokensWhenUnset, { maxContextSize: 1000, usedContextTokens: 40 }, context)).toBe(
+      960,
+    );
+    expect(
+      call(kimiResponsesTrait.completionTokensWhenUnset, { maxContextSize: 1000, usedContextTokens: 40 }, context),
+    ).toBe(960);
+  });
+
+  it('has no unset completion budget without a known window or a used-context reading', () => {
+    expect(kimiUnsetCompletionTokens({ maxContextSize: 0, usedContextTokens: 40 })).toBeUndefined();
+    expect(kimiUnsetCompletionTokens({ maxContextSize: 1000 })).toBeUndefined();
+  });
+
+  it('floors the unset completion budget at one token', () => {
+    expect(kimiUnsetCompletionTokens({ maxContextSize: 1000, usedContextTokens: 1000 })).toBe(1);
+  });
+
   it('buildParams backfills max_completion_tokens, drops max_tokens, expands extra_body last', () => {
     const out = call(
       kimiOpenAITrait.buildParams,
@@ -267,6 +288,7 @@ describe('trait objects are plain declarations', () => {
       'acceptedImageMimes',
       'buildParams',
       'cacheKey',
+      'completionTokensWhenUnset',
       'convertError',
       'convertMessage',
       'convertTool',
@@ -283,6 +305,7 @@ describe('trait objects are plain declarations', () => {
       'convertError',
       'withThinking',
     ]);
+    expect(hookNames(kimiResponsesTrait).toSorted()).toEqual(['completionTokensWhenUnset']);
   });
 
   it('marks only the native-transport thinking trait as strict-validation (v1 parity)', () => {

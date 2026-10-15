@@ -67,6 +67,10 @@ export function composeOpenAIChatHooks(
       hooks.withMaxCompletionTokens = (maxCompletionTokens) =>
         trait.withMaxCompletionTokens!(maxCompletionTokens, context);
     }
+    if (trait.completionTokensWhenUnset !== undefined) {
+      hooks.completionTokensWhenUnset = (input) =>
+        trait.completionTokensWhenUnset!(input, context);
+    }
     if (trait.cacheKey !== undefined) {
       hooks.cacheKey = (key) => trait.cacheKey!(key, context);
     }

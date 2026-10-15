@@ -181,6 +181,48 @@ describe("replay adapter (renders the public SDK resume state for the Webview)",
     ]);
   });
 
+  it("keeps folded UserPromptSubmit hook parts out of the replayed user input", () => {
+    const events = replay([
+      record(
+        message(
+          "user",
+          [
+            {
+              type: "text",
+              text: '<hook_result hook_event="UserPromptSubmit">\nhook note\n</hook_result>',
+              meta: { contentType: "text/xml", source: "user prompt submit hook" },
+            } as ContentPart,
+            { type: "text", text: "Fix the test" },
+          ],
+          { origin: { kind: "user" } },
+        ),
+      ),
+    ]);
+
+    expect(events.filter((event) => event.type !== "StatusUpdate")).toEqual([
+      {
+        type: "TurnBegin",
+        payload: { user_input: [{ type: "text", text: "Fix the test" }], time: 1 },
+        _sessionId: "session-1",
+      },
+      {
+        type: "StepBegin",
+        payload: { n: 1 },
+        _sessionId: "session-1",
+      },
+      {
+        type: "ContentPart",
+        payload: { type: "text", text: "hook note" },
+        _sessionId: "session-1",
+      },
+      {
+        type: "stream_complete",
+        result: { status: "finished" },
+        _sessionId: "session-1",
+      },
+    ]);
+  });
+
   it("converts SDK media keys when replay renders a user prompt", () => {
     const events = replay([
       record(

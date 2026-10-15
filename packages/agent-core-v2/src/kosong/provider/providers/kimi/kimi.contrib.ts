@@ -2,6 +2,7 @@ import { providerImagePolicy } from '#/kosong/contract/image-formats';
 import type { ContentPart } from '#/kosong/contract/message';
 import type { Tool } from '#/kosong/contract/tool';
 import type {
+  CompletionTokensWhenUnsetInput,
   ProtocolEndpoint,
   ProtocolTrait,
   TraitContext,
@@ -93,9 +94,20 @@ function resolveFiles(ctx: TraitContext): KimiFiles {
   return files;
 }
 
+export function kimiUnsetCompletionTokens(
+  input: CompletionTokensWhenUnsetInput,
+): number | undefined {
+  const window = input.maxContextSize;
+  if (window <= 0 || input.usedContextTokens === undefined) return undefined;
+  return Math.max(1, window - input.usedContextTokens);
+}
+
+export const kimiResponsesTrait: ProtocolTrait = {
+  completionTokensWhenUnset: (input) => kimiUnsetCompletionTokens(input),
+};
+
 export const kimiOpenAITrait: ProtocolTrait = {
   strictThinkingValidation: true,
-
   endpoint: () => ({
     apiKeyEnv: KIMI_API_KEY_ENV,
     baseUrlEnv: KIMI_BASE_URL_ENV,
@@ -134,6 +146,8 @@ export const kimiOpenAITrait: ProtocolTrait = {
   withMaxCompletionTokens: (maxCompletionTokens) => ({
     max_completion_tokens: maxCompletionTokens,
   }),
+
+  completionTokensWhenUnset: (input) => kimiUnsetCompletionTokens(input),
 
   buildParams: (params) => {
     const {
@@ -245,6 +259,15 @@ registerProviderDefinition({
   id: 'kimi',
   baseProtocol: 'anthropic',
   traits: [kimiAnthropicTrait],
+  endpoint: kimiEndpoint,
+  hostHeaders: 'full',
+  modelSource: 'oauth-catalog',
+});
+
+registerProviderDefinition({
+  id: 'kimi',
+  baseProtocol: 'openai_responses',
+  traits: [kimiResponsesTrait],
   endpoint: kimiEndpoint,
   hostHeaders: 'full',
   modelSource: 'oauth-catalog',

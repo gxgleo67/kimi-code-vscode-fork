@@ -1,4 +1,8 @@
-import { auth, type OAuthClientProvider } from '@modelcontextprotocol/sdk/client/auth.js';
+import {
+  auth,
+  discoverOAuthServerInfo,
+  type OAuthClientProvider,
+} from '@modelcontextprotocol/sdk/client/auth.js';
 import type { OAuthTokens } from '@modelcontextprotocol/sdk/shared/auth.js';
 
 import { ErrorCodes, Error2, isError2 } from '#/errors';
@@ -22,6 +26,8 @@ export interface BeginAuthorizationResult {
   complete(opts?: { signal?: AbortSignal; timeoutMs?: number }): Promise<void>;
   cancel(): Promise<void>;
 }
+
+const OFFLINE_ACCESS_SCOPE = 'offline_access';
 
 export class McpOAuthService {
   private readonly store: McpOAuthStore;
@@ -55,6 +61,35 @@ export class McpOAuthService {
     return (await this.getProvider(serverName, serverUrl).tokens()) !== undefined;
   }
 
+  private async resolveRequestScope(
+    provider: McpOAuthClientProvider,
+    serverUrl: string | URL,
+  ): Promise<string | undefined> {
+    let discovery = await provider.discoveryState();
+    if (discovery?.authorizationServerMetadata === undefined) {
+      try {
+        const info = await discoverOAuthServerInfo(serverUrl);
+        discovery = {
+          ...discovery,
+          authorizationServerUrl: info.authorizationServerUrl,
+          resourceMetadata: info.resourceMetadata ?? discovery?.resourceMetadata,
+          authorizationServerMetadata: info.authorizationServerMetadata,
+        };
+        await provider.saveDiscoveryState(discovery);
+      } catch {
+        return undefined;
+      }
+    }
+    const advertised = discovery.authorizationServerMetadata?.scopes_supported;
+    if (advertised === undefined || !advertised.includes(OFFLINE_ACCESS_SCOPE)) return undefined;
+    const base =
+      discovery.resourceMetadata?.scopes_supported ??
+      provider.clientMetadata.scope?.split(/\s+/).filter(Boolean) ??
+      [];
+    if (base.includes(OFFLINE_ACCESS_SCOPE)) return undefined;
+    return [...base, OFFLINE_ACCESS_SCOPE].join(' ');
+  }
+
   async beginAuthorization(
     serverName: string,
     serverUrl: string | URL,
@@ -85,10 +120,11 @@ export class McpOAuthService {
     provider.setRedirectUrl(new URL(callbackServer.redirectUri));
     await provider.ready;
     await provider.invalidateStaleRegistration(callbackServer.redirectUri);
+    const requestScope = await this.resolveRequestScope(provider, serverUrl);
 
     let authorizationUrl: URL | undefined;
     try {
-      const result = await auth(provider as OAuthClientProvider, { serverUrl });
+      const result = await auth(provider as OAuthClientProvider, { serverUrl, scope: requestScope });
       if (result !== 'REDIRECT') {
         await callbackServer.close();
         throw new AlreadyAuthorizedError(serverName);

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   normalizeAgentProfile,
+  DEFAULT_AGENT_PROFILE_NAME,
   type AgentProfileContext,
   type AgentProfileInput,
   type SystemPromptRenderResult,
@@ -12,9 +13,13 @@ import {
   registerAgentProfile,
 } from '#/app/agentProfileCatalog/contribution';
 import {
+  profileCanDelegate,
   renderPromptTemplateResult,
   renderSystemPromptResult,
+  rootDelegationExtras,
+  subagentAllowlistFor,
   systemPromptVars,
+  withoutDelegatingTargets,
 } from '#/app/agentProfileCatalog/profile-shared';
 
 type AssertFalse<T extends false> = T;
@@ -441,5 +446,101 @@ describe('normalizeAgentProfile', () => {
     } finally {
       _clearAgentProfileContributionsForTests();
     }
+  });
+});
+
+describe('subagentAllowlistFor', () => {
+  const catalog = {
+    getDefault: () => ({ subagents: ['coder', 'explore'] }),
+  };
+
+  it('prefers the caller list over the default profile list', () => {
+    expect(subagentAllowlistFor(catalog, { profileName: 'x', subagents: ['plan'] })).toEqual(['plan']);
+    expect(subagentAllowlistFor(catalog, { profileName: 'x' })).toEqual(['coder', 'explore']);
+  });
+
+  it('treats an explicit wildcard as unrestricted', () => {
+    expect(subagentAllowlistFor(catalog, { profileName: 'x', subagents: ['*'] })).toBeUndefined();
+  });
+
+  it('unions delegation extras into the declared list without duplicates', () => {
+    expect(
+      subagentAllowlistFor(catalog, { profileName: 'x', subagents: ['coder'] }, [
+        'reviewer',
+        'coder',
+      ]),
+    ).toEqual(['coder', 'reviewer']);
+    expect(subagentAllowlistFor(catalog, { profileName: 'x', subagents: ['coder'] }, [])).toEqual([
+      'coder',
+    ]);
+  });
+
+  it('falls back to the extras when neither the caller nor the default declares a list', () => {
+    expect(
+      subagentAllowlistFor({ getDefault: () => ({}) }, { profileName: 'x' }, ['reviewer']),
+    ).toEqual(['reviewer']);
+  });
+});
+
+describe('rootDelegationExtras', () => {
+  const catalog = {
+    inspect: (name: string) =>
+      name === 'reviewer'
+        ? { sourceId: 'workspace' }
+        : name === 'skill-helper'
+          ? { sourceId: 'feature:plan' }
+          : { sourceId: 'builtin' },
+  };
+  const profiles = [
+    { name: 'coder' },
+    { name: 'reviewer' },
+    { name: 'skill-helper' },
+    { name: DEFAULT_AGENT_PROFILE_NAME },
+  ];
+
+  it('reports the discovered agent profiles for a default or unrestricted caller', () => {
+    expect(rootDelegationExtras(catalog, { profileName: DEFAULT_AGENT_PROFILE_NAME }, profiles)).toEqual([
+      'reviewer',
+    ]);
+    expect(rootDelegationExtras(catalog, {}, profiles)).toEqual(['reviewer']);
+  });
+
+  it('keeps an explicit allowlist of a non-default caller untouched', () => {
+    expect(
+      rootDelegationExtras(catalog, { profileName: 'orchestrator', subagents: ['reviewer'] }, profiles),
+    ).toBeUndefined();
+  });
+
+  it('reports nothing when every profile is builtin or feature-contributed', () => {
+    expect(
+      rootDelegationExtras(catalog, { profileName: DEFAULT_AGENT_PROFILE_NAME }, [{ name: 'coder' }]),
+    ).toBeUndefined();
+  });
+});
+
+describe('withoutDelegatingTargets', () => {
+  const catalog = {
+    get: (name: string) =>
+      name === 'delegator'
+        ? { tools: ['Agent'], disallowedTools: [] }
+        : name === 'blocked'
+          ? { tools: ['Agent', 'Read'], disallowedTools: ['Agent'] }
+          : name === 'reader'
+            ? { tools: ['Read'], disallowedTools: [] }
+            : undefined,
+  };
+
+  it('drops targets that can hand the task on, keeping unknown and read-only ones', () => {
+    expect(withoutDelegatingTargets(catalog, ['delegator', 'blocked', 'reader', 'ghost'])).toEqual([
+      'blocked',
+      'reader',
+      'ghost',
+    ]);
+  });
+
+  it('treats a profile without a tool list as able to delegate', () => {
+    expect(profileCanDelegate({ tools: undefined, disallowedTools: [] })).toBe(true);
+    expect(profileCanDelegate({ tools: ['Read', 'Grep'], disallowedTools: [] })).toBe(false);
+    expect(profileCanDelegate({ tools: ['Read', 'AgentSwarm'], disallowedTools: [] })).toBe(true);
   });
 });

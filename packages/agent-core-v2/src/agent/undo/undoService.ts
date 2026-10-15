@@ -16,6 +16,7 @@ import {
   isValidUndoCount,
 } from '#/agent/contextMemory/conversationTime';
 import { IAgentFullCompactionService } from '#/agent/fullCompaction/fullCompaction';
+import { isUserPromptSubmitHookPart } from '#/agent/contextMemory/hookParts';
 import { IAgentLoopService } from '#/agent/loop/loop';
 import { IAgentPromptService } from '#/agent/prompt/prompt';
 import { promptMetadataTextFromContentParts } from '#/agent/prompt/promptMetadataText';
@@ -215,7 +216,7 @@ export class AgentConversationUndoService
     let lastPrompt = pending === undefined
       ? undefined
       : promptMetadataTextFromContentParts(
-          pending.message.content,
+          pending.message.content.filter((part) => !isUserPromptSubmitHookPart(part)),
           pending.message.origin?.kind === 'user' || pending.message.origin?.kind === 'skill_activation'
             ? pending.message.origin.clientMetadata
             : undefined,
@@ -226,7 +227,7 @@ export class AgentConversationUndoService
         const message = history[i]!;
         if (!isUndoAnchor(message)) continue;
         lastPrompt = promptMetadataTextFromContentParts(
-          message.content,
+          message.content.filter((part) => !isUserPromptSubmitHookPart(part)),
           message.origin?.kind === 'user' || message.origin?.kind === 'skill_activation'
             ? message.origin.clientMetadata
             : undefined,

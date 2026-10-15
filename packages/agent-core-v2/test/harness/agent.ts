@@ -666,7 +666,7 @@ export function questionServices(service: ISessionQuestionService): TestAgentSer
 }
 
 export function externalHookServices(
-  hookRunner: Pick<IExternalHooksRunnerService, 'trigger' | 'triggerBlock' | 'fireAndForgetTrigger'> | undefined,
+  hookRunner: Partial<Pick<IExternalHooksRunnerService, 'trigger' | 'triggerBlock' | 'fireAndForgetTrigger'>> | undefined,
 ): TestAgentServiceOverride {
   return [
     appService(IExternalHooksRunnerService, resolveExternalHooksRunner(hookRunner)),
@@ -675,7 +675,7 @@ export function externalHookServices(
 }
 
 function resolveExternalHooksRunner(
-  hookRunner: Pick<IExternalHooksRunnerService, 'trigger' | 'triggerBlock' | 'fireAndForgetTrigger'> | undefined,
+  hookRunner: Partial<Pick<IExternalHooksRunnerService, 'trigger' | 'triggerBlock' | 'fireAndForgetTrigger'>> | undefined,
 ): IExternalHooksRunnerService {
   return hookRunner === undefined
     ? noopHookRunner
@@ -685,7 +685,7 @@ function resolveExternalHooksRunner(
 }
 
 function isRunnerLike(
-  value: Pick<IExternalHooksRunnerService, 'trigger' | 'triggerBlock' | 'fireAndForgetTrigger'>,
+  value: Partial<Pick<IExternalHooksRunnerService, 'trigger' | 'triggerBlock' | 'fireAndForgetTrigger'>>,
 ): value is IExternalHooksRunnerService {
   const candidate = value as IExternalHooksRunnerService;
   return (

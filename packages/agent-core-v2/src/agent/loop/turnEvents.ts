@@ -2,6 +2,7 @@
 import { z } from 'zod';
 
 import type { PromptOrigin } from '#/agent/contextMemory/types';
+import { isUserPromptSubmitHookPart } from '#/agent/contextMemory/hookParts';
 import { Event2, registerEvent2Class } from '#/app/event/event2';
 import type { FinishReason } from '#/kosong/contract/provider';
 import type { ContentPart, TextPart } from '#/kosong/contract/message';
@@ -35,7 +36,9 @@ export function turnPromptText(
 ): string | undefined {
   const bundledBlocks = origin?.kind === 'user' ? (origin.skillActivations?.length ?? 0) : 0;
   const text = input
-    .filter((part): part is TextPart => part.type === 'text')
+    .filter(
+      (part): part is TextPart => part.type === 'text' && !isUserPromptSubmitHookPart(part),
+    )
     .slice(bundledBlocks)
     .map((part) => part.text)
     .join('');

@@ -59,6 +59,7 @@ import { PromptAccepted, promptAdmissionKey } from './promptOps';
 import { daemonFileRefFromPart } from '#/agent/media/mediaRef';
 import { materializePromptDaemonRefs } from '#/agent/media/promptMediaIntake';
 import { ISessionMediaStore } from '#/agent/media/sessionMediaStore';
+import { isUserPromptSubmitHookPart } from '#/agent/contextMemory/hookParts';
 
 export interface PromptCompletedPayload {
   readonly promptId: string;
@@ -435,12 +436,14 @@ export class AgentPromptService implements IAgentPromptService {
         const mediaStore = this.instantiation.invokeFunction((accessor) => accessor.get(ISessionMediaStore));
         await materializePromptDaemonRefs(message.content, { files, mediaStore });
       }
-      if (await this.blockedByHook(message, false)) {
+      const hookParts = await this.promptSubmitHookParts(message, false);
+      if (hookParts === undefined) {
         this.appendPrompt(message, captions); item.state = 'blocked'; item.launchedDeferred.resolve(undefined);
         item.completionDeferred.resolve({ promptId: item.id, result: undefined, state: 'blocked' });
         this.publishCompleted(item.id, 'blocked'); return;
       }
-      const turn = (await this.loop.enqueue(new PromptStepRequest(message, captions, this.reminders, this.profile.getModelProviderType())).assigned).turn;
+      const promptMessage: ContextMessage = hookParts.length === 0 ? message : { ...message, content: [...hookParts, ...message.content] };
+      const turn = (await this.loop.enqueue(new PromptStepRequest(promptMessage, captions, this.reminders, this.profile.getModelProviderType())).assigned).turn;
       if (turn === undefined) { this.pending.unshift(item); return; }
       item.state = 'running'; item.launchedDeferred.resolve(turn); this.active = Object.assign(item, { turn });
       void turn.result.then((result) => this.settle(item, result));
@@ -466,8 +469,10 @@ export class AgentPromptService implements IAgentPromptService {
     void this.startNext();
   }
 
-  private async blockedByHook(promptMessage: ContextMessage, isSteer: boolean): Promise<boolean> {
-    const ctx = { promptMessage, isSteer, block: false }; await this.hooks.onBeforeSubmitPrompt.run(ctx); return ctx.block;
+  private async promptSubmitHookParts(promptMessage: ContextMessage, isSteer: boolean): Promise<ContentPart[] | undefined> {
+    const ctx: PromptSubmitContext = { promptMessage, isSteer, hookParts: [], block: false };
+    await this.hooks.onBeforeSubmitPrompt.run(ctx);
+    return ctx.block ? undefined : ctx.hookParts;
   }
   private get fullCompaction(): IAgentFullCompactionService {
     if (this.fullCompactionService === undefined) {
@@ -522,7 +527,9 @@ function bundledSkillBlockCount(message: ContextMessage): number {
 }
 
 function stripBundledSkillBlocks(message: ContextMessage): ContentPart[] {
-  return message.content.slice(bundledSkillBlockCount(message));
+  return message.content
+    .filter((part) => !isUserPromptSubmitHookPart(part))
+    .slice(bundledSkillBlockCount(message));
 }
 
 function snapshot(item: Record): PromptSnapshot { return { id: item.id, userMessageId: item.userMessageId, createdAt: item.createdAt, state: item.state, message: item.message }; }

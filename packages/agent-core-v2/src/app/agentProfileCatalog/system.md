@@ -86,7 +86,7 @@ The current date and time in ISO format is `${now}`. This was captured when the 
 
 ## Working Directory
 
-The current working directory is `${cwd}`. This should be considered as the project root if you are instructed to perform tasks on the project. Tools may require absolute paths for some parameters, IF SO, YOU MUST use absolute paths for these parameters.
+The current working directory is `${cwd}`. Tools may require absolute paths for some parameters, IF SO, YOU MUST use absolute paths for these parameters.
 
 Use this as your basic understanding of the project structure. The tree only shows the first two levels for normal directories; entries marked "... and N more" indicate additional contents. Hidden directories are shown as entries only; their contents are intentionally omitted to reduce noise.
 

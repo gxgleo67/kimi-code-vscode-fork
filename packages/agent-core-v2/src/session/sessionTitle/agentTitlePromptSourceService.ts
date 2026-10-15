@@ -1,6 +1,7 @@
 import { ScopeActivation, registerScopedService } from '#/_base/di/scope';
 import { LifecycleScope } from '#/app/scopes';
 import { IAgentContextMemoryService } from '#/agent/contextMemory/contextMemory';
+import { isUserPromptSubmitHookPart } from '#/agent/contextMemory/hookParts';
 import type { ContextMessage } from '#/agent/contextMemory/types';
 import { IAgentPromptService } from '#/agent/prompt/prompt';
 import {
@@ -95,8 +96,9 @@ function isNaturalLanguagePrompt(message: ContextMessage): boolean {
 
 function promptMetadataTextFromUserMessage(message: ContextMessage): string | undefined {
   const bundled = message.origin?.kind === 'user' ? (message.origin.skillActivations?.length ?? 0) : 0;
+  const visible = message.content.filter((part) => !isUserPromptSubmitHookPart(part));
   return promptMetadataTextFromContentParts(
-    bundled === 0 ? message.content : message.content.slice(bundled),
+    bundled === 0 ? visible : visible.slice(bundled),
     message.origin?.kind === 'user' ? message.origin.clientMetadata : undefined,
   );
 }

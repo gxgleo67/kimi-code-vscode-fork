@@ -28,6 +28,13 @@ export interface ISessionCronService {
     idealMs: number,
   ): number | null;
   loadFromStore(options?: CronLoadOptions): Promise<void>;
+  /**
+   * Records that this session was forked from `sourceSessionId`. The forked
+   * session does not inherit the source's tasks — the fork copies session files,
+   * not cron state — so this only tells the model once that the fork carries no
+   * scheduled tasks while the source keeps running them.
+   */
+  notifySessionForked(sourceSessionId: string): Promise<void>;
   start(): Promise<void>;
   stop(): Promise<void>;
   tick(): Promise<void>;

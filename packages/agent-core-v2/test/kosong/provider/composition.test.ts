@@ -365,6 +365,43 @@ describe('google-genai vertex mode (providerOptions)', () => {
   });
 });
 
+describe('google-genai thinking encoding (engine copy)', () => {
+  const encodeThinking = (modelName: string, effort: string): Record<string, unknown> => {
+    const provider = registry.createChatProvider({
+      protocol: 'google-genai',
+      modelName,
+      apiKey: 'sk-probe',
+    });
+    const fn = Reflect.get(provider, '_encodeThinking') as (e: string) => Record<string, unknown>;
+    return fn.call(provider, effort);
+  };
+
+  it('gemini-4 uses thinkingLevel instead of thinkingBudget', () => {
+    expect(encodeThinking('gemini-4-argon', 'high')).toEqual({
+      includeThoughts: true,
+      thinkingLevel: 'HIGH',
+    });
+  });
+
+  it('gemini-4 rejects effort off (thinking cannot be disabled)', () => {
+    expect(() => encodeThinking('gemini-4-argon', 'off')).toThrow(/not supported for gemini-4/);
+  });
+
+  it('gemini-3 keeps MINIMAL with hidden thoughts for effort off', () => {
+    expect(encodeThinking('gemini-3-pro', 'off')).toEqual({
+      includeThoughts: false,
+      thinkingLevel: 'MINIMAL',
+    });
+  });
+
+  it('earlier gemini models keep thinkingBudget', () => {
+    expect(encodeThinking('gemini-2.5-flash', 'low')).toEqual({
+      includeThoughts: true,
+      thinkingBudget: 1024,
+    });
+  });
+});
+
 describe('resolveProviderEndpoint', () => {
   it('resolves the kimi endpoint chain from process.env', () => {
     process.env['KIMI_API_KEY'] = 'sk-kimi-env';
@@ -413,11 +450,14 @@ describe('kimi provider definitions', () => {
   it('registers one definition per transport, with shared vendor-level facts', () => {
     const native = getProviderDefinition('kimi', 'openai');
     const anthropic = getProviderDefinition('kimi', 'anthropic');
+    const responses = getProviderDefinition('kimi', 'openai_responses');
     expect(native?.baseProtocol).toBe('openai');
     expect(native?.traits).toHaveLength(1);
     expect(anthropic?.baseProtocol).toBe('anthropic');
     expect(anthropic?.traits).toHaveLength(1);
-    for (const definition of [native, anthropic]) {
+    expect(responses?.baseProtocol).toBe('openai_responses');
+    expect(responses?.traits).toHaveLength(1);
+    for (const definition of [native, anthropic, responses]) {
       expect(definition?.endpoint).toEqual({
         apiKeyEnv: 'KIMI_API_KEY',
         baseUrlEnv: 'KIMI_BASE_URL',
@@ -430,7 +470,7 @@ describe('kimi provider definitions', () => {
 
   it('answers id-level queries and reports unregistered pairs', () => {
     expect(getProviderDefinition('kimi')?.baseProtocol).toBe('openai');
-    expect(getProviderDefinitions('kimi')).toHaveLength(2);
+    expect(getProviderDefinitions('kimi')).toHaveLength(3);
     expect(hasProviderDefinition('kimi')).toBe(true);
     expect(hasProviderDefinition('no-such-vendor')).toBe(false);
     expect(getProviderDefinition('kimi', 'google-genai')).toBeUndefined();
@@ -689,6 +729,112 @@ describe('per-turn intent wire encoding (behavior probes)', () => {
     expect(params['thinking']).toEqual({ type: 'enabled' });
     expect(params['output_config']).toEqual({ effort: 'high' });
     expect(requestOptions).toBeUndefined();
+  });
+});
+
+describe('completion token cap is omitted unless configured (issue #4091)', () => {
+  function kimiOpenAI(): ChatProvider {
+    return registry.createChatProvider({
+      protocol: 'openai',
+      providerType: 'kimi',
+      modelName: 'kimi-k2',
+      apiKey: 'sk-probe',
+    });
+  }
+
+  function responses(providerType?: string): ChatProvider {
+    return registry.createChatProvider({
+      protocol: 'openai_responses',
+      providerType,
+      modelName: 'kimi-k2',
+      apiKey: 'sk-probe',
+    });
+  }
+
+  it('sends no cap on the kimi chat transport when the caller configured none', async () => {
+    const body = await captureOpenAIBody(kimiOpenAI());
+
+    expect(body).not.toHaveProperty('max_completion_tokens');
+    expect(body).not.toHaveProperty('max_tokens');
+  });
+
+  it('derives the kimi cap from the remaining window when the caller configured none', async () => {
+    const body = await captureOpenAIBody(kimiOpenAI(), {
+      usedContextTokens: 40,
+      maxContextTokens: 1000,
+    });
+
+    expect(body['max_completion_tokens']).toBe(960);
+  });
+
+  it('sends no kimi cap when the window is unknown', async () => {
+    const body = await captureOpenAIBody(kimiOpenAI(), { usedContextTokens: 40 });
+
+    expect(body).not.toHaveProperty('max_completion_tokens');
+  });
+
+  it('omits the cap on a non-positive explicit cap (opted out of the completion budget)', async () => {
+    const body = await captureOpenAIBody(kimiOpenAI(), {
+      maxCompletionTokens: 0,
+      usedContextTokens: 40,
+      maxContextTokens: 1000,
+    });
+
+    expect(body).not.toHaveProperty('max_completion_tokens');
+  });
+
+  it('keeps an explicit cap, tightened by the remaining window', async () => {
+    const body = await captureOpenAIBody(kimiOpenAI(), {
+      maxCompletionTokens: 5000,
+      usedContextTokens: 40,
+      maxContextTokens: 1000,
+    });
+
+    expect(body['max_completion_tokens']).toBe(960);
+  });
+
+  it('sends no cap for a vendor without a completion-token trait', async () => {
+    const provider = registry.createChatProvider({
+      protocol: 'openai',
+      modelName: 'gpt-4o',
+      apiKey: 'sk-probe',
+    });
+
+    const body = await captureOpenAIBody(provider, {
+      usedContextTokens: 40,
+      maxContextTokens: 1000,
+    });
+
+    expect(body).not.toHaveProperty('max_completion_tokens');
+    expect(body).not.toHaveProperty('max_tokens');
+  });
+
+  it('derives the responses cap from the remaining window through the kimi responses trait', async () => {
+    const body = await captureResponsesBody(responses('kimi'), {
+      usedContextTokens: 40,
+      maxContextTokens: 1000,
+    });
+
+    expect(body['max_output_tokens']).toBe(960);
+  });
+
+  it('sends no responses cap when neither the caller nor a trait supplies one', async () => {
+    const body = await captureResponsesBody(responses(), {
+      usedContextTokens: 40,
+      maxContextTokens: 1000,
+    });
+
+    expect(body).not.toHaveProperty('max_output_tokens');
+  });
+
+  it('omits max_output_tokens on a non-positive explicit cap even when a trait could derive one', async () => {
+    const body = await captureResponsesBody(responses('kimi'), {
+      maxCompletionTokens: 0,
+      usedContextTokens: 40,
+      maxContextTokens: 1000,
+    });
+
+    expect(body).not.toHaveProperty('max_output_tokens');
   });
 });
 
@@ -1362,11 +1508,11 @@ describe('Anthropic max-tokens profile', () => {
     expect(resolveDefaultMaxTokens('claude-opus-4-3')).toBe(32000);
   });
 
-  it('honors a lower override, clamps an override above the ceiling, and defaults unknown models to 128000', () => {
+  it('honors a lower override, clamps an override above the ceiling, and defaults unknown models to 64000', () => {
     expect(resolveDefaultMaxTokens('claude-opus-4-7', 200)).toBe(200);
     expect(resolveDefaultMaxTokens('claude-opus-4-7', 999999)).toBe(128000);
     expect(resolveDefaultMaxTokens('unknown-model', 12345)).toBe(12345);
-    expect(resolveDefaultMaxTokens('totally-unknown-model')).toBe(128000);
+    expect(resolveDefaultMaxTokens('totally-unknown-model')).toBe(64000);
   });
 
   it('sends the profile default as max_tokens when no explicit defaultMaxTokens is set', async () => {

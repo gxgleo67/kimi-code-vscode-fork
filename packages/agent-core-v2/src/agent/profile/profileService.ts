@@ -80,6 +80,12 @@ import {
 } from './profileOps';
 
 import { AgentStatusUpdated } from '#/agent/usage/usageEvents';
+import {
+  rootDelegationExtras,
+  subagentAllowlistFor,
+} from '#/app/agentProfileCatalog/profile-shared';
+import { IAgentScopeContext } from '#/agent/scopeContext/scopeContext';
+import { MAIN_AGENT_ID } from '#/session/agentLifecycle/agentLifecycle';
 
 export interface WarningEvent {
   readonly type: 'warning';
@@ -165,6 +171,7 @@ export class AgentProfileService extends Disposable implements IAgentProfileServ
     @IPluginService private readonly plugins: IPluginService,
     @IAgentIdentity private readonly identity: IAgentIdentity,
     @IAgentAgentsMdReminderService private readonly agentsMdReminder: IAgentAgentsMdReminderService,
+    @IAgentScopeContext private readonly scopeContext: IAgentScopeContext,
   ) {
     super();
     this.states.contributeState(profileKey);
@@ -200,6 +207,33 @@ export class AgentProfileService extends Disposable implements IAgentProfileServ
         }
       }),
     );
+    this._register(
+      this.dispatcher.hooks.onDidRestore.register('profile', async (_ctx, next) => {
+        if (this.scopeContext.agentId === MAIN_AGENT_ID && this.profileName !== undefined) {
+          await this.catalog.ready;
+          const snapshot = this.data();
+          const subagents = this.bindSubagents(snapshot.profileName, snapshot.subagents);
+          if (
+            subagents?.length !== snapshot.subagents?.length ||
+            subagents?.some((name, index) => name !== snapshot.subagents?.[index])
+          ) {
+            this.applyBindingSnapshot({ ...snapshot, subagents });
+          }
+        }
+        await next();
+      }),
+    );
+  }
+
+  private bindSubagents(
+    profileName: string | undefined,
+    subagents: readonly string[] | undefined,
+  ): readonly string[] | undefined {
+    if (this.scopeContext.agentId !== MAIN_AGENT_ID) return subagents;
+    const caller = { profileName, subagents };
+    const extras = rootDelegationExtras(this.catalog, caller, this.catalog.list());
+    if (extras === undefined || subagents === undefined) return subagents;
+    return subagentAllowlistFor(this.catalog, caller, extras) ?? subagents;
   }
 
   private get activeToolNamesOverlay(): readonly string[] | undefined {
@@ -336,7 +370,7 @@ export class AgentProfileService extends Disposable implements IAgentProfileServ
       agentsMdPaths: context.agentsMdPaths ?? [],
       activeToolNames: profile.tools,
       disallowedTools: profile.disallowedTools ?? [],
-      subagents: profile.subagents,
+      subagents: this.bindSubagents(profile.name, profile.subagents),
     }));
     this.afterConfigDispatch({
       modelAlias: alias,

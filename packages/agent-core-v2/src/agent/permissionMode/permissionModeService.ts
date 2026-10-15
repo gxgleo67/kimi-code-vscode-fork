@@ -12,6 +12,7 @@ import {
   MAIN_AGENT_ID,
 } from '#/session/agentLifecycle/agentLifecycle';
 import { IAgentStateService } from '#/agent/state/agentState';
+import { AgentStatusUpdated } from '#/agent/usage/usageEvents';
 import { IEventDispatcher } from '#/state/eventDispatcher';
 import { IAgentPermissionModeService, type PermissionModeChangedContext } from './permissionMode';
 import {
@@ -49,6 +50,7 @@ export class AgentPermissionModeService extends Service implements IAgentPermiss
     const changed = mode !== previousMode;
     if (!changed && this.agentState.get(permissionModeConfiguredKey)) return;
     void this.dispatcher.dispatch(new PermissionSetMode({ mode }));
+    void this.dispatcher.dispatch(new AgentStatusUpdated({ permission: mode }));
     if (changed) this._onDidChangeMode.fire({ mode, previousMode });
   }
 

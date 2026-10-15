@@ -31,6 +31,9 @@ import { IAgentLoopService } from '#/agent/loop/loop';
 import { MessageStepRequest } from '#/agent/loop/stepRequest';
 import { IAgentScopeContext } from '#/agent/scopeContext/scopeContext';
 import { IAgentStateService } from '#/agent/state/agentState';
+import { IAgentToolRegistryService } from '#/agent/toolRegistry/toolRegistry';
+import { IAgentToolPolicyService } from '#/agent/toolPolicy/toolPolicy';
+import { MAIN_AGENT_ID } from '#/session/agentLifecycle/agentLifecycle';
 import { ITaskService, type ITaskHandle, TERMINAL_TASK_STATES } from '#/app/task/task';
 import {
   TERMINAL_STATUSES,
@@ -156,11 +159,27 @@ const TASK_ID_ALPHABET = '0123456789abcdefghijklmnopqrstuvwxyz';
 const SESSION_CLOSED_REASON = 'Session closed';
 const NOTIFICATION_FALLBACK_PREVIEW_BYTES = 3_000;
 const ACTIVE_BACKGROUND_TASK_INJECTION_VARIANT = 'background_task_status';
+const SUBAGENT_BACKGROUND_TASK_INJECTION_VARIANT = 'subagent_background_task';
+const BACKGROUND_TASK_OUTPUT_TOOL_NAME = 'TaskOutput';
 const TASK_RESUME_TERMINATION_VARIANT = 'task_resume_termination';
 const ACTIVE_BACKGROUND_TASK_GUIDANCE = [
   'The conversation was compacted, so the earlier messages that started these background tasks are gone — but the tasks are still running from before.',
   'Do not start duplicates. Use TaskList to list them, TaskOutput for a non-blocking status/output snapshot, and TaskStop to cancel one — completion arrives via automatic notification.',
 ].join(' ');
+
+export const SUBAGENT_BACKGROUND_TASK_NOTICE =
+  'You are running as a subagent: ending your turn is your final hand-off to the parent agent, and completion notifications that arrive after it reach no one. Do not end your turn while a background task whose result you need is still running. Keep working on other useful parts of your task while it runs — TaskOutput returns a non-blocking status snapshot — or run the command in the foreground with a suitable timeout next time instead.';
+
+export function subagentBackgroundTaskNotice(input: {
+  readonly agentId: string;
+  readonly lastInjectedAt: number | null;
+  readonly canReadTaskOutput: boolean;
+}): string | undefined {
+  if (input.agentId === MAIN_AGENT_ID) return undefined;
+  if (input.lastInjectedAt !== null) return undefined;
+  if (!input.canReadTaskOutput) return undefined;
+  return SUBAGENT_BACKGROUND_TASK_NOTICE;
+}
 
 export function isAgentTaskTerminal(status: AgentTaskStatus): boolean {
   return TERMINAL_STATUSES.has(status);
@@ -227,7 +246,7 @@ export class AgentTaskService extends Disposable implements IAgentTaskService {
     @IAtomicDocumentStore atomicDocs: IAtomicDocumentStore,
     @IFileSystemStorageService byteStore: IFileSystemStorageService,
     @ISessionContext session: ISessionContext,
-    @IAgentScopeContext scopeContext: IAgentScopeContext,
+    @IAgentScopeContext private readonly scopeContext: IAgentScopeContext,
     @ITaskService private readonly taskService: ITaskService,
     @IEventBus private readonly eventBus: IEventBus,
     @IEventDispatcher private readonly dispatcher: IEventDispatcher,
@@ -237,6 +256,8 @@ export class AgentTaskService extends Disposable implements IAgentTaskService {
     undoParticipants: IAgentConversationUndoParticipantRegistry,
     @ILogService private readonly log: ILogService,
     @IAgentStateService private readonly states: IAgentStateService,
+    @IAgentToolRegistryService private readonly toolRegistry: IAgentToolRegistryService,
+    @IAgentToolPolicyService private readonly toolPolicy: IAgentToolPolicyService,
   ) {
     super();
     this.states.contributeState(taskKey);
@@ -288,6 +309,19 @@ export class AgentTaskService extends Disposable implements IAgentTaskService {
         this.activeBackgroundTaskReminder(),
       ),
     );
+    if (this.scopeContext.agentId !== MAIN_AGENT_ID) {
+      this._register(
+        injector.register(SUBAGENT_BACKGROUND_TASK_INJECTION_VARIANT, ({ lastInjectedAt }) =>
+          subagentBackgroundTaskNotice({
+            agentId: this.scopeContext.agentId,
+            lastInjectedAt,
+            canReadTaskOutput:
+              this.toolRegistry.resolve(BACKGROUND_TASK_OUTPUT_TOOL_NAME) !== undefined &&
+              this.toolPolicy.isToolActive(BACKGROUND_TASK_OUTPUT_TOOL_NAME),
+          }),
+        ),
+      );
+    }
   }
 
   private get ghosts(): Map<string, AgentTaskInfo> {

@@ -1,4 +1,6 @@
 /* oxlint-disable typescript-eslint/no-unsafe-declaration-merging, eslint-plugin-import/namespace -- Event2 class+payload-interface declaration merging is the sanctioned event-declaration idiom. */
+import { z } from 'zod';
+
 import type { IAgentScopeHandle } from '#/_base/di/scope';
 import { isAbortError, isUserCancellation, userCancellationReason } from '#/_base/utils/abort';
 import { IAgentTokenCountingService } from '#/agent/tokenCounting/tokenCounting';
@@ -7,7 +9,7 @@ import { isProviderRateLimitError } from '#/kosong/contract/errors';
 import { type TokenUsage } from '#/kosong/contract/usage';
 import { ITelemetryService } from '#/app/telemetry/telemetry';
 import type { SubagentCreatedEvent } from '#/app/telemetry/events';
-import { Event2 } from '#/app/event/event2';
+import { Event2, registerEvent2Class } from '#/app/event/event2';
 import { IAgentLifecycleService } from '#/session/agentLifecycle/agentLifecycle';
 import { IEventDispatcher } from '#/state/eventDispatcher';
 
@@ -32,8 +34,24 @@ export interface SubagentSpawnedPayload {
 export class SubagentSpawned extends Event2<SubagentSpawnedPayload> {
   static override readonly type = 'subagent.spawned';
   static override readonly observable = true;
+  static override readonly durable = true;
+  static override readonly schema = z.object({
+    subagentId: z.string(),
+    subagentName: z.string(),
+    parentToolCallId: z.string(),
+    parentToolCallUuid: z.string().optional(),
+    parentAgentId: z.string().optional(),
+    callerAgentId: z.string().optional(),
+    description: z.string().optional(),
+    swarmIndex: z.number().optional(),
+    runInBackground: z.boolean(),
+    model: z.string().optional(),
+    thinkingEffort: z.string().optional(),
+    taskId: z.string().optional(),
+  });
 }
 export interface SubagentSpawned extends SubagentSpawnedPayload {}
+registerEvent2Class(SubagentSpawned);
 
 export interface SubagentStartedPayload {
   readonly subagentId: string;
@@ -42,8 +60,11 @@ export interface SubagentStartedPayload {
 export class SubagentStarted extends Event2<SubagentStartedPayload> {
   static override readonly type = 'subagent.started';
   static override readonly observable = true;
+  static override readonly durable = true;
+  static override readonly schema = z.object({ subagentId: z.string() });
 }
 export interface SubagentStarted extends SubagentStartedPayload {}
+registerEvent2Class(SubagentStarted);
 
 export interface SubagentCompletedPayload {
   readonly subagentId: string;
@@ -55,8 +76,16 @@ export interface SubagentCompletedPayload {
 export class SubagentCompleted extends Event2<SubagentCompletedPayload> {
   static override readonly type = 'subagent.completed';
   static override readonly observable = true;
+  static override readonly durable = true;
+  static override readonly schema = z.object({
+    subagentId: z.string(),
+    resultSummary: z.string(),
+    usage: z.custom<TokenUsage>().optional(),
+    contextTokens: z.number().optional(),
+  });
 }
 export interface SubagentCompleted extends SubagentCompletedPayload {}
+registerEvent2Class(SubagentCompleted);
 
 export interface SubagentFailedPayload {
   readonly subagentId: string;
@@ -66,8 +95,11 @@ export interface SubagentFailedPayload {
 export class SubagentFailed extends Event2<SubagentFailedPayload> {
   static override readonly type = 'subagent.failed';
   static override readonly observable = true;
+  static override readonly durable = true;
+  static override readonly schema = z.object({ subagentId: z.string(), error: z.string() });
 }
 export interface SubagentFailed extends SubagentFailedPayload {}
+registerEvent2Class(SubagentFailed);
 
 export interface SubagentCancelledPayload {
   readonly subagentId: string;
@@ -76,8 +108,11 @@ export interface SubagentCancelledPayload {
 export class SubagentCancelled extends Event2<SubagentCancelledPayload> {
   static override readonly type = 'subagent.cancelled';
   static override readonly observable = true;
+  static override readonly durable = true;
+  static override readonly schema = z.object({ subagentId: z.string() });
 }
 export interface SubagentCancelled extends SubagentCancelledPayload {}
+registerEvent2Class(SubagentCancelled);
 
 export interface AgentRunSpawnedMeta {
   readonly profileName: string;

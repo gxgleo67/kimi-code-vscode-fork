@@ -271,6 +271,7 @@ describe('event adapter (projects SDK events into the legacy Webview contract)',
       contextTokens: 51200,
       maxContextTokens: 204800,
       planMode: true,
+      permission: 'auto',
       usage: {
         currentTurn: {
           inputOther: 10,
@@ -288,6 +289,7 @@ describe('event adapter (projects SDK events into the legacy Webview contract)',
         context_tokens: 51200,
         max_context_tokens: 204800,
         plan_mode: true,
+        permission: 'auto',
         token_usage: {
           input_other: 10,
           output: 4,

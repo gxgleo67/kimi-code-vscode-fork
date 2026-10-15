@@ -5,6 +5,7 @@ import { createServices } from '#/_base/di/test';
 import { Event } from '#/_base/event';
 import { IAgentBlobService } from '#/agent/blob/agentBlobService';
 import { IAgentContextMemoryService } from '#/agent/contextMemory/contextMemory';
+import { userPromptSubmitHookPart } from '#/agent/contextMemory/hookParts';
 import type { ContextMessage } from '#/agent/contextMemory/types';
 import { IAgentFullCompactionService } from '#/agent/fullCompaction/fullCompaction';
 import { IAgentLoopService } from '#/agent/loop/loop';
@@ -230,6 +231,51 @@ describe('AgentPromptService', () => {
     const { prompt } = harness();
     await prompt.inject({ ...message('system'), origin: { kind: 'injection', variant: 'test' } });
     expect(prompt.list()).toEqual({ active: undefined, pending: [] });
+  });
+
+  it('folds UserPromptSubmit hook parts into the prompt message at content position 0', async () => {
+    const { prompt, context, loop } = harness();
+    prompt.hooks.onBeforeSubmitPrompt.register('hook', async (ctx, next) => {
+      ctx.hookParts.push(
+        userPromptSubmitHookPart(
+          '<hook_result hook_event="UserPromptSubmit">\nfrom hook\n</hook_result>',
+        ),
+      );
+      await next();
+    });
+
+    const handle = await prompt.enqueue({ id: 'prompt-hook', message: message('launching') });
+    await handle.launched;
+    loop.drainNextBatch(context);
+
+    expect(context.get()[0]?.content).toEqual([
+      {
+        type: 'text',
+        text: '<hook_result hook_event="UserPromptSubmit">\nfrom hook\n</hook_result>',
+        meta: { contentType: 'text/xml', source: 'user prompt submit hook' },
+      },
+      { type: 'text', text: 'launching' },
+    ]);
+  });
+
+  it('drops the collected hook parts when the hook blocks the prompt', async () => {
+    const { prompt, context } = harness();
+    prompt.hooks.onBeforeSubmitPrompt.register('hook', async (ctx, next) => {
+      ctx.hookParts.push(
+        userPromptSubmitHookPart(
+          '<hook_result hook_event="UserPromptSubmit">\nfrom hook\n</hook_result>',
+        ),
+      );
+      ctx.block = true;
+      await next();
+    });
+
+    const handle = await prompt.enqueue({ id: 'prompt-hook-blocked', message: message('blocked') });
+    await expect(handle.completion).resolves.toMatchObject({ state: 'blocked' });
+
+    expect(context.get().map((entry) => entry.content)).toEqual([
+      [{ type: 'text', text: 'blocked' }],
+    ]);
   });
 
   it('settles blocked prompts', async () => {

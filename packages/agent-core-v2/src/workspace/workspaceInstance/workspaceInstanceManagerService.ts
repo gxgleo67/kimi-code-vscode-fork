@@ -7,7 +7,6 @@ import { IBuiltinAgentProfileLoader } from '#/app/agentProfileCatalog/builtinAge
 import { IAgentProfileRegistry } from '#/app/agentProfileCatalog/agentProfileRegistry';
 import { IBootstrapService } from '#/app/bootstrap/bootstrap';
 import { IConfigService } from '#/app/config/config';
-import { ICronTaskPersistence } from '#/app/cron/cronTaskPersistence';
 import { IEventService } from '#/app/event/event';
 import { IFlagService } from '#/app/flag/flag';
 import { IGitService } from '#/app/git/git';
@@ -56,7 +55,6 @@ export class WorkspaceInstanceManager implements IWorkspaceInstanceManager {
     @IHostEnvironment private readonly environment: IHostEnvironment,
     @IAppStateService private readonly appState: IAppStateService,
     @IConfigService private readonly config: IConfigService,
-    @ICronTaskPersistence private readonly cronStore: ICronTaskPersistence,
     @IEventService private readonly event: IEventService,
     @IFlagService private readonly flags: IFlagService,
     @ref(IGitService) private readonly git: LiveRef<IGitService>,
@@ -216,7 +214,6 @@ export class WorkspaceInstanceManager implements IWorkspaceInstanceManager {
           this.storage,
           this.log,
           input.fs,
-          this.cronStore,
           this.event,
           this.telemetry,
           input.workspaceAgentProfiles,

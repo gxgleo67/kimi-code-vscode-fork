@@ -4,6 +4,22 @@
 >
 > *中文:* 本文件只记录本 fork(Kimi Code (Fork))自身的更新,版本号独立编号。官方上游的更新记录请见 [MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code/blob/main/apps/vscode/CHANGELOG.md)。
 
+## 0.9.23(2026-10-15)
+
+1. Synced upstream engine fixes through CLI 2.2.0 (#4230): media tools (image/video reading) are available again after resuming a session, and cancelling a turn now aborts in-flight video uploads instead of letting them run in the background.
+2. Sub-agents: lifecycle events are persisted so swarm members survive a window reload; forking a session no longer inherits the source session's cron tasks (a one-time notice appears when any were cleared); forked sessions inherit the source's title behavior; forked sub-agent requests keep the exact same prompt prefix as the parent so provider prompt caching actually hits, with a new cache-parity probe in telemetry.
+3. Conversation: undoing a turn also removes the "interrupted" reminder it left behind; UserPromptSubmit hook output is folded into your prompt message instead of appearing as a separate message; permission-mode changes are pushed to the panel immediately.
+4. Models: Gemini 4 models use thinking levels — effort "off" now fails fast with a clear error (Gemini 4 cannot disable thinking) instead of failing every request with HTTP 400; the completion-token cap is omitted unless explicitly configured; new `KIMI_CODE_LLM_HEADERS_TIMEOUT_MS` env var for the LLM headers timeout.
+5. Config: new `auto_session_title` option (default on) to toggle LLM-generated session titles; new `KIMI_CODE_REPEAT_BREAKER` env switch for the repeated-tool-call breaker; MCP OAuth requests `offline_access` when the server advertises it, so MCP logins stay alive longer.
+
+*中文:*
+
+1. 同步官方至 CLI 2.2.0(#4230)的引擎修复:恢复会话后媒体工具(读图/视频)重新可用;中断回合时会同时取消进行中的视频上传,不再后台跑完
+2. 子代理:生命周期事件持久化,窗口重载后 swarm 成员不丢失;fork 会话不再继承源会话的 cron 定时任务(有清理时一次性提醒);fork 会话继承源会话的标题行为;fork 子代理请求前缀与父代理完全一致,prompt 缓存真正命中,并新增缓存一致性探针遥测
+3. 对话:撤销回合时连同「已打断」提醒一起移除;UserPromptSubmit 钩子输出折进你的 prompt 消息,不再单独成条;权限模式变化即时推送到面板
+4. 模型:Gemini 4 改用 thinkingLevel——「关闭思考」会立即报明确的错(Gemini 4 无法关闭思考),不再每个请求都 400;未显式配置时不再发送 completion token 上限;新增 `KIMI_CODE_LLM_HEADERS_TIMEOUT_MS` 环境变量配置 LLM 响应头超时
+5. 配置:新增 `auto_session_title` 开关(默认开)控制 LLM 自动生成会话标题;新增 `KIMI_CODE_REPEAT_BREAKER` 环境开关控制重复工具调用熔断;MCP OAuth 在服务端支持时请求 `offline_access`,登录态更持久
+
 ## 0.9.22(2026-09-20)
 
 1. Fixed a full-panel crash introduced in 0.9.20: the settings menu's account quota rows still called the quota-ring component with its old props, so once an account's quota loaded successfully, rendering threw and the whole webview went blank until VS Code was restarted. The menu now uses the new props (with the same weekly/monthly adaptation and plan name as the status bar).

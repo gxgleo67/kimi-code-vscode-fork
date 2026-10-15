@@ -18,7 +18,11 @@ import {
   type AgentTaskInfo,
 } from '#/agent/task/task';
 import { renderNotificationXml } from '#/agent/task/notificationXml';
-import { AgentTaskService } from '#/agent/task/taskService';
+import {
+  AgentTaskService,
+  SUBAGENT_BACKGROUND_TASK_NOTICE,
+  subagentBackgroundTaskNotice,
+} from '#/agent/task/taskService';
 import { ProcessTask } from '#/agent/tools/os/bash/process-task';
 import type { IHostProcess } from '#/os/interface/hostProcess';
 import { IConfigRegistry, IConfigService } from '#/app/config/config';
@@ -33,6 +37,8 @@ import { IAtomicDocumentStore } from '#/persistence/interface/atomicDocumentStor
 import { IFileSystemStorageService } from '#/persistence/interface/storage';
 import { ITelemetryService } from '#/app/telemetry/telemetry';
 import { IAgentToolRegistryService } from '#/agent/toolRegistry/toolRegistry';
+import { IAgentToolPolicyService } from '#/agent/toolPolicy/toolPolicy';
+import { MAIN_AGENT_ID } from '#/session/agentLifecycle/agentLifecycle';
 import { IWireService } from '#/wire/wire';
 import { IEventBus } from '#/app/event/eventBus';
 import { EventBusService } from '#/app/event/eventBusService';
@@ -115,7 +121,9 @@ describe('AgentTaskService', () => {
     ix.stub(ITelemetryService, { track: () => {}, track2: () => {} });
     ix.stub(IAgentToolRegistryService, {
       register: () => toDisposable(() => {}),
+      resolve: () => undefined,
     });
+    ix.stub(IAgentToolPolicyService, { isToolActive: () => false });
     ix.stub(IAgentLoopService, stubLoopWithHooks());
     ix.stub(IConfigRegistry, { registerSection: () => {} });
     ix.stub(IConfigService, {
@@ -161,6 +169,12 @@ describe('AgentTaskService', () => {
     ix.set(IAgentTaskService, new SyncDescriptor(AgentTaskService));
   });
   afterEach(() => disposables.dispose());
+
+  it('registers no subagent background-task notice for the main agent', () => {
+    expect(ix.get(IAgentTaskService)).toBeInstanceOf(AgentTaskService);
+    expect(injectionProviders.has('subagent_background_task')).toBe(false);
+    expect(injectionProviders.has('background_task_status')).toBe(true);
+  });
 
   it('registerTask / list / readOutput / stop', async () => {
     const svc = ix.get(IAgentTaskService);
@@ -512,6 +526,11 @@ describe('AgentTaskService', () => {
     });
     ix.stub(IAgentContextMemoryService, stubContextMemory());
     ix.stub(ITelemetryService, { track: () => {}, track2: () => {} });
+    ix.stub(IAgentToolRegistryService, {
+      register: () => toDisposable(() => {}),
+      resolve: () => undefined,
+    });
+    ix.stub(IAgentToolPolicyService, { isToolActive: () => false });
     ix.stub(IAgentLoopService, stubLoopWithHooks());
     ix.stub(IConfigService, {
       get: (() => undefined) as IConfigService['get'],
@@ -1004,5 +1023,49 @@ describe('Agent task notification XML', () => {
     expect(text).toContain('category="unknown"');
     expect(text).not.toContain('<task-notification>');
     expect(text).not.toContain('should stay out of the XML');
+  });
+});
+
+describe('subagent background task notice', () => {
+  const subagent = 'agent-1';
+
+  it('tells a subagent that can still read task output not to end its turn', () => {
+    expect(
+      subagentBackgroundTaskNotice({
+        agentId: subagent,
+        lastInjectedAt: null,
+        canReadTaskOutput: true,
+      }),
+    ).toBe(SUBAGENT_BACKGROUND_TASK_NOTICE);
+  });
+
+  it('never injects it for the main agent', () => {
+    expect(
+      subagentBackgroundTaskNotice({
+        agentId: MAIN_AGENT_ID,
+        lastInjectedAt: null,
+        canReadTaskOutput: true,
+      }),
+    ).toBeUndefined();
+  });
+
+  it('injects it once instead of repeating it from the context', () => {
+    expect(
+      subagentBackgroundTaskNotice({
+        agentId: subagent,
+        lastInjectedAt: 3,
+        canReadTaskOutput: true,
+      }),
+    ).toBeUndefined();
+  });
+
+  it('skips it while the subagent has no TaskOutput to check progress with', () => {
+    expect(
+      subagentBackgroundTaskNotice({
+        agentId: subagent,
+        lastInjectedAt: null,
+        canReadTaskOutput: false,
+      }),
+    ).toBeUndefined();
   });
 });

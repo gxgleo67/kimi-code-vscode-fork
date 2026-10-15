@@ -47,6 +47,10 @@ import {
   requireProviderApiKey,
   resolveAuthBackedClient,
 } from '../request-auth';
+import {
+  getLlmHeadersTimeoutDispatcher,
+  resolveLlmHeadersTimeoutMs,
+} from '../../timeout';
 import { normalizeToolCallIdsForProvider, sanitizeOpenAIResponsesCallId } from '../tool-call-id';
 
 function normalizeResponsesFinishReason(
@@ -366,6 +370,10 @@ export interface OpenAIResponsesOptions {
   toolMessageConversion?: ToolMessageConversion | undefined;
   clientFactory?: (auth: ProviderRequestAuth) => OpenAI;
   convertError?: (error: unknown) => ChatProviderError | undefined;
+  completionTokensWhenUnset?: (input: {
+    readonly maxContextSize: number;
+    readonly usedContextTokens?: number;
+  }) => number | undefined;
 }
 
 export interface OpenAIResponsesGenerationKwargs {
@@ -1026,6 +1034,12 @@ export class OpenAIResponsesChatProvider implements ChatProvider {
   private readonly _httpClient: unknown;
   private readonly _clientFactory: ((auth: ProviderRequestAuth) => OpenAI) | undefined;
   private readonly _convertErrorHook: ((error: unknown) => ChatProviderError | undefined) | undefined;
+  private readonly _completionTokensWhenUnset:
+    | ((input: {
+        readonly maxContextSize: number;
+        readonly usedContextTokens?: number;
+      }) => number | undefined)
+    | undefined;
 
   constructor(options: OpenAIResponsesOptions) {
     const apiKey = options.apiKey ?? process.env['OPENAI_API_KEY'];
@@ -1041,6 +1055,7 @@ export class OpenAIResponsesChatProvider implements ChatProvider {
     this._httpClient = options.httpClient;
     this._clientFactory = options.clientFactory;
     this._convertErrorHook = options.convertError;
+    this._completionTokensWhenUnset = options.completionTokensWhenUnset;
 
     if (options.maxOutputTokens !== undefined) {
       this._generationKwargs.max_output_tokens = options.maxOutputTokens;
@@ -1102,16 +1117,13 @@ export class OpenAIResponsesChatProvider implements ChatProvider {
       kwargs = { ...kwargs, reasoning_effort: effort };
     }
 
-    if (options?.maxCompletionTokens !== undefined) {
-      let cap = options.maxCompletionTokens;
-      if (
-        options.usedContextTokens !== undefined &&
-        options.maxContextTokens !== undefined &&
-        options.maxContextTokens > 0
-      ) {
-        cap = Math.min(cap, options.maxContextTokens - options.usedContextTokens);
-      }
-      kwargs = { ...kwargs, max_output_tokens: Math.max(1, cap) };
+    const requested = options?.maxCompletionTokens;
+    const cap =
+      requested !== undefined && requested <= 0
+        ? undefined
+        : this.resolveMaxCompletionTokens(requested, options);
+    if (cap !== undefined) {
+      kwargs = { ...kwargs, max_output_tokens: cap };
     }
 
     const reasoningEffort = kwargs['reasoning_effort'] as string | undefined;
@@ -1173,6 +1185,27 @@ export class OpenAIResponsesChatProvider implements ChatProvider {
     }
   }
 
+  private resolveMaxCompletionTokens(
+    requested: number | undefined,
+    options: GenerateOptions | undefined,
+  ): number | undefined {
+    if (requested === undefined) {
+      return this._completionTokensWhenUnset?.({
+        maxContextSize: options?.maxContextTokens ?? 0,
+        usedContextTokens: options?.usedContextTokens,
+      });
+    }
+    let cap = requested;
+    if (
+      options?.usedContextTokens !== undefined &&
+      options?.maxContextTokens !== undefined &&
+      options.maxContextTokens > 0
+    ) {
+      cap = Math.min(cap, options.maxContextTokens - options.usedContextTokens);
+    }
+    return Math.max(1, cap);
+  }
+
   private _createClient(auth: ProviderRequestAuth | undefined): OpenAI {
     return resolveAuthBackedClient(
       { cachedClient: this._client, clientFactory: this._clientFactory },
@@ -1194,6 +1227,12 @@ export class OpenAIResponsesChatProvider implements ChatProvider {
     }
     if (this._httpClient !== undefined) {
       clientOpts['httpClient'] = this._httpClient;
+    }
+    const headersTimeoutMs = resolveLlmHeadersTimeoutMs();
+    const dispatcher =
+      headersTimeoutMs === undefined ? undefined : getLlmHeadersTimeoutDispatcher(headersTimeoutMs);
+    if (dispatcher !== undefined) {
+      clientOpts['fetchOptions'] = { dispatcher };
     }
     return new OpenAI(clientOpts as ConstructorParameters<typeof OpenAI>[0]);
   }

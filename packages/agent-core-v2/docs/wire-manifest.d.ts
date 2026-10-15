@@ -24,7 +24,7 @@
 // cross-reducers), blobs (the folding states whose blob codec offloads inline
 // media to blob storage), owner (the source file declaring the class).
 
-// Index (53 record types)
+// Index (58 record types)
 //   config.update                      profile                                                               src\agent\profile\profileOps.ts
 //   context.append_loop_event          contextMemory, turn                                                   src\agent\contextMemory\contextEvents.ts
 //   context.append_message             contextMemory, goalForkNotice, plan, task.notificationDelivery, todo  src\agent\contextMemory\contextEvents.ts
@@ -57,6 +57,11 @@
 //   prompt.completed                   promptResolution                                                      src\agent\prompt\promptService.ts
 //   prompt.steered                     promptResolution                                                      src\agent\prompt\promptService.ts
 //   runtime.set_binding                runtimeBinding                                                        src\agent\runtimeBinding\runtimeBindingOps.ts
+//   subagent.cancelled                 (none)                                                                src\session\subagent\mirrorAgentRun.ts
+//   subagent.completed                 (none)                                                                src\session\subagent\mirrorAgentRun.ts
+//   subagent.failed                    (none)                                                                src\session\subagent\mirrorAgentRun.ts
+//   subagent.spawned                   (none)                                                                src\session\subagent\mirrorAgentRun.ts
+//   subagent.started                   (none)                                                                src\session\subagent\mirrorAgentRun.ts
 //   swarm_mode.enter                   swarm                                                                 src\features\swarm\swarmOps.ts
 //   swarm_mode.exit                    contextMemory, swarm                                                  src\features\swarm\swarmOps.ts
 //   task.started                       task                                                                  src\agent\task\taskOps.ts
@@ -498,6 +503,72 @@ interface RuntimeSetBindingPayload {
 }
 
 /**
+ * states: (none)
+ * owner: src\session\subagent\mirrorAgentRun.ts
+ */
+interface SubagentCancelledPayload {
+  _name: 'subagent.cancelled';
+  subagentId: string;
+}
+
+/**
+ * states: (none)
+ * owner: src\session\subagent\mirrorAgentRun.ts
+ */
+interface SubagentCompletedPayload {
+  _name: 'subagent.completed';
+  subagentId: string;
+  resultSummary: string;
+  /** TokenUsage */
+  usage?: {
+    inputOther: number;
+    output: number;
+    inputCacheRead: number;
+    inputCacheCreation: number;
+  };
+  contextTokens?: number;
+}
+
+/**
+ * states: (none)
+ * owner: src\session\subagent\mirrorAgentRun.ts
+ */
+interface SubagentFailedPayload {
+  _name: 'subagent.failed';
+  subagentId: string;
+  error: string;
+}
+
+/**
+ * states: (none)
+ * owner: src\session\subagent\mirrorAgentRun.ts
+ */
+interface SubagentSpawnedPayload {
+  _name: 'subagent.spawned';
+  subagentId: string;
+  subagentName: string;
+  parentToolCallId: string;
+  parentToolCallUuid?: string;
+  parentAgentId?: string;
+  callerAgentId?: string;
+  description?: string;
+  swarmIndex?: number;
+  runInBackground: boolean;
+  model?: string;
+  thinkingEffort?: string;
+  taskId?: string;
+}
+
+/**
+ * states: (none)
+ * owner: src\session\subagent\mirrorAgentRun.ts
+ */
+interface SubagentStartedPayload {
+  _name: 'subagent.started';
+  subagentId: string;
+}
+
+/**
  * states: swarm
  * owner: src\features\swarm\swarmOps.ts
  */
@@ -810,6 +881,11 @@ interface WirePayloadMap {
   "prompt.completed": PromptCompletedPayload;
   "prompt.steered": PromptSteeredPayload;
   "runtime.set_binding": RuntimeSetBindingPayload;
+  "subagent.cancelled": SubagentCancelledPayload;
+  "subagent.completed": SubagentCompletedPayload;
+  "subagent.failed": SubagentFailedPayload;
+  "subagent.spawned": SubagentSpawnedPayload;
+  "subagent.started": SubagentStartedPayload;
   "swarm_mode.enter": SwarmModeEnterPayload;
   "swarm_mode.exit": SwarmModeExitPayload;
   "task.started": TaskStartedPayload;

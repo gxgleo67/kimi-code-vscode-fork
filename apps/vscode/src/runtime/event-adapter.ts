@@ -358,6 +358,7 @@ function mapStatusUpdate(
   if (sdkEvent.contextTokens !== undefined) payload.context_tokens = sdkEvent.contextTokens;
   if (sdkEvent.maxContextTokens !== undefined) payload.max_context_tokens = sdkEvent.maxContextTokens;
   if (sdkEvent.planMode !== undefined) payload.plan_mode = sdkEvent.planMode;
+  if (sdkEvent.permission !== undefined) payload.permission = sdkEvent.permission;
   if (sdkEvent.model !== undefined) payload.model = sdkEvent.model;
   if (sdkEvent.thinkingEffort !== undefined) payload.thinking_effort = sdkEvent.thinkingEffort;
 

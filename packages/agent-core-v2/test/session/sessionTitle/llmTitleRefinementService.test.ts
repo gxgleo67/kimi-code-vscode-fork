@@ -6,6 +6,7 @@ import type { IAgentScopeHandle } from '#/_base/di/scope';
 import { LifecycleScope } from '#/app/scopes';
 import { Emitter } from '#/_base/event';
 import { IBootstrapService } from '#/app/bootstrap/bootstrap';
+import { IConfigService } from '#/app/config/config';
 import { IEventService } from '#/app/event/event';
 import { IEventBus } from '#/app/event/eventBus';
 import type { Event2, Event2Class } from '#/app/event/event2';
@@ -36,6 +37,7 @@ import {
   IAgentTitlePromptSource,
   type TitleTurnExcerpt,
 } from '#/session/sessionTitle/agentTitlePromptSource';
+import { AUTO_SESSION_TITLE_SECTION } from '#/session/sessionTitle/configSection';
 import { ISessionLlmTitleRefinement } from '#/session/sessionTitle/llmTitleRefinement';
 import { SessionLlmTitleRefinementService } from '#/session/sessionTitle/llmTitleRefinementService';
 
@@ -141,6 +143,7 @@ describe('SessionLlmTitleRefinementService', () => {
   let events: FakeEventService;
   let bus: FakeBus;
   let productName: string;
+  let autoSessionTitle: boolean | undefined;
   let responses: (string | Error)[];
   let turnExcerpt: TitleTurnExcerpt;
   let gate: RequestGate | undefined;
@@ -169,6 +172,7 @@ describe('SessionLlmTitleRefinementService', () => {
 
   beforeEach(() => {
     productName = 'kimi-code-vscode';
+    autoSessionTitle = true;
     responses = ['"修复登录崩溃"\n'];
     turnExcerpt = { user: FIRST_PROMPT, assistant: FIRST_REPLY };
     gate = undefined;
@@ -241,6 +245,10 @@ describe('SessionLlmTitleRefinementService', () => {
             version: '0.0.0-test',
             platform: 'test_platform',
           },
+        });
+        reg.definePartialInstance(IConfigService, {
+          get: <T,>(domain: string): T =>
+            (domain === AUTO_SESSION_TITLE_SECTION ? autoSessionTitle : undefined) as T,
         });
         reg.definePartialInstance(IModelCatalog, {
           getRequester: (id: string) => {
@@ -344,6 +352,36 @@ describe('SessionLlmTitleRefinementService', () => {
     expect(metadata.meta.title).toBe(easyTitle);
     expect(metadata.meta.titleKind).toBe('replaceable');
     expect(metaUpdatedEvents()).toEqual([]);
+  });
+
+  it('does not refine when auto_session_title is false in the config', async () => {
+    autoSessionTitle = false;
+    ix.get(ISessionLlmTitleRefinement);
+    const easyTitle = await writeEasyTitle(FIRST_PROMPT);
+    await tick();
+
+    turnEnded();
+    await tick();
+
+    expect(requestCount).toBe(0);
+    expect(metadata.meta.title).toBe(easyTitle);
+    expect(metadata.meta.titleKind).toBe('replaceable');
+    expect(metaUpdatedEvents()).toEqual([]);
+  });
+
+  it('skips a captured refinement when auto_session_title turns false before the turn ends', async () => {
+    ix.get(ISessionLlmTitleRefinement);
+    const easyTitle = await writeEasyTitle(FIRST_PROMPT);
+    await tick();
+
+    autoSessionTitle = false;
+    turnEnded();
+    await tick();
+    await tick();
+
+    expect(requestCount).toBe(0);
+    expect(metadata.meta.title).toBe(easyTitle);
+    expect(metadata.meta.titleKind).toBe('replaceable');
   });
 
   it('retries when the model returns no text and applies a later success', async () => {

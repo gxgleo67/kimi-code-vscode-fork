@@ -15,6 +15,11 @@ import type {
   ToolCall,
 } from "../../shared/legacy-sdk";
 import type { UIStreamEvent } from "../../shared/types";
+import {
+  hookResultBody,
+  isUserPromptSubmitHookPart,
+  withoutUserPromptSubmitHookParts,
+} from "../utils/hook-parts";
 import { toLegacyToolName } from "./event-adapter";
 import { toLegacyDisplay } from "./tool-display";
 
@@ -96,7 +101,8 @@ function replayAgentToWebviewEvents(
         const message = record.message;
         if (message.role === "user") {
           if (!isVisibleUserMessage(message.origin)) break;
-          const imported = importedContextReplay(message.content);
+          const visibleContent = withoutUserPromptSubmitHookParts(message.content);
+          const imported = importedContextReplay(visibleContent);
           completeTurn();
           step = 0;
           turnOpen = true;
@@ -105,13 +111,25 @@ function replayAgentToWebviewEvents(
               {
                 type: "TurnBegin",
                 payload: {
-                  user_input: imported?.input ?? replayUserInput(message.content, message.origin),
+                  user_input: imported?.input ?? replayUserInput(visibleContent, message.origin),
                   time: record.time,
                 },
               },
               sessionId,
             ),
           );
+          const hookParts = message.content.filter(isUserPromptSubmitHookPart);
+          if (hookParts.length > 0) {
+            ensureStep();
+            for (const part of hookParts) {
+              events.push(
+                withSession(
+                  { type: "ContentPart", payload: { type: "text", text: hookResultBody(part.text) } },
+                  sessionId,
+                ),
+              );
+            }
+          }
           if (imported !== undefined) {
             ensureStep();
             events.push(

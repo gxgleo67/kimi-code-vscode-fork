@@ -52,6 +52,10 @@ import {
   requireProviderApiKey,
   resolveAuthBackedClient,
 } from '../request-auth';
+import {
+  getLlmHeadersTimeoutDispatcher,
+  resolveLlmHeadersTimeoutMs,
+} from '../../timeout';
 import { normalizeToolCallIdsForProvider, sanitizeToolCallId } from '../tool-call-id';
 
 const CHAT_COMPLETIONS_MAX_OUTPUT_TOKENS_CEILING = 128 * 1024;
@@ -80,6 +84,10 @@ export interface OpenAIChatCompletionsHooks {
   ) => OpenAILegacyGenerationKwargs | undefined;
   preserveThinking?: (generationKwargs: Record<string, unknown>) => boolean | undefined;
   withMaxCompletionTokens?: (maxCompletionTokens: number) => Record<string, unknown> | undefined;
+  completionTokensWhenUnset?: (input: {
+    readonly maxContextSize: number;
+    readonly usedContextTokens?: number;
+  }) => number | undefined;
   cacheKey?: (key: string) => Record<string, unknown> | undefined;
   extractUsage?: (chunk: Record<string, unknown>) => Record<string, unknown> | null | undefined;
   reasoningKey?: () => string | undefined;
@@ -722,16 +730,12 @@ export class OpenAILegacyChatProvider implements ChatProvider {
       }
     }
 
-    if (options?.maxCompletionTokens !== undefined) {
-      let cap = options.maxCompletionTokens;
-      if (
-        options.usedContextTokens !== undefined &&
-        options.maxContextTokens !== undefined &&
-        options.maxContextTokens > 0
-      ) {
-        cap = Math.min(cap, options.maxContextTokens - options.usedContextTokens);
-      }
-      cap = Math.max(1, cap);
+    const requested = options?.maxCompletionTokens;
+    const cap =
+      requested !== undefined && requested <= 0
+        ? undefined
+        : this.resolveMaxCompletionTokens(requested, options);
+    if (cap !== undefined) {
       const hooked = this._hooks?.withMaxCompletionTokens?.(cap);
       if (hooked !== undefined) {
         kwargs = { ...kwargs, ...hooked };
@@ -748,6 +752,27 @@ export class OpenAILegacyChatProvider implements ChatProvider {
     }
 
     return { kwargs, reasoningEffort };
+  }
+
+  private resolveMaxCompletionTokens(
+    requested: number | undefined,
+    options: GenerateOptions | undefined,
+  ): number | undefined {
+    if (requested === undefined) {
+      return this._hooks?.completionTokensWhenUnset?.({
+        maxContextSize: options?.maxContextTokens ?? 0,
+        usedContextTokens: options?.usedContextTokens,
+      });
+    }
+    let cap = requested;
+    if (
+      options?.usedContextTokens !== undefined &&
+      options?.maxContextTokens !== undefined &&
+      options.maxContextTokens > 0
+    ) {
+      cap = Math.min(cap, options.maxContextTokens - options.usedContextTokens);
+    }
+    return Math.max(1, cap);
   }
 
   private _createClient(auth: ProviderRequestAuth | undefined): OpenAI {
@@ -771,6 +796,12 @@ export class OpenAILegacyChatProvider implements ChatProvider {
     }
     if (this._httpClient !== undefined) {
       clientOpts['httpClient'] = this._httpClient;
+    }
+    const headersTimeoutMs = resolveLlmHeadersTimeoutMs();
+    const dispatcher =
+      headersTimeoutMs === undefined ? undefined : getLlmHeadersTimeoutDispatcher(headersTimeoutMs);
+    if (dispatcher !== undefined) {
+      clientOpts['fetchOptions'] = { dispatcher };
     }
     return new OpenAI(clientOpts as ConstructorParameters<typeof OpenAI>[0]);
   }

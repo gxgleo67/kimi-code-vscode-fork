@@ -60,6 +60,10 @@ import {
 } from './anthropic-profile';
 import { mergeConsecutiveUserMessages } from '../merge-user-messages';
 import { mergeRequestHeaders, resolveAuthBackedClient } from '../request-auth';
+import {
+  getLlmHeadersTimeoutDispatcher,
+  resolveLlmHeadersTimeoutMs,
+} from '../../timeout';
 import { normalizeToolCallIdsForProvider, sanitizeToolCallId } from '../tool-call-id';
 
 function normalizeAnthropicStopReason(raw: string | null | undefined): {
@@ -183,7 +187,7 @@ const CEILING_BY_FAMILY_VERSION: Readonly<Record<string, number>> = {
   'haiku-3': 4096,
 };
 
-const FALLBACK_MAX_TOKENS = 128000;
+const FALLBACK_MAX_TOKENS = 64000;
 
 function lookupClaudeCeiling(version: AnthropicModelVersion): number | undefined {
   const { family, major, minor } = version;
@@ -911,7 +915,7 @@ export class AnthropicChatProvider implements ChatProvider {
       }
     }
 
-    if (options?.maxCompletionTokens !== undefined) {
+    if (options?.maxCompletionTokens !== undefined && options.maxCompletionTokens > 0) {
       let cap = options.maxCompletionTokens;
       if (
         options.usedContextTokens !== undefined &&
@@ -1131,12 +1135,16 @@ export class AnthropicChatProvider implements ChatProvider {
   }
 
   private _buildClient(apiKey: string): Anthropic {
+    const headersTimeoutMs = resolveLlmHeadersTimeoutMs();
+    const dispatcher =
+      headersTimeoutMs === undefined ? undefined : getLlmHeadersTimeoutDispatcher(headersTimeoutMs);
     return new Anthropic({
       apiKey,
       authToken: null,
       baseURL: this._baseUrl ?? null,
       defaultHeaders: this._buildDefaultHeaders(apiKey),
       maxRetries: 0,
+      ...(dispatcher === undefined ? undefined : { fetchOptions: { dispatcher } }),
     });
   }
 }

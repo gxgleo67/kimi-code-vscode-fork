@@ -99,4 +99,31 @@ describe('sliceMainRecordsAtTurn', () => {
     expect(slice.records).toContainEqual(steerM2);
     expect(slice.records).not.toContainEqual(steerM1);
   });
+
+  it('derives the fork last prompt without the folded UserPromptSubmit hook parts', () => {
+    const record: WireRecord = {
+      type: 'context.append_message',
+      message: {
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: '<hook_result hook_event="UserPromptSubmit">\nhook note\n</hook_result>',
+            meta: { contentType: 'text/xml', source: 'user prompt submit hook' },
+          },
+          { type: 'text', text: 'hello' },
+        ],
+        origin: { kind: 'user' },
+      },
+      time: 2,
+    };
+
+    const slice = sliceMainRecordsAtTurn(
+      [{ type: 'metadata', protocol_version: '1.5', created_at: 1 }, record],
+      'ses_source',
+      0,
+    );
+
+    expect(slice.lastPrompt).toBe('hello');
+  });
 });

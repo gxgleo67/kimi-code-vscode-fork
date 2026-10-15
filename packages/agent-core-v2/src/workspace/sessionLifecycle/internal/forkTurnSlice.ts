@@ -1,5 +1,6 @@
 import { Error2, ErrorCodes } from '#/errors';
 import type { ContentPart } from '#/kosong/contract/message';
+import { isUserPromptSubmitHookPart } from '#/agent/contextMemory/hookParts';
 import {
   promptMetadataTextFromContentParts,
   promptMetadataTextFromText,
@@ -225,8 +226,11 @@ function promptMetadataFromTurnRecord(record: WireRecord): string | undefined {
   if (!Array.isArray(content)) return undefined;
   const activations = origin?.['skillActivations'];
   const bundled = origin?.['kind'] === 'user' && Array.isArray(activations) ? activations.length : 0;
+  const visible = (content as readonly ContentPart[]).filter(
+    (part) => !isUserPromptSubmitHookPart(part),
+  );
   return promptMetadataTextFromContentParts(
-    (bundled === 0 ? content : content.slice(bundled)) as readonly ContentPart[],
+    bundled === 0 ? visible : visible.slice(bundled),
     origin?.['kind'] === 'user' ? origin['clientMetadata'] : undefined,
   );
 }

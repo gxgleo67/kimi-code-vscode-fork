@@ -194,6 +194,7 @@ function createService(
   const usage = { record: () => undefined, status: () => ({}) };
   const context = {
     get: () => options.contextMessages ?? history,
+    prefixRevision: () => 0,
   };
   const tools = { list: () => [] };
   const config: Partial<IConfigService> = {

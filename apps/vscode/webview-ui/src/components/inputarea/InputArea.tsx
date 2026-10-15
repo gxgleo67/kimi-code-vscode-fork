@@ -181,8 +181,8 @@ export function InputArea({ onAuthAction }: InputAreaProps) {
     clearInput();
   });
 
-  // Alt+Enter: send immediately — steers into a busy turn without touching
-  // the queue; a plain send when idle.
+  // Ctrl/Cmd+Enter: send immediately — steers into a busy turn without
+  // touching the queue; a plain send when idle.
   const handleSendImmediate = useMemoizedFn(() => {
     if (isProcessing || (!text.trim() && draftMedia.length === 0)) {
       return;
@@ -302,25 +302,19 @@ export function InputArea({ onAuthAction }: InputAreaProps) {
       return;
     }
 
-    // Alt+Enter: send immediately (queue bypass via steer); Shift+Enter keeps
-    // its default newline role. This branch must precede the plain-Enter
-    // checks below — they don't test altKey.
-    if (e.key === "Enter" && e.altKey) {
+    // Ctrl/Cmd+Enter: send immediately (queue bypass via steer); Shift+Enter
+    // keeps its default newline role. This branch must precede the
+    // plain-Enter checks below — they don't test ctrlKey/metaKey. When
+    // useCtrlEnterToSend is on, idle Ctrl+Enter still just sends.
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       handleSendImmediate();
       return;
     }
 
-    if (extensionConfig.useCtrlEnterToSend) {
-      if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-        e.preventDefault();
-        handleSend();
-      }
-    } else {
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        handleSend();
-      }
+    if (!extensionConfig.useCtrlEnterToSend && e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
     }
   });
 

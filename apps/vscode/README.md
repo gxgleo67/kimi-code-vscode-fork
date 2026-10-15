@@ -22,11 +22,11 @@
 
 **市场地址 / Marketplace:[marketplace.visualstudio.com/items?itemName=GXGLEO.kimicode-vscode-fork](https://marketplace.visualstudio.com/items?itemName=GXGLEO.kimicode-vscode-fork)(缓存看不到最新版本时请以此为准 / Check here if a cached page hides the latest release)**
 
-**最后更新：2026-09-20 | Last updated: 2026-09-20**
+**最后更新：2026-10-15 | Last updated: 2026-10-15**
 
-**⚠️ 注意：该插件项目由 K3 MAX 自主修改并同步，界面尽可能还原 Web 端界面功能。**
+**⚠️ 注意：该插件项目由 K3 MAX 自主修改并同步，跟随官方引擎侧更新，拥有更多可自定义权限。**
 
-**⚠️ Note: this fork is modified and maintained with K3 MAX; the UI mirrors the Kimi Web experience as closely as possible.**
+**⚠️ Note: this fork is modified and maintained with K3 MAX — it tracks official engine-side updates and adds more customizable options.**
 
 </div>
 
@@ -35,34 +35,50 @@
 - 本插件是 **个人定制修改版**，与官方版 **完全隔离**：扩展 ID `moonshot-ai.kimicode-vscode-fork`、displayName "Kimi Code (Fork)"，命令 / 设置前缀均为 `kimifork.*`，视图容器 `kimifork-sidebar`。可与官方版同时共存，互不冲突。
 - 本项目 **不隶属于 Moonshot AI**，不提供官方支持，使用风险自负。
 - 原版仓库删除了与 VS Code 无关的部分（Kimi Code CLI/TUI、kimi-web、kap-server、vis 等）；本仓库只包含 `apps/vscode` 插件及构建闭包内必需的 11 个私有内部包（它们不发布到 npm registry，是编译必需依赖）。
-- 习惯用 VS Code 后被迫用了 5 小时额度，于是改了 VS Code 插件；加上目前官方主要在维护 bug、没有具体功能设置上的更新，所以根据不同人的使用需求增加了一些功能，方便对齐 Web 版本。
+- 定位：本插件是**跟随官方 KIMI CODE 引擎侧等功能同步的集合体**——官方修复与引擎更新按批次同步（当前已同步至官方 CLI 2.2.0 / PR #4230），在此之上提供官方未暴露的可自定义权限与交互定制。
 
 *English:*
 
 - This is a **personal customized build**, **fully isolated** from the official one: extension ID `moonshot-ai.kimicode-vscode-fork`, display name "Kimi Code (Fork)", `kimifork.*` command/setting prefixes, and a `kimifork-sidebar` view container. It coexists with the official extension without conflicts.
 - This project is **not affiliated with Moonshot AI**; no official support is provided — use at your own risk.
 - Parts unrelated to VS Code were dropped (Kimi Code CLI/TUI, kimi-web, kap-server, vis, etc.); this repo contains only the `apps/vscode` extension plus the 11 private internal packages in its build closure (not published to npm; required to compile).
-- Origin story: I prefer working in VS Code and kept burning through the 5-hour quota, so I modified the VS Code extension. Since upstream currently focuses on maintenance fixes rather than new feature settings, this fork adds features based on real usage needs, aligning with the Web version.
+- Positioning: this fork is a **bundle that tracks the official Kimi Code engine-side updates** — upstream fixes and engine changes are synced in batches (currently through CLI 2.2.0 / PR #4230) — with extra customization options the official build doesn't expose.
 
 ## ✨ 与原版的差异（定制功能） | Differences from Upstream
 
+### 🔄 官方同步 | Official Sync
+
+**引擎侧按批同步**：官方引擎修复、模型/供应商适配、协议变化按批次移植。最近一批（CLI 2.2.0 / #4230，共 18 项）：恢复会话后媒体工具可用、中断时取消视频上传、swarm 子代理状态持久化、fork 会话不再继承定时任务、Gemini 4 thinkingLevel 适配、completion token 上限按需省略、子代理请求前缀缓存对齐、MCP OAuth offline_access 等。
+
+**Engine-side sync in batches**: upstream engine fixes, model/provider adaptation and protocol changes are ported in batches. Latest batch (CLI 2.2.0 / #4230, 18 items): media tools available after session resume, video uploads cancelled on interrupt, persisted swarm subagent state, no cron inheritance on fork, Gemini 4 thinking levels, completion-token cap omitted unless configured, subagent request-prefix cache parity, MCP OAuth offline_access, and more.
+
+### 👥 多账号 | Multi-Account
+
+**多账号不同登录方式**：支持同时登录多个 Kimi Code 官方账号（VS Code 内完成 OAuth 设备码流程），第三方自定义供应商（API Key）与官方账号统一在「账号管理」中管理；一键按窗口切换账号（不同窗口可各用各的账号）、手动排序、星标默认账号；每个账号独立显示 5 小时 / 7 天（或月度）额度与重置倒计时。
+
+**Multiple accounts, different sign-in methods**: stay signed in to several official Kimi Code accounts at once (OAuth device flow inside VS Code); third-party custom providers (API keys) are managed alongside official accounts in Account Management; one-click per-window account switching (different windows can use different accounts), manual ordering, starred default account; per-account 5-hour / 7-day (or monthly) quota with reset countdowns.
+
 ### 🤖 会话与标题 | Sessions & Titles
 
-**会话标题自动生成**：官方 V2 引擎已提供该功能但默认关闭，本插件默认开启。
+**会话标题自动生成**：官方 V2 引擎已提供该功能但默认关闭，本插件默认开启（可用 `auto_session_title` 配置关闭）。
 
-**Automatic session titles**: provided by the official v2 engine but off by default; this fork turns it on by default.
+**Automatic session titles**: provided by the official v2 engine but off by default; this fork turns it on by default (can be disabled via the `auto_session_title` config).
 
 ### 📊 额度 | Quota
 
-**额度状态栏**：5 小时 / 7 天额度同心环实时显示，颜色随用量变化（70% 起黄 → 100% 红），含重置倒计时与 Tooltip；额度查询固定走直连，不经系统代理，避免代理导致偶发查询失败。
+**额度状态栏**：5 小时 / 7 天额度同心环实时显示，颜色随用量变化（70% 起黄 → 100% 红），含重置倒计时与 Tooltip；适配无 7 天上限的新套餐（自动切换月度额度），悬浮显示套餐名；额度查询固定走直连，不经系统代理，避免代理导致偶发查询失败。
 
-**Quota status rings**: live concentric rings for the 5-hour / 7-day quotas; color shifts with usage (yellow from 70%, red at 100%), with reset countdown and tooltip. Quota lookups always connect directly, bypassing the system proxy, to avoid intermittent proxy-related failures.
+**Quota status rings**: live concentric rings for the 5-hour / 7-day quotas; color shifts with usage (yellow from 70%, red at 100%), with reset countdown and tooltip; adapts to plans without a weekly cap (switches to the monthly quota) and shows the plan name on hover. Quota lookups always connect directly, bypassing the system proxy, to avoid intermittent proxy-related failures.
 
 ### 🛡️ 权限与审批 | Permissions & Approval
 
 **Plan 审批（Claude 式 UX）**：Plan 模式弹窗支持 执行 / Revise+反馈 / 选项，不再在 YOLO 下静默直接执行；计划完成时先在编辑器中打开计划文件，再弹窗确认。
 
 **Plan approval (Claude-style UX)**: the plan-mode dialog offers Execute / Revise with feedback / options instead of silently auto-executing in YOLO mode; when planning finishes, the plan file opens in the editor first, then the confirmation dialog appears.
+
+**更多权限自定义**：`Shift+Tab` 循环切换权限模式（逐条确认 → 自动通过 → 完全自主）；可选设置：计划模式自动拉满思考强度、在编辑器中以渲染预览打开计划文档等。
+
+**More permission customization**: `Shift+Tab` cycles permission modes (confirm each → auto-approve → full autonomy); optional settings include max thinking effort in plan mode, opening plan documents as rendered previews in the editor, and more.
 
 ### 🧠 上下文 | Context
 
@@ -112,12 +128,6 @@
 
 **Web-style input area**: the status row keeps queue / file-changes on the left, and background Bash / sub-agents / current progress (todos) / context viewer on the right (each shown only after use in the current conversation); mode & model pickers modeled on the Kimi Code Web UI; the queue button highlights blue while messages are pending.
 
-### ⚡ 性能与稳定性 | Performance & Stability
-
-**性能与稳定性**：历史记录长对话加载优化、上下文压缩后查看器、对话框防草稿回流、终止响应更可靠。
-
-**Performance & stability**: faster loading of long history conversations, a post-compaction context viewer, no draft backflow into the input box, and more reliable response cancellation.
-
 ## 🖼️ 界面预览 | UI Preview
 
 <p align="center">
@@ -130,17 +140,17 @@
 
 | 快捷键 | 作用 |
 | --- | --- |
-| `Alt + Enter` | 立即发送：任务进行中把消息直接插入当前回合（不经过排队），空闲时等同普通发送 |
+| `Ctrl/Cmd + Enter` | 立即发送：任务进行中把消息直接插入当前回合（不经过排队），空闲时等同普通发送 |
 | `Shift + Tab` | 循环切换权限模式（逐条确认 → 自动通过 → 完全自主），仅插件窗口内生效，弹窗打开时不抢占焦点导航 |
-| `Ctrl/Cmd + Enter` | 审批 / 计划弹窗的修改意见框内提交修改意见（`Esc` 取消修改） |
+| `Ctrl/Cmd + Enter`（审批弹窗内） | 审批 / 计划弹窗的修改意见框内提交修改意见（`Esc` 取消修改） |
 
 *English (fork-only):*
 
 | Shortcut | Action |
 | --- | --- |
-| `Alt + Enter` | Send now: while a task is running, insert the message directly into the current turn (bypassing the queue); equals a normal send when idle |
+| `Ctrl/Cmd + Enter` | Send now: while a task is running, insert the message directly into the current turn (bypassing the queue); equals a normal send when idle |
 | `Shift + Tab` | Cycle permission modes (confirm each → auto-approve → full autonomy); only inside the extension window, and never steals focus navigation while a dialog is open |
-| `Ctrl/Cmd + Enter` | Submit feedback in the revision box of approval / plan dialogs (`Esc` cancels) |
+| `Ctrl/Cmd + Enter` (in approval dialogs) | Submit feedback in the revision box of approval / plan dialogs (`Esc` cancels) |
 
 **官方原有**（沿用上游，行为未改动）：
 
@@ -210,397 +220,11 @@ build/                # build tooling (raw-text loader, etc.)
 scripts/              # postinstall (node-pty fix)
 ```
 
-## 🕓 更新记录 | Changelog
+## 🕓 更改日志 | Changelog
 
-**2026-09-20（0.9.22 · 修复面板整体崩溃）**：
+更改日志独立维护在 [CHANGELOG.md](https://github.com/gxgleo67/kimi-code-vscode-fork/blob/main/apps/vscode/CHANGELOG.md)，不再随插件详情页展示。
 
-1. 修复 0.9.20 引入的崩溃：设置菜单的账号额度行仍按旧参数调用额度环组件，额度加载成功即白屏，只能重启 VS Code；已改用新参数（7 天/月度自适应 + 套餐名）
-2. 构建打包前强制跑 `tsc --noEmit` 类型检查，此类问题以后构建即失败，不再流出
-
-*English:*
-
-1. Fixed a full-panel crash from 0.9.20: the settings menu's quota rows still used the old quota-ring props, so a successful quota load blanked the whole webview until a VS Code restart; now on the new props (weekly/monthly adaptation + plan name)
-2. `pnpm build` now runs `tsc --noEmit` over host and webview first, so this class of mismatch fails the build instead of shipping
-
-**2026-09-20（0.9.21 · 账号排序）**：
-
-1. 账号管理支持手动排序：账号行新增上移/下移按钮，顺序跨重启保留；新登录账号默认排末尾
-
-*English:* Account manager now supports manual ordering: up/down buttons per row, persisted across restarts; newly added accounts append at the end
-
-**2026-09-20（0.9.20 · 额度显示适配新套餐）**：
-
-1. 新套餐（无 7 天上限）的额度指示自动切换：平台不返回 7 天窗口时，内圈改显示月度额度（优先 Code 窗口，缺省回退月度总额）；老套餐 7 天环不变
-2. 用量悬浮提示顶部新增套餐名（如 Allegretto / Pro）；套餐名查询失败不影响额度显示
-
-*English:*
-
-1. The quota indicator adapts to plans without a weekly cap: when no 7-day window is reported, the inner ring switches to the monthly quota (code window first, total as fallback); classic plans keep the 7-day ring
-2. The usage tooltip now shows the plan name (e.g. Allegretto / Pro); a plan-name lookup failure never breaks the quota display
-
-**2026-09-20（0.9.19 · 黑底 Logo + 欢迎页圆形动效）**：
-
-1. Logo 底色统一为黑色（此前深色主题下为白色），覆盖顶栏、对话头像、账号弹窗等所有出现位置
-2. 欢迎页的静态方形横幅换成圆形动态品牌 Logo（眼睛自动巡视/眨眼 + 轻微漂浮），旁边配 KIMI CODE 文字标；尊重系统「减少动态效果」设置
-
-*English:*
-
-1. The logo tile is now always black (previously white on dark themes) everywhere — header, chat avatars, account dialog
-2. The welcome screen's static square banner is replaced by a round, animated brand logo (idle eye motion, blink, gentle bob) with a KIMI CODE wordmark; honors reduced motion
-
-**2026-09-20（0.9.18 · 同步品牌信息）**：
-
-README 头图换新为新品牌风格，更新记录文案梳理；无功能变化
-
-*English:* Brand sync only: new README hero image, release notes tidied; no functional changes
-
-**2026-09-20（0.9.16 · 桌面端品牌 Logo + 眨眼彩蛋 + 流畅性提升）**：
-
-1. 对话头像、面板顶部、账号兜底头像改用桌面端 Kimi Code CLI 品牌 Logo（圆角方块底板 + 蓝色渐变圆脸 + `>_` 终端条），替换旧的蓝色矩形头像图
-2. 移植桌面端彩蛋：Logo 眼睛每 16 秒左右瞟动、每 11 秒自动眨眼，点击任意 Logo 立即眨一次眼；纯 CSS/SVG，尊重「减少动态效果」
-3. 扩展市场图标与侧边栏图标换成桌面端官方应用图标
-4. 流畅性提升：面板动画已全面改为纯 CSS/SVG 实现——0.9.15 移除 Rive 运行时（webview 包体减小约 8MB，不再加载 WebAssembly、无 canvas 重绘循环），新 Logo 与工作指示器动画开销几乎为零；配合 0.9.12 的流式渲染优化与长对话卡死修复，面板整体更轻快
-
-*English:*
-
-1. Chat avatar, panel header, and account fallback avatar now use the desktop Kimi Code CLI brand logo (rounded tile + blue gradient face + `>_` terminal bar), replacing the old flat avatar image
-2. Ported the desktop easter egg: the logo's eyes glance around every 16 s, auto-blink every 11 s, and blink once when clicked; pure CSS/SVG, honors "reduced motion"
-3. Marketplace and activity-bar icons now match the desktop app icon
-4. Fluency: every panel animation is now pure CSS/SVG — 0.9.15 removed the Rive runtime (~8 MB smaller webview bundle, no WASM, no canvas repaint loop); combined with 0.9.12's streaming-render smoothing and long-session freeze fixes, the panel feels noticeably snappier
-
-**2026-09-20（0.9.15 · 工作指示器对齐桌面端现版）**：
-
-1. 工作指示器改为桌面端当前版本的纯 CSS「Kimi 小脸」：圆角矩形蓝色小脸，眼睛会左右瞟动 + 眨眼，状态文字呼吸（首个内容流出前「请求中…」，之后「工作中…」）；替换 0.9.14 的 Rive 版本（其静止状态是个蓝色圆球，与桌面端不符）
-2. 完全移除 Rive 运行时：webview 包体减小约 8 MB，撤回 0.9.14 临时加入的 `wasm-unsafe-eval` CSP 放宽；尊重系统「减少动态效果」设置
-
-*English:*
-
-1. The working indicator now matches the current desktop app: a pure-CSS "Kimi face" — a rounded-rect blue badge with glancing, blinking eyes plus a breathing status label — replacing 0.9.14's Rive mascot (whose resting state rendered as a plain blue circle)
-2. Rive runtime removed entirely: ~8 MB smaller webview bundle, and 0.9.14's temporary `wasm-unsafe-eval` CSP relaxation is reverted; honors "reduced motion"
-
-**2026-09-20（0.9.14 · 桌面端吉祥物工作指示）**：
-
-1. 对话进行中显示桌面端同款 Kimi 吉祥物动画 + 呼吸状态文字（首个内容流出前「请求中…」，之后「工作中…」），替换原来的转圈「处理中...」；吉祥物用桌面端 Rive 动画，加载前显示静态备用图
-2. 助手消息头像改为圆角
-
-*English:*
-
-1. While a turn is in flight, the desktop app's animated Kimi mascot (Rive) shows under the last message with a breathing status label ("Requesting…" until first content, then "Working…"), replacing the old spinner row; a static fallback shows until the runtime loads
-2. The assistant message avatar now renders with rounded corners
-
-**2026-09-20（0.9.13 · 修复对话无法打开）**：
-
-1. 修复 0.9.12 引入的回归：上游 #3785 让引擎在每次创建/恢复会话时严格校验子代理 `[secondary_model]` 配方，配方里残留失效模型别名（如自定义供应商被删/改名后）会导致**所有**对话打不开。现在扩展启动时自动校验该配方，发现失效别名就重置为「跟随主模型」并弹警告提示
-
-*English:*
-
-1. Fixed a 0.9.12 regression: upstream #3785 made the engine fail-fast validate the `[secondary_model]` recipe on every session create/resume, so a stale model alias (e.g. left by a removed/renamed custom provider) blocked **every** conversation. The extension now validates the recipe at startup and resets it to "follow the main model" (with a warning) when it references undefined models
-
-**2026-09-20（0.9.12 · 桌面端流式动效 + 目标模式修复 + 官方同步）**：
-
-1. 流式体验对齐 Kimi 桌面端：正在输出的正文末尾显示闪烁的打字机光标；思考块标签在推理期间改为呼吸动画，不再转圈（尊重系统「减少动态效果」）
-2. 目标模式修复：目标更新实时渲染；长对话下取消/停止不再卡死弹窗；流式渲染更顺滑
-3. 同步官方上游修复（截至九月中旬）：#3889 大仓库会话恢复与索引提速（扫描缓存 + O(1) 会话定位 + 会话索引自动压缩）；#3778 子代理作用域 LRU 缓存；#3892 监视器洪水修复；#3840 Windows 8.3 短路径监听崩溃；#3887 会话删除/归档卡死；#3837 撤销后重建对话记录；#3911 压缩前预裁剪历史；#3869 yolo 放行无法分析的 bash；#3879 系统提示不再禁止目录外路径；#3667 MCP 工具延迟披露；#3787 托管用量配额模型等 20 余项
-
-*English:*
-
-1. Streaming UX from the Kimi desktop app: blinking typewriter cursor at the tail of in-flight text; the thinking label breathes instead of spinning (honors reduced motion)
-2. Goal mode fixes: live goal updates in chat; cancel/stop no longer freezes the dialog on long sessions; smoother streaming
-3. Synced 20+ upstream fixes (through mid-September): #3889 large-workspace resume & index speedup (scan cache + O(1) session lookup + session-index compaction); #3778 subagent scope LRU; #3892 watcher flood; #3840 Windows 8.3 short-path watch crash; #3887 session delete/archive hang; #3837 transcript rebuilt after undo; #3911 compaction pre-shrink; #3869 yolo approves unanalyzable bash; #3879 no outside-dir ban in system prompt; #3667 deferred MCP tool disclosure; #3787 managed-usage quota model; and more
-
-**2026-09-14（0.9.11 · 重新发布）**：
-
-1. 0.9.10 内容不变，仅递增版本号重新发布，绕过市场网页端静默上传失败（无功能变更）
-
-*English:*
-
-1. Re-release of 0.9.10 with a bumped version number to work around a silent marketplace upload rejection (no functional changes)
-
-**2026-09-14（0.9.10 · 变更胶囊悬停 + 切账号保持模型 + 官方同步）**：
-
-1. 顶部「变更」胶囊不再内联显示 `+N/-N` 行数，只显示变更数量（`[N]个变更`），鼠标悬停才显示具体增删行数
-2. 切换账号不再把模型重置为该账号按字母序的第一个别名：现在按当前模型 id 跨账号匹配（例如保持 K3-256K，不再跳回 K3），目标模型支持时还会恢复原有思考强度
-3. 同步官方上游修复（MoonshotAI/kimi-code）：#3459 停止交接步骤与子代理 stop_reason；#3734 重试时作废上一段流式残留（修复重试后文本乱码/重复）；#3654 MCP 结构化工具结果；#3649 支持 HEIC/HEIF/BMP 图片；#3652 按供应商能力做图片格式门控；#3645 大文件分页读取；#3658 glob 结果分页；#3688 MCP 工具结果附件；#3657 目标时间预算（部分移植）。#3697（插队打断后台等待）经评审不可移植：依赖本 fork 没有的上游 machine/WaitFor 层
-
-*English:*
-
-1. The file-changes pill in the top bar no longer shows inline `+N -N` line counts — it shows only the changed-file count (`[N] changes`), and hovering reveals the exact added/deleted lines
-2. Switching accounts no longer resets the session model to the account's first alphabetical alias: the switch matches the current model id across accounts (e.g. staying on K3-256K instead of jumping back to K3), and the previous thinking effort is restored when the target model supports it
-3. Synced upstream fixes from MoonshotAI/kimi-code: #3459 stop-handoff steps & subagent `stop_reason`; #3734 discard a retried attempt's partial stream state (fixes duplicated/garbled text after retries); #3654 MCP structured tool results; #3649 HEIC/HEIF/BMP image support; #3652 image-format gating by provider capability; #3645 paged reads for large files; #3658 glob result pagination; #3688 MCP tool-result attachments; #3657 goal time budgets (partial). Upstream #3697 (steer interrupts background waits) is not portable: it depends on upstream's machine/WaitFor layer that this fork does not have
-
-**2026-09-12（0.9.9 · 移除 V1 引擎 + 计划模式思考强度）**：
-
-1. 移除 v1 旧引擎回退开关（`kimifork.useAgentCoreV1` 设置与 `KIMI_CODE_LEGACY_FLAG` 环境变量已删除）：扩展固定运行 v2 引擎，启动失败的报错不再提示回退；SDK 内的 v1 包仍保留用于会话互通
-2. 新增设置项「计划模式最高思考强度」（默认关闭）：开启后进入计划模式时自动把思考强度提升到当前模型支持的最高档，退出计划模式（执行/拒绝/手动关闭）时恢复原有强度；窗口重载后退出计划模式也能从会话元数据中恢复
-
-*English:*
-
-1. Removed the legacy v1 engine rollback switch (the `kimifork.useAgentCoreV1` setting and the `KIMI_CODE_LEGACY_FLAG` env var are gone): the extension always runs the v2 engine, and engine startup errors no longer suggest rolling back; the v1 harness package remains inside the SDK for session interop
-2. New setting "Max thinking in plan mode" (default off): entering plan mode raises thinking effort to the current model's highest supported level, and exiting plan mode (approve / revise / manual toggle) restores the previous effort — restored from session metadata even after a window reload mid-plan
-
-**2026-09-12（0.9.8 · 计划审批界面重做）**：
-
-1. 计划审批参考 Claude Code：计划正文在审批对话框内以完整 Markdown 格式渲染（标题/加粗/列表/表格/代码高亮），不再自动打开原始 `.md` 源码标签页、不再退化为无格式纯文本
-2. 新增设置项「在编辑器中打开计划」（默认关闭）：开启后计划审批出现时自动在 VS Code 中以渲染预览（Markdown Preview，不再是源码）打开计划文档；审批对话框计划路径旁保留手动「在编辑器中打开」入口
-
-*English:*
-
-1. Plan review redesigned to match Claude Code: the plan renders inline in the approval dialog with full Markdown formatting (headings, bold, lists, tables, code highlighting) instead of auto-opening the raw `.md` source in an editor tab or falling back to unformatted plain text
-2. New setting "Open plan in editor" (default off): when enabled, a plan review also opens the plan document in VS Code as a rendered Markdown preview (`markdown.showPreview`, no longer the raw source); a manual "Open in editor" link remains next to the plan path
-
-**2026-09-12（0.9.7 · 插队消息修复）**：
-
-1. 修复队列「立即插入（插队）」消息被静默丢弃：插队回显落在没有活动步骤的时间窗时（如 TurnBegin 与 StepBegin 之间、刚附着到忙碌会话时）不再丢弃——自动补建步骤或退化为普通用户气泡，插队的文字和图片都会显示在对话里
-2. 队列「立即插入」失败不再静默：请求被拒绝时弹出错误提示，消息保留在队列中
-
-*English:*
-
-1. Fixed queue "Insert now (steer)" silently dropping the message: the steer echo landing outside a live step (between TurnBegin and StepBegin, or right after attaching to a busy session) is no longer discarded — it attaches to a created step or falls back to a plain user bubble, so steered text and images always show up in the conversation
-2. Queue "Insert now" failures are no longer silent: a rejected steer request surfaces an error toast and keeps the message in the queue
-
-**2026-09-04（0.9.6 · 账号额度展示）**：
-
-1. 账号管理弹窗：额度行下方常显各窗口的重置倒计时 + 精确重置时间，无需悬停
-2. 设置菜单账号行：文字额度改为与输入框状态栏一致的同心圆环（外环 5 小时、内环 7 天），悬停显示已用百分比与重置倒计时
-3. 设置菜单账号行：「默认」标签与当前账号对号移到账号名称后面，额度圆环保持右对齐
-
-*English:*
-
-1. Account Management dialog: each window's reset countdown and exact timestamp now sit on an always-visible line below the quota line
-2. Settings menu account rows: the text quota is replaced by the same concentric ring indicator as the composer status bar (outer = 5h, inner = 7d); hover for percent used and reset countdowns
-3. Settings menu account rows: the default badge and current-account check moved right after the account name, keeping the quota rings right-aligned
-
-**2026-09-03（0.9.5 · 官方上游同步）**：
-
-1. 会话中断恢复后队列消息不再卡死——prompt 决议事件持久化到会话日志（官方 PR #3371）
-2. 危险 bash 命令（如 `rm -rf`、磁盘/格式化操作）在所有权限模式下都需批准，YOLO 也不例外；auto 模式直接拒绝，可通过配置关闭（官方 PR #3290）
-3. 子代理次模型池从实验特性毕业、默认启用，并上报每个子代理绑定的模型及来源（官方 PR #3334）
-4. 步骤重试与中断事件持久化到会话 wire 日志，恢复的会话保留每步的重试/中断历史（官方 PR #3428；0.9.2 的实时重试丢弃修复不受影响）
-
-> ⚠ 暂未同步（留待后续版本）：官方 PR #3459——强制停止（重复熔断/步骤上限）后追加纯文本交接步骤，让子代理向主代理汇报停止原因和恢复提示；依赖官方子代理生命周期的 DI 重构，将单独安排移植。
-
-*English:*
-
-1. Queued prompts no longer get stuck after an interrupted session resumes — prompt resolution events are persisted to the session log (upstream PR #3371)
-2. Dangerous bash commands (e.g. `rm -rf`, disk/format operations) now require approval in every permission mode including YOLO — auto mode denies them outright; the guard can be turned off via config (upstream PR #3290)
-3. The subagent secondary-model pool graduated out of experimental and is enabled by default, reporting each spawned subagent's bound model and how it was chosen (upstream PR #3334)
-4. Step retry and interrupt events are persisted to the session wire log, preserving per-step retry/interrupt history across resumes (upstream PR #3428; the 0.9.2 realtime retry-discard fix is unaffected)
-
-> ⚠ Not yet synced (planned for a later release): upstream PR #3459 — a text-only handoff step after forced stops so subagents report their stop reason and a resume hint to the parent agent; it depends on an upstream DI rework of the subagent lifecycle and will be ported in its own round.
-
-**2026-09-02（0.9.4 · 多账号与消息操作）**：
-
-1. 右键自己发送的消息可修改或删除：通过引擎会话 undo 回滚到该消息之前，记录仍保留在日志中但不再参与上下文；修改会把原文填回输入框重新发送（豆包式），生成中执行会先停止生成；菜单同时保留「复制消息」入口
-2. 支持同时登录多个 Kimi Code 官方账号：「账号管理」内添加账号（VS Code 内完成 OAuth 设备码流程）、按模型切换当前账号或单独退出任一账号；输入框下方额度条跟随当前模型所属账号，显示其 5 小时/7 天额度与重置时间
-3. 账号体验完善：头像缺失或加载失败时回落到 Kimi 默认头像；账号卡支持编辑显示名（铅笔图标），可加星标设为默认账号——新会话直接从该账号启动
-4. 设置菜单在「账号管理」下以二级行直接列出每个已登录账号的名字和 5 小时/7 天用量；账号管理弹窗内同样逐账号显示额度
-5. 第三方模型接口（如 DeepSeek）并入账号管理：自定义供应商表单和列表从子代理模型对话框抽成共享区块，两个入口管理同一份供应商
-6. 菜单布局：「账号管理」移到「精简模式」下方并以分隔线划分，底部账号行只保留登录/退出
-7. 一键切换账号：点设置菜单里的账号行即把当前窗口的会话切到该账号（会话级，不动全局默认模型），✓ 标记本窗口正在使用的账号——不同窗口可以同时各用各的账号；点未登录的账号则打开管理弹窗先登录
-
-感谢 [@firehot](https://github.com/firehot) 在 PR [#1](https://github.com/gxgleo67/kimi-code-vscode-fork/pull/1) 中提供的 ACP 适配思路，本轮的多账号能力受此启发。
-
-*English:*
-
-1. Right-click your own message to edit or delete it: the conversation rolls back to just before that message via the engine's conversation undo — records stay in the session log but stop feeding the context; edit refills the input box for a corrected resend (Doubao-style), acting mid-stream stops the generation first, and the menu keeps a "Copy message" entry
-2. Multiple official Kimi Code accounts can stay signed in at once: add accounts in Account Management (full OAuth device flow inside VS Code), switch the active account per model pick, or log any of them out; the usage bar below the composer follows the account owning the current model, with its 5-hour/7-day quota and reset times
-3. Account polish: avatars fall back to the Kimi logo when missing or broken; each account gets an editable display name (pencil icon) and a star to mark it as default — new sessions start on the default account
-4. The settings menu lists every signed-in account as a secondary row under Account Management with its name and 5-hour/7-day usage; the Account Management dialog shows the same per-account usage line
-5. Third-party provider access (e.g. DeepSeek) now lives inside Account Management too: the custom provider form and list were extracted from the subagent model dialog into a shared section, both entries managing the same providers
-6. Menu layout: Account Management moved below Compact Mode with dividers; the bottom account row keeps only sign-in/out
-7. One-click account switching: clicking an account row in the settings menu switches this window's session to that account (session-level — the global default model is untouched), with a check marking the account this window is using; different windows can run on different accounts at the same time, and clicking a signed-out account opens the management dialog to log in first
-
-Thanks [@firehot](https://github.com/firehot) for the ACP adaptation proposal in PR [#1](https://github.com/gxgleo67/kimi-code-vscode-fork/pull/1) — it inspired this round's multi-account work.
-
-**2026-08-31**：
-
-1. 队列消息的图片/视频显示为编号标签（图片 1/视频 1，悬停出缩略图）；队列行文字与操作按钮放大，按钮独立到右侧竖线分隔的常显区域
-2. 移除界面层「自动压缩上下文」开关：压缩交由引擎按当前模型窗口 85% 自动处理（与官方一致），手动 /compact 不受影响
-
-*English:*
-
-1. Queued images/videos show as numbered chips (Image 1 / Video 1, hover for a thumbnail); queue rows use larger text, and the actions (steer / edit / move up / delete) live in a dedicated right-side zone with bigger, always-visible buttons
-2. Removed the UI-level auto-compact toggle: compaction is left to the engine's own auto-compaction (85% of the current model's context window), matching upstream; manual /compact is unaffected
-
-**2026-08-29**：
-
-1. 修复绑定自定义供应商的子代理报 apiKey 缺失：v2 引擎补齐 api_key_env_var 密钥间接引用（供应商 schema / 密钥解析 / 设置页已配置判断三处对齐 v1）
-2. 修复长时间无人值守回合后文本乱码、整段重复：步骤遇可重试错误重跑时重发已输出文本且无回滚标记，现引擎宣告重试即丢弃失败残留（含子代理步骤）
-3. 切换会话不再中断进行中的任务：最后一个视图离开时忙碌会话转后台保活，回合结束且 60 秒内无视图重挂才回收
-4. 修复切回后台运行中的会话时、切走期间生成的内容丢失：保活会话回放的是首次打开时冻结的快照，重附着现改为现读 wire 日志、回放最新状态
-5. 头部 Kimi Code 标识右侧显示当前会话标题（加载时解析，LLM 标题/重命名实时刷新，窄窗口自动隐藏）
-6. 头部状态胶囊移除上下文占比（输入区已有上下文圆环），保留重试指示与输入/输出 token 数
-7. 「在新标签页打开」不再镜像其他窗口的会话：新面板落在欢迎页自行挑选历史；原地重载的重附着改为各窗口各回各的会话
-8. 生成中切换/新建对话的确认文案改为说明任务在后台继续运行、可从历史切回，不再声称「将截断输出」
-
-*English:*
-
-1. Fixed subagents on custom providers failing with a missing apiKey: the v2 engine now honors the api_key_env_var key indirection (provider schema, auth resolution, and the settings-page configured check, all aligned with v1)
-2. Fixed garbled, self-duplicating text after long unattended turns: retried steps re-streamed their output with no rollback marker; the failed attempt's remainder is now discarded as soon as a retry is announced (subagent steps included)
-3. Switching conversations no longer interrupts running work: a busy session stays alive in the background after its last view detaches, and is reaped only when no view re-attaches within 60 seconds of it settling
-4. Fixed switching back to a conversation still running in the background losing everything generated while away: a kept-alive session replayed a snapshot frozen at its first open; re-attaching now re-reads the wire log and replays the latest state
-5. The header shows the current conversation's title next to the Kimi Code logo (resolved on session load, refreshed live on LLM titles/renames, auto-hidden in narrow windows)
-6. The header status pill drops the context-usage percentage (the composer row already has the context ring), keeping the retry indicator and input/output token counts
-7. "Open in New Tab" no longer mirrors another window's conversation: new panels start on the welcome screen; reload re-attach now returns each window to its own session
-8. The mid-stream switch/new-conversation confirmation now explains the task keeps running in the background and can be revisited from History, instead of claiming the output would be truncated
-
-**2026-08-28**：
-
-1. 同步官方修复：同一会话并发打开/重附着导致的流式消息重复渲染，视图打开操作串行化后不再出现（#3276）
-2. 同步官方修复：v2 状态快照补齐 contextUsage 字段，SDK 侧上下文用量数据完整（#3098）
-3. 同步官方修复：子代理自定义模型（secondary_model）不再被引擎按模型池级联覆写（#3284）
-4. 同步官方修复：思考强度超过模型默认档时仅当前会话生效，不再意外写成该模型的持久默认（#3205）
-5. 同步官方修复：MCP 工具结果中 structuredContent 与正文重复时不再双倍输出（#3234）
-6. 同步官方修复：并行工具调用集中触发时提升 abort 监听器上限，长回合不再刷 MaxListeners 警告（#3241）
-7. 同步官方修复：不允许后台提问时 AskUserQuestion 隐藏并拒绝 background 参数，避免高峰期子代理问题卡死（#3159）
-8. 补回上游 .gitattributes（强制 LF 检出），修复 Windows 下工具描述文件 CRLF 导致的引擎测试快照哈希漂移
-9. 修复长回合进行中已发送文本莫名回到输入框：发送 RPC 的 10 分钟桥接超时在回合中途误触发并被误判为「未发送成功」回滚；现该 RPC 不再设客户端超时，握手完成后到达的失败按运行时错误保留现场，不再回填输入框
-10. 同步官方修复：恢复被中断的会话不再反复崩溃——代理生命周期上下文在 scope 拆除期间保持激活，会话关闭路径等待异步拆除完成（#3206）
-11. 同步官方修复：会话日志损坏自愈——恢复时检测到损坏/截断的 wire 日志，自动截断到有效前缀并保留 .bak 备份，不再导致会话无法恢复（#3281）
-12. 同步官方修复：恢复会话时告知模型「之前的后台任务已被终止」——合并为一条 system-reminder 注入，不自动开新回合（#3292）
-13. 同步官方修复：undo 后「手动停止」状态残留——undo 回卷对应回合时同步清除回合结果（#3278）
-14. 同步官方修复：绑定 secondary 模型的子代理忽略默认思考强度——secondary_model.default_effort 现在优先生效（#3191）
-15. 同步官方修复：OAuth 登录被自身 provisioning 写入误取消——自身写入不再终止登录流程（#3294）
-16. 同步官方修复：swarm 独立 [swarm] timeout_ms 配置，不再跟随 subagent 超时（#3198）
-17. 同步官方修复：任务协议携带 run_in_background，前台子代理不再被误报为后台任务（#3239）
-18. 修复：长回合中重附着会话（切窗口/重载面板）后发送按钮不变停止、「处理中」消失——历史回放末尾追加引擎忙闲宣告，加载不再无条件复位流式状态
-19. 修复：输入框右上的待办列表从不显示——webview 匹配的工具名（SetTodoList）与引擎实际名（TodoList）不一致，且 v2 引擎的 TodoList 结果未携带结构化展示数据（已补齐，对齐 v1）
-
-*English:*
-
-1. Synced upstream fix: duplicated streaming output when the same session was opened/re-attached concurrently — view-open operations are now serialized (#3276)
-2. Synced upstream fix: v2 status snapshots now carry the `contextUsage` field, completing SDK-side context-usage data (#3098)
-3. Synced upstream fix: custom subagent models (secondary_model) are no longer cascade-overwritten by the engine's model pool (#3284)
-4. Synced upstream fix: thinking effort above the model's default tier now applies only to the current session instead of being persisted as the model default (#3205)
-5. Synced upstream fix: MCP tool results no longer double-print structuredContent that duplicates the text body (#3234)
-6. Synced upstream fix: raised the abort-listener ceiling for parallel tool bursts — no more MaxListeners warnings on long turns (#3241)
-7. Synced upstream fix: AskUserQuestion hides and rejects the background parameter when background questions are not allowed, avoiding stuck subagent questions at peak hours (#3159)
-8. Restored upstream `.gitattributes` (forces LF checkouts), fixing engine test snapshot hash drift caused by CRLF tool-description files on Windows
-9. Fixed sent text returning to the input box mid-turn on long runs: the send RPC's 10-minute bridge timeout fired mid-turn and was misclassified as a pre-send failure, deleting the exchange and rolling the text back; the RPC no longer has a client-side deadline, and failures arriving after the handshake are treated as runtime errors that keep the exchange on screen
-10. Synced upstream fix: resuming an interrupted session no longer crashes repeatedly — the agent lifecycle context stays active through scope teardown, and the session-close path awaits async teardown (#3206)
-11. Synced upstream fix: corrupted session journals now self-heal — restore detects corrupted/truncated wire logs, truncates them to the valid prefix, and keeps a .bak backup instead of failing to resume (#3281)
-12. Synced upstream fix: on resume, the model is told its previous-session background tasks were terminated — delivered as a single system-reminder injection with no auto-turn (#3292)
-13. Synced upstream fix: stale "manually stopped" status after undo — undoing a turn now clears the turn outcome it describes (#3278)
-14. Synced upstream fix: secondary-bound subagents now honor the default thinking effort — secondary_model.default_effort takes precedence (#3191)
-15. Synced upstream fix: OAuth login no longer cancels itself when its own provisioning writes the provider (#3294)
-16. Synced upstream fix: swarms get an independent [swarm] timeout_ms and no longer follow the subagent timeout (#3198)
-17. Synced upstream fix: the task protocol carries run_in_background, so foreground subagents are no longer misreported as background tasks (#3239)
-18. Fix: after re-attaching to a session mid-turn (window switch / panel reload), the send button now turns into Stop and the "processing" indicator stays — the history replay ends with the engine's busy announcement instead of unconditionally resetting the streaming state
-19. Fix: the todo list pill above the composer never appeared — the webview matched a stale tool name (SetTodoList) instead of the engine's actual TodoList, and the v2 engine's TodoList result carried no structured display payload (added, mirroring v1)
-
-**2026-08-26**：
-
-1. 每条对话显示时间戳（今天显示时分，跨天带日期），历史回放保留原始发送时间
-2. 修复 v2 引擎下上下文用量圆环消失/冻结：状态事件只有 token 数没有比例时自动换算；重新进入会话时状态播报补齐上下文快照
-3. 立即发送快捷键由 Shift+Enter 改为 Alt+Enter，Shift+Enter 恢复换行
-4. 修复编辑子代理自定义供应商保存失败：引擎重写配置把 source 展成子表后，再次保存未剥除旧子表导致 TOML 重定义报错；密钥留空且无已存密钥时改为明确提示重填一次
-
-*English:*
-
-1. Every message shows a timestamp (time-of-day within today, date across days); history replay keeps the original send times
-2. Fixed the context-usage ring disappearing/freezing on the v2 engine: derive the ratio when a status event only carries token counts, and include the context snapshot in the status announcement when re-entering a session
-3. Send-now shortcut changed from Shift+Enter to Alt+Enter; Shift+Enter is a newline again
-4. Fixed failing saves when editing a subagent custom provider: after the engine rewrote config with source expanded as a sub-table, re-saving didn't strip the old sub-table and hit a TOML redefinition error; an empty key field with no stored key now clearly asks you to re-enter it once
-
-**2026-08-25**：
-
-1. 立即发送（Alt+Enter / 队列 ⚡）的消息气泡正常显示图片，不再只见文字
-2. 消息加入队列时队列按钮闪烁提醒动画，不再弹顶部横幅
-3. 引擎报错按界面语言显示：额度不足/限流/认证失败等卡片与提醒已汉化，原文保留在详情行
-
-*English:*
-
-1. Send-now (Alt+Enter / queue ⚡) message bubbles now render images, not just text
-2. The queue button plays a flash animation when a message is queued, instead of a top banner
-3. Engine errors follow the UI language: quota-exceeded / rate-limit / auth-failure cards and alerts are localized, with the original text kept in the details line
-
-**2026-08-24**：
-
-1. 每次打开插件默认从首页开始，不再自动恢复上次对话
-2. Alt+Enter 立即发送：任务进行中直接把消息插入当前回合（不经过排队），空闲时等同普通发送；插入的消息以行内气泡即时显示
-3. 切换权限模式不再弹顶部提示窗；新增 Shift+Tab 循环切换权限模式（逐条确认 → 自动通过 → 完全自主），仅插件窗口内生效
-4. 设置开关保存失败时回滚并弹错提示，不再静默丢失
-5. 「精简模式」开关：输入框按钮任意宽度下图标化；模型名称与思考强度永不截断；窄宽度下工具栏自动折叠（完整 → 图标 → ⋯ 菜单）
-6. 错误卡片移除「重试」按钮，报错后在输入框手动重输指令
-
-*English:*
-
-1. The extension now opens on the home page instead of auto-restoring the last conversation
-2. Alt+Enter send-now: while a task is running, inserts the message directly into the current turn (no queue); a normal send when idle; inserted messages appear instantly as inline bubbles
-3. Switching permission modes no longer pops a top notification; new Shift+Tab cycles permission modes (confirm each → auto-approve → full autonomy), only inside the extension window
-4. Failed settings saves now roll back and show an error instead of being silently lost
-5. "Compact mode" toggle: input-area buttons become icons at any width; model name and thinking effort are never truncated; the toolbar auto-collapses at narrow widths (full → icons → ⋯ menu)
-6. Removed the "Retry" button from error cards — re-enter the command in the input box after an error
-
-**2026-08-21**：
-
-1. 修复切窗或重载后当前对话从界面消失：窗口内重载自动重附着会话并回放，进行中回合恢复流式状态
-2. 修复重发请求丢失中断前的思考记录显示，有内容的中断轮次保留为历史
-3. 子代理供应商支持编辑已保存项（密钥留空保持不变）
-4. 计划文件改为在 VS Code 编辑器中打开审查；计划输出注入文档编排格式更易读
-5. 修复切换计划模式后模型选择被状态播报打回旧模型
-6. 同步官方 0.37.1~0.38.0 共 11 项引擎/扩展修复；提问对话框多选题改为勾选 + 提交
-
-*English:*
-
-1. Fixed the current conversation disappearing after switching windows or reloading: in-window reloads now re-attach the session and replay it, restoring streaming state for in-flight turns
-2. Fixed resubmitted requests losing the pre-interruption thinking display; interrupted turns with content are kept as history
-3. Subagent providers support editing saved entries (empty key field keeps the existing key)
-4. Plan files now open in the VS Code editor for review; plan output injects document-formatting guidance for readability
-5. Fixed the model selection being reverted to the old model by a status announcement after switching to plan mode
-6. Synced 11 official engine/extension fixes from 0.37.1~0.38.0; multi-select questions in the ask dialog now use checkboxes + submit
-
-**2026-08-20**：
-
-1. 子代理卡片显示第三方模型徽标（跟随主模型不标记）
-2. 额度查询固定直连、绕过系统代理
-3. 运行中发消息自动排队、回合结束按序补发；有排队时队列按钮蓝色高亮
-4. 待办胶囊更名「当前进度 done/total」
-5. 历史记录点选后立即收起列表
-
-*English:*
-
-1. Subagent cards show a third-party model badge (unmarked when following the main model)
-2. Quota lookups always connect directly, bypassing the system proxy
-3. Messages sent mid-run are queued automatically and replayed in order when the turn ends; the queue button highlights blue while queued
-4. The todo capsule was renamed to "current progress done/total"
-5. The history list collapses immediately after picking a session
-
-**2026-08-19**：
-
-1. KIMI 眼睛加载动画 + 毛玻璃居中加载模块（历史 / 会话列表 / 上下文查看器）
-2. 子代理可绑定独立模型/供应商，高峰期分流
-3. /compact 压缩标记改为单行可展开
-4. 修复历史对话图片裂开（引擎 blobref 引用按需解析）
-5. 修复额度用尽后重试导致最后一轮对话从界面消失
-
-*English:*
-
-1. Kimi eyes loading animation + frosted-glass centered loading module (history / session list / context viewer)
-2. Subagents can bind an independent model/provider to offload peak-hour traffic
-3. /compact markers became single-line expandable entries
-4. Fixed broken images in history conversations (engine blobref references resolved on demand)
-5. Fixed the last exchange disappearing from the UI after retrying when quota was exhausted
-
-**2026-08-18**：
-
-1. AI 自动生成会话摘要标题（已手动命名不覆盖）
-2. 模式开关拆分为 计划 / 目标 / Swarm 三个并排按钮，说明悬浮显示；目标激活可暂停 / 继续 / 取消
-3. 附件曲别针点击直接打开文件选择器，不再向输入框写入 @
-4. 上下文圆环点击直接压缩上下文
-5. 上下文查看器打开自动刷新；状态行胶囊按本对话使用情况显示
-6. 打开历史对话显示加载动画并直达最新消息
-7. 开关控件统一：开 = 蓝色，关 = 灰色
-
-*English:*
-
-1. AI-generated session summary titles (manually renamed titles are not overwritten)
-2. Mode switches split into three side-by-side buttons — Plan / Goal / Swarm — with hover descriptions; an active goal can be paused / resumed / cancelled
-3. The attachment paperclip opens the file picker directly instead of typing `@` into the input
-4. Clicking the context ring compacts context directly
-5. The context viewer auto-refreshes while open; status-row capsules reflect the current conversation's usage
-6. Opening a history conversation shows a loading animation and jumps straight to the newest message
-7. Toggle controls unified: blue when on, gray when off
+*English:* The changelog is maintained separately in [CHANGELOG.md](https://github.com/gxgleo67/kimi-code-vscode-fork/blob/main/apps/vscode/CHANGELOG.md) and no longer ships on the extension details page.
 
 ## License
 

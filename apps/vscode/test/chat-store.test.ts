@@ -519,7 +519,7 @@ describe("Webview streaming text batching", () => {
   });
 });
 
-describe("Webview steerNow (Alt+Enter immediate send)", () => {
+describe("Webview steerNow (Ctrl/Cmd+Enter immediate send)", () => {
   it("steers into a busy turn without touching the queue", () => {
     useChatStore.getState().sendMessage("first");
     beginTurn();

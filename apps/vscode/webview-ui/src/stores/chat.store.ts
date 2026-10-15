@@ -129,7 +129,7 @@ export interface ChatState {
   /** How the in-flight compaction was triggered; consumed by CompactionBegin. */
   pendingCompactTrigger: "manual" | "auto" | null;
   sendMessage: (text: string) => void;
-  /** Alt+Enter send: steers into a busy turn (queue bypassed); a plain send when idle. */
+  /** Ctrl/Cmd+Enter send: steers into a busy turn (queue bypassed); a plain send when idle. */
   steerNow: (text: string) => void;
   setHistoryLoading: (loading: boolean) => void;
   setSessionTitle: (title: string | null) => void;

@@ -11,6 +11,7 @@ import { handlers, type BroadcastFn, type HandlerContext, type ReloadWebviewFn, 
 import { BaselineManager, type BaselineSession } from "./managers/baseline.manager";
 import { FileManager } from "./managers/file.manager";
 import { KimiRuntime } from "./runtime/kimi-runtime";
+import { ExternalAcpBackend } from "./runtime/external-acp";
 import type { SessionRuntime } from "./runtime/session-runtime";
 import { areSameFsPath } from "./utils/fs-path";
 import {
@@ -25,6 +26,7 @@ import {
 export class BridgeHandler {
   readonly baselineManager: BaselineManager;
   readonly runtime: KimiRuntime;
+  readonly externalAcp: ExternalAcpBackend | undefined;
 
   private readonly customWorkDirs = new Map<string, string>();
   private readonly fileManager: FileManager;
@@ -39,6 +41,7 @@ export class BridgeHandler {
     private readonly showLogs: ShowLogsFn,
     private readonly writeLog: (message: string) => void,
   ) {
+    const useExternalAcp = VSCodeSettings.backend === "externalAcp";
     try {
       this.runtime = new KimiRuntime({
         version: VSCodeSettings.getExtensionConfig().version,
@@ -48,6 +51,9 @@ export class BridgeHandler {
         },
         log: (message, error) => this.logRuntimeError(message, error),
         planModeMaxThinkingEnabled: () => VSCodeSettings.planModeMaxThinking,
+        // External ACP owns account selection; keep the fallback SDK harness
+        // in extension storage so it cannot read or mutate the user's Kimi home.
+        homeDir: useExternalAcp ? path.join(globalStoragePath, "external-acp-home") : undefined,
       });
     } catch (error) {
       throw new Error(
@@ -55,6 +61,17 @@ export class BridgeHandler {
         { cause: error },
       );
     }
+    this.externalAcp =
+      useExternalAcp
+        ? new ExternalAcpBackend(
+            {
+              command: VSCodeSettings.acpCommand,
+              target: VSCodeSettings.acpTarget,
+              accounts: VSCodeSettings.acpAccounts,
+            },
+            (message, error) => this.logRuntimeError(message, error),
+          )
+        : undefined;
     this.baselineManager = new BaselineManager(globalStoragePath, this.runtime.harness.homeDir);
     this.fileManager = new FileManager(this.baselineManager, broadcast);
   }
@@ -118,6 +135,7 @@ export class BridgeHandler {
     } else {
       this.customWorkDirs.delete(webviewId);
     }
+    await this.externalAcp?.disposeView(webviewId);
     await this.runtime.detachView(webviewId);
     this.fileManager.clearSession(webviewId);
   }
@@ -135,6 +153,15 @@ export class BridgeHandler {
   }
 
   private async dispatch(method: RpcMethod, params: unknown, webviewId: string): Promise<unknown> {
+    if (this.externalAcp?.handles(method)) {
+      return this.externalAcp.handle(method, params, {
+        webviewId,
+        workDir: this.getWorkDir(webviewId),
+        workspaceRoot: this.workspaceRoot,
+        broadcast: this.broadcast,
+        saveAllDirty: () => this.saveAllDirty(),
+      });
+    }
     if (!Object.hasOwn(handlers, method)) throw new Error(`Unknown method: ${method}`);
     const handler = handlers[method];
     if (!handler) throw new Error(`Unknown method: ${method}`);
@@ -211,6 +238,7 @@ export class BridgeHandler {
   }
 
   async disposeView(webviewId: string): Promise<void> {
+    await this.externalAcp?.disposeView(webviewId);
     await this.runtime.detachView(webviewId);
     this.customWorkDirs.delete(webviewId);
     this.fileManager.disposeView(webviewId);
@@ -289,10 +317,14 @@ export class BridgeHandler {
 
   async dispose(): Promise<void> {
     this.fileManager.dispose();
+    await this.externalAcp?.dispose();
     await this.runtime.dispose();
   }
 
   async getBaselineContent(sessionId: string, filePath: string): Promise<string> {
+    if (this.externalAcp !== undefined) {
+      throw new Error("外部 ACP backend 不支持 VS Code 基线文件视图。");
+    }
     const active = this.runtime.getSession(sessionId)?.summary;
     const summary = active ?? (await this.runtime.harness.listSessions({ sessionId }))[0];
     if (summary === undefined) throw new Error("Session was not found.");

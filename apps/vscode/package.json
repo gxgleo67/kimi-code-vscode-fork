@@ -50,6 +50,35 @@
     "configuration": {
       "title": "Kimi Fork",
       "properties": {
+        "kimifork.backend": {
+          "type": "string",
+          "default": "embedded",
+          "enum": [
+            "embedded",
+            "externalAcp"
+          ],
+          "enumDescriptions": [
+            "Run the embedded Kimi Code SDK (default)",
+            "Start an external ACP agent, typically kimi-subscription-router"
+          ],
+          "description": "Runtime backend. Reload the window after changing this setting."
+        },
+        "kimifork.acpCommand": {
+          "type": "string",
+          "default": "kimi-subscription-router",
+          "description": "Executable used by the external ACP backend. Arguments are passed without a shell."
+        },
+        "kimifork.acpTarget": {
+          "type": "string",
+          "default": "kimi-vscode-fork",
+          "description": "Router target name for this VS Code ACP client. Use a different target per ACP client."
+        },
+        "kimifork.acpAccounts": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "Kimi account IDs assigned to this ACP target. Leave empty to use the target pool saved by Kimi Subscription Router, or all routable accounts when no target pool exists."
+        },
         "kimifork.yoloMode": {
           "type": "boolean",
           "default": false,
